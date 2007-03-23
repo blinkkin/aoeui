@@ -1,0 +1,9 @@
+These are the sources for the aoeui, a lightweight and unobtrusive
+text editing program that is optimized for fast editing by users of
+the Dvorak keyboard layout.  It was written in March 2007 by
+peter@klausler.com.
+
+The file COPYING contains the license under which aoeui is released;
+please review it so that you understand your rights and responsibilities.
+In particular, be aware that aoeui comes with ABSOLUTELY NO WARRANTY
+and your use of the program is entirely at your own risk.

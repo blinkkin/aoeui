@@ -1,0 +1,116 @@
+Welcome to aoeui, pmk's text editor optimized for fellow users of
+
+the		 ESC `  1 2 3 4 5  6 7 8 9 0  [ ] BACK
+Dvorak		   TAB  ' , . P Y  F G C R L  / = \
+Simplified	  LOCK  A O E U I  D H T N S  - ENTER
+Keyboard	 SHIFT  ; Q J K X  B M W V Z  SHIFT
+layout		  CTRL  ALT	Space	 ALT  CTRL
+
+To leave aoeui now, perhaps because you arrived here by accident, hit the
+backslash key (\) while holding down one of the Control keys.
+
+COMMANDS are indicated here with notation like ^L, which means that
+the L key is to be struck
+  - with one of the Control keys held down -- the standard method, or
+  - with one of the ALT keys held down, or
+  - after pressing the Esc(ape) key.
+
+The ^L command proceeds to the next screenful of text.  ^R returns to the
+previous screenful of text.  These are the two commands you will need to
+know first to navigate this help file.
+
+Non-control characters are inserted into the text.  If the cursor is at
+the beginning of a selection, the selection is first cut as if ^D had
+been used.  If the cursor is at the end of a selection, the new text is
+appended to it.
+
+Many commands have variant forms that are accessed by first hitting
+^Space before the command.  Also, many commands alter their behavior
+depending on the presence or absence of a selection, which is a highlighted
+contiguous fragment of text that has the cursor at one end and the "mark"
+at its other.
+
+NAVIGATION in a text by...	BACKWARD	FORWARD
+	single character	^H		^T
+	word			^N		^S
+	sentence		^Space^N	^Space^S
+	line			^G		^C
+	screenful		^R		^L
+	entire view		^Space^R	^Space^L
+	([{ balanced expression }])	   ^]
+	recenter screen			   ^Z
+	specific line number		^Space 123 ^Z
+
+SELECTION and MODIFICATION
+	  without a selection	with a selection
+      ^V  begin a selection	exchange cursor with mark
+^Space^V  select entire line	abandon selection
+      ^F			replace clip buffer with copied selection
+^Space^F			add copy of selection to clip buffer
+      ^D  delete character	replace clip buffer with deleted selection
+      ^B  paste			exchange selection with clip buffer
+
+BACKSPACE deletes the character before the cursor.
+
+^U undoes the most recent command; ^Space^U after one or more ^U commands
+repeats the undone command.  Any command that modifies the text after ^U
+beside ^Space^U commits the undone commands.
+
+^Space TAB (or ^I) aligns the current line to the indentation of the
+previous one.  ^ENTER (or ^J) inserts a new line with automatic indentation.
+^Space ENTER (or ^M) opens up a new line after the current one.
+
+^^ (that's Control-Caret, shift-6) reads the next character that you
+type and inserts it into the text without interpreting it as a command.
+If it's a non-control character, ^^ converts it into one.
+
+VIEWS, TEXTS, and WINDOWS
+      ^Y  split the current window horizontally
+^Space^Y  split the current window vertically
+      ^P  move to another window
+^Space^P  close the current window and move to the next one
+      ^W  replace the current window with an invisible view
+^Space^W  close the current view and replace it with an invisible one
+      ^X  without a selection:  insert the text's file name as the selection
+      ^X  with a selection: open the file whose name is in the selection
+^Space^X  with a selection: rename the current next with the selection
+      ^K  save all modified texts back to their files
+^Space^K  save just the current text
+      ^Q  suspend the editor
+^Space^Q  save all buffers and terminate the editor
+      ^\  abort the editor without saving any text
+
+^/ and ^_ enter SEARCH MODE.  Characters that are typed are appended to the
+search pattern and the next occurrence of the pattern is selected.  Case of
+alphabetic characters is not significant to the search.  In search mode,
+  BACKSPACE removes characters from the search pattern
+  ^/	    with no pattern causes the last search's pattern to be used
+  RETURN    terminates the search and unselects the latest occurrence
+  ^H and ^T  move backward and forward to other instances of the pattern
+All other commands leave search mode and use the latest hit as the selection.
+
+EXTENSION
+^E executes the shell pipeline command in the selection, passes the contents
+of the clip buffer as its standard input, and replaces the selection with
+the standard output of the command.  Handy commands to know include:
+	cat path	to insert the contents of a file into the text
+	sort		to rearrange lines
+	sed 's/FROM/TO/g' to perform global search-and-replace
+	tr a-z A-Z	to convert lower to upper case
+
+^Space^A begins recording keystrokes as the view's macro.  ^A ends recording
+if it is active, otherwise ^A causes the macro to be executed by replaying
+the saved keystrokes.
+
+TIPS
+ - To select the rest of the line after the cursor: ^V^C
+ - It is often faster to retype a bungled word than to fix it: ^V^N (retype)
+ - Transposing multiple blocks of text is easy with ^B, which generalizes
+   the usual paste operation into an exchange of the clip buffer with the
+   selection.
+ - Incremental search and replace can be done with a macro (^Space^A)
+   or by clipping the replacement text, and on search hits that are to be
+   replaced, using ^B^F^/^/ to exchange the hit with the replacement text,
+   copy it back to the clip buffer, and proceed to the next occurrence of the
+   search pattern.  But if the replacement text is short, it's sometimes
+   easiest to just overwrite the selection with ^V and retyping.

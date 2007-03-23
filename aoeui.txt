@@ -1,0 +1,214 @@
+
+I have written a text editor.  This is a silly thing to do, since
+there is certainly no shortage of interactive display editors in
+the world of free software, and some are excellent.  But now I
+have an editor that works the way that I want my text editor to
+work.  I contend that I have every capability of modern large
+editors that is actually useful for word processing and computer
+programming packaged into a small command set and tiny memory
+footprint.
+
+It is called aoeui because it's optimized for users, like myself,
+of the Dvorak keyboard layout.  QWERTY key bindings could be found
+that make sense, I suppose, but the entire point of this project was
+to construct a tool for extremely fast and efficient text editing,
+and anybody still using QWERTY is not serious enough about their
+tools to want to pick up a new editor.  Really.
+
+	' , . P Y  F G C R L  /
+	A O E U I  D H T N S  -
+	; Q J K X  B M W V Z
+
+What do I mean when I contend that aoeui is optimized for the Dvorak
+layout?  I mean that all of the most heavily-used command keys are
+located under the fingers of the right hand, so that they may be
+accessed while the left pinky is holding down the Control or Alt key.
+(Control, Alt, and an Escape prefix all mean the same thing to aoeui.
+The user does not have to worry about using the right one or using
+them to alternate between, say, character and word units of motion.)
+In the QWERTY layout, too much of the right-hand real estate is occupied
+by punctuation keys that don't have Control capability, so a
+straightforward remapping of the command set is not obvious.
+
+The editor itself is lightweight and utterly unobtrusive.  It has no
+mode line, minibuffer, scroll bar, or status indicators.  Just a
+cursor, some background coloration cues, and the xterm window title.
+
+Editing with aoeui is intuitive and rather like working with a mouse-
+based word processing program, except of course that you don't have to
+take your hands off the keyboard in order to navigate and manipulate
+your text.  New text is simply typed in place.  Changes to text are
+typically by means of creating a selection and then copying, cutting,
+or replacing it.  All effects are immediately visible, retractable,
+and repeatable.  Selections are delimited by the cursor on one end
+and the "mark" at the other, and are highlighted in blue.
+
+Commands, as mentioned above, are control keys.  The full command set
+fits in the available control keys because they are sensitive to the
+context in intuitive ways, changing their behavior in the presence or
+absence of a current selection, and because their behavior can be
+modified with a variant prefix, ^Space.  This means that your thumb
+gets into the action too.
+
+For example, ^V is the key that creates and modifies the selection.
+When no selection exists, ^V starts one by placing the mark at the
+current cursor position.  When a selection has already been started,
+^V exchanges the positions of the cursor and the mark.  The variant
+form ^Space^V selects the entire current line in the absence of a
+selection, or cancels the selection if one already exists.
+
+Typing new text in the presence of a selection will add the new text
+to the selection if the cursor is at its end, or cut the selection
+and begin its replacement if the cursor is at its start.  Unlike
+Emacs, you may start a selection by dropping a mark with ^V and
+then define its content by typing it.  This is useful because some
+commands take a textual argument, like a file name, from the selection.
+
+Cutting the selection, apart from the automatic cut that takes place
+when new text is entered with the cursor at its beginning, is done
+with ^D.  The variant ^Space^D adds the selection to the old content
+of the clip buffer, which is normally replaced.  ^F copies the selection
+to the clip buffer, with the same variation possibility.  And ^B
+is a generalize form of pasting.  It does a simple pasting of the content
+of the clip buffer when no selection exists, but when ^B is hit with
+a selection defined, it exchanges the clip buffer with the selection.
+This speeds up rearrangement of multiple blocks of text, and also
+forms the method of interactive searching and replacing.
+
+Note that ^F, ^D, and ^B constitute a column on the Dvorak keyboard.
+This is intentional; they are related functions, but highly unlikely
+to immediately follow one another.
+
+The upper right hand keys are all concerned with navigation in both
+directions by different units.  ^H and ^T move backward and forward,
+respectively, in units of single characters.  ^N and ^S do the same
+by words; their ^Space variants move by punctuated sentences.  The
+vast majority of editing takes place with these home row commands,
+with ^V to create and manipulate the selection.  They are combinable
+in many intuitive ways to accomplish tasks that constitute distinct
+commands in Emacs and Vi.  For example, when a misspelled word has
+just been entered, it's often fastest to retype it than to fix it.
+The aoeui user does so with ^V to place the mark at the end of the
+bad word, ^N to put the cursor at its beginning, thereby selecting
+it, and then typing its correct spelling.
+
+The other navigation keys are on the upper right hand row.
+^G and ^C move backward and forward, respectively, to the beginnings
+and endings of lines.  ^R and ^L move in units of screenfuls.
+Their variants, ^Space^R and ^Space^L, move to the start and end of
+the entire view.  ^] finds the closest bracket character, or the
+corresponding bracket character, and is the fastest way to select
+entire subexpressions or statement blocks.
+
+What's a view?  It's usually an entire file in a buffer, but it can be
+just a part of a file.  The aoeui editor supports multiple open files,
+multiple views to them, and multiple windows showing some subset of
+the views.  ^Z recenters the cursor so that it is on the middle line
+of the current window.  ^W finds an invisible view and puts it up in
+the window, making the old view invisible.  (^Space^W closes the
+old view.)
+
+To bring new files into the editor and to rearrange the windows
+require some commands that are under the fingers of the left hand.
+First, ^X opens the file whose name is in the selection (or raises
+it up if it is invisible).  With no selection, ^X inserts the full
+path name of the current file as the new selection in the current
+view.  The variant ^Space^X replaces the current view's path name
+with the selection.  To rename a text, one typically acquires its
+current name with ^X, modifies it in place within the selection, and
+establishes it with ^Space^X.
+
+^Y splits the current window horizontally into two and makes another
+view visible in the lower half.  ^Space^Y does the same thing vertically,
+which is quite handy in a large xterm.  ^P transfers the cursor to another
+window; ^Space^P closes the old window afterwards.
+
+On the lower left hand row are the commands for writing files and
+leaving aoeui.  ^K saves all modified files; its variant saves just
+the current view.  ^Q suspends aoeui and returns you to the shell
+so that you can run a compiler.  ^Space^Q saves all modified files
+and shuts the editor down.  For emergencies, ^\ aborts the editor
+without saving anything.
+
+Now to the home row on the left hand side of the Dvorak keyboard.
+^U undoes the most recent modification to the file; ^Space^U redoes it.
+The editor has infinite undo capability, of course.
+
+^E brings all the power of UNIX text processing commands into your
+editing session, including your own programs and scripts.  This is
+the best way to customize your editor.  ^E executes the shell command
+pipeline that is the current selection, using the content of the clip
+buffer as its standard input.  The selection is replaced with the command's
+standard output.
+
+^Space^A begins the recording of keystrokes in the current view as
+a new macro.  ^A ends recording, if it is active, otherwise it
+replays the macro as if its keystrokes had been typed again.
+
+^I is the same as TAB.  Their variants cause the current line to be
+aligned with the previous one.  ^J is the same as ^Enter and it
+inserts a new line with alignment whitespace already in place.
+^M is the same as Enter; their variants open a new blank line after
+the current one.
+
+Last is the incremental search mode, which is entered with ^/ or ^_.
+Case is not significant to aoeui's incremental search mode.
+In search mode, each character that you type is appended to a
+search target string and the selection is moved to its next occurrence
+in the view.  Hitting ^/ twice restarts a search using the same
+target string as last time.  In search mode, most commands end
+the search implicitly before invoking their usual behavior.  The
+differences are: Enter simply ends the search, and ^H and ^T cause
+motion backwards and forwards, respectively, to other occurrences
+of the search target string.
+
+The aoeui editor does not have an incremental search-and-replace
+command, because there are at least three ways of doing that with
+the facilities that already exist.  First, the replacement string
+may be cut or copied into the clip buffer, and then exchanged and
+recopied with the string occurrences with ^B^F^/^/.  Second, the
+replacement string may be saved as a macro (^Space^A^Vnew text^A)
+the first time.  And third, the entire view can be selected, cut,
+and then run through "sed s/OLD/NEW/g" with ^E for a global replacement.
+
+Only a few other commands exist.  The aoeui editor is, of course,
+fully aware of UTF-8 Unicode encodings, and is capable of displaying
+and entering control characters.  They appear in the display with
+a red background and a leading caret (^).  To enter a control
+character, use ^^ (Control-^) and a valid letter or punctuation
+symbol.  Hex control characters are also supported.
+
+It should go without saying that the arrow, Home/End, and Page
+Up/Down keys on your keyboard are also supported, as is Backspace,
+but that they usually are not as fast to use as the standard aoeui
+control character commands.
+
+And that's the end of the full story.  No "line mode", interactive
+on-line help, mail reading client, or IRC interface.  Those
+capabilities exist with excellent implementations elsewhere in the
+free software ecosystem, and with the use of ^Q and ^E are always
+handy to the aoeui user.  Further, the source code for aoeui is
+freely available for your modification, and is itself smaller than
+many Emacs local customization files.  (It's ironically about one
+eighth the size of the "nano" editor's source!)
+
+Let me conclude with this position statement.  Free software works best
+when programs acknowledge each other's existence and interoperate
+smoothly, without cluttering themselves with capabilities that are
+redundant in the rich user environment that surrounds them.  There is
+a strength that comes from having a well-written program that does
+a few things well that can be fully understood, appreciated, and
+internalized.  Such programs become invisible to their users.
+I sincerely hope that the aoeui editor can fill that role for you
+as well as it has for me, and look forward to hearing whether or
+not it has.  Thanks for giving it a look.
+
+To build aoeui:
+	mkdir aoeui
+	cd aoeui
+	wget http://klausler.com/aoeui.tgz
+	tar xf aoeui.tgz
+	cd src
+	make install
+
+Peter Klausler, 3-18-2007
