@@ -34,6 +34,7 @@ clean:
 clobber: clean
 	rm -f $(TARGET) $(TARGET).1.gz
 spotless: clobber
-	rm -f *~
+	rm -f *~ *.tgz
 backup: spotless
-	(cd ..; tar czf backup/$(TARGET).`date '+%F'`.tgz $(TARGET))
+	(cd ..; tar czf t.tgz $(TARGET))
+	mv ../t.tgz $(TARGET).`date '+%F'`.tgz

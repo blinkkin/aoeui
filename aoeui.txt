@@ -203,12 +203,6 @@ I sincerely hope that the aoeui editor can fill that role for you
 as well as it has for me, and look forward to hearing whether or
 not it has.  Thanks for giving it a look.
 
-To build aoeui:
-	mkdir aoeui
-	cd aoeui
-	wget http://klausler.com/aoeui.tgz
-	tar xf aoeui.tgz
-	cd src
-	make install
+(aoeui source code is now located at http://sf.net/projects/aoeui)
 
 Peter Klausler, 3-18-2007
