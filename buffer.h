@@ -1,9 +1,11 @@
 struct buffer {
 	char *data;
 	unsigned allocated, payload, gap;
+	int fd;
+	char *path;
 };
 
-struct buffer *buffer_create(void);
+struct buffer *buffer_create(char *path);
 void buffer_destroy(struct buffer *);
 unsigned buffer_raw(struct buffer *, char **,
 		    unsigned offset, unsigned bytes);

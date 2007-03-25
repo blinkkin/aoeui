@@ -177,7 +177,9 @@ struct view *view_next(struct view *view)
 		else
 			new = text_list->views;
 	} while (new != view && new->window);
-	return new == view ? NULL : new;
+	if (new == view)
+		new = text_create("* New *", TEXT_EDITOR);
+	return new;
 }
 
 int view_corresponding_bracket(struct view *view, unsigned offset)

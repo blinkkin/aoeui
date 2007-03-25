@@ -1,15 +1,22 @@
 #include "all.h"
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 
 static void newlines(struct text *text)
 {
-	struct buffer *buffer = text->buffer;
 	char *raw;
-	unsigned offset;
-	unsigned bytes = buffer_raw(buffer, &raw, 0, ~0);
+	unsigned offset, bytes;
 	int ch, last = 0;
 	unsigned lfs = 0, crs = 0, crlfs = 0;
+
+	if (text->buffer)
+		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
+	else if (text->clean) {
+		raw = text->clean;
+		bytes = text->clean_bytes;
+	} else
+		return;
 
 	text->newlines = 0; /* no conversion */
 	if ('\n' != '\x0a')
@@ -26,53 +33,50 @@ static void newlines(struct text *text)
 			return;
 	}
 
-	if (!crs)
+	if (!crs || lfs && (lfs != crs || lfs != crlfs))
 		return;
+
+	text_dirty(text);
+	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
+
 	if (!lfs) {
 		text->newlines = 1; /* old Mac, CR is newline */
 		for (offset = 0; offset < bytes; offset++)
 			if (raw[offset] == '\r')
 				raw[offset] = '\n';
-		return;
+	} else {
+		text->newlines = 2; /* DOS CR-LF is newline */
+		for (last = offset = 0; offset < bytes; offset++)
+			if ((raw[last] = raw[offset]) != '\r')
+				last++;
+		buffer_delete(text->buffer, last, bytes - last);
 	}
-	if (lfs != crs || lfs != crlfs)
-		return;
-
-	text->newlines = 2; /* DOS CR-LF is newline */
-	for (last = offset = 0; offset < bytes; offset++)
-		if ((raw[last] = raw[offset]) != '\r')
-			last++;
-	buffer_delete(buffer, last, bytes - last);
 }
 
 static void undo_newlines(struct text *text)
 {
-	struct buffer *buffer = text->buffer;
 	char *raw;
-	unsigned bytes = buffer_raw(buffer, &raw, 0, ~0);
-	unsigned offset;
-	unsigned lines;
+	unsigned bytes, offset, lines;
 
-	if (!text->newlines)
+	if (!text->newlines || !text->buffer)
 		return;
+	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 	if (text->newlines == 1) {
 		for (offset = 0; offset < bytes; offset++)
 			if (raw[offset] == '\n')
 				raw[offset] = '\r';
-		return;
+	} else {
+		for (lines = offset = 0; offset < bytes; offset++)
+			lines += raw[offset] == '\n';
+		buffer_insert(text->buffer, NULL, bytes, lines);
+		buffer_raw(text->buffer, &raw, 0, offset = bytes + lines);
+		while (bytes--)
+			if ((raw[--offset] = raw[bytes]) == '\n')
+				raw[--offset] = '\r';
 	}
-	for (lines = offset = 0; offset < bytes; offset++)
-		lines += raw[offset] == '\n';
-	if (!lines)
-		return;
-	buffer_insert(buffer, NULL, bytes, lines);
-	buffer_raw(buffer, &raw, 0, offset = bytes + lines);
-	while (bytes--)
-		if ((raw[--offset] = raw[bytes]) == '\n')
-			raw[--offset] = '\r';
 }
 
-static int text_read(struct text *text)
+static int old_fashioned_read(struct text *text)
 {
 	char *raw;
 	int got, total = 0;
@@ -138,6 +142,23 @@ static char *fix_path(const char *path)
 	return fpath;
 }
 
+static void clean_mmap(struct text *text, unsigned bytes, int flags)
+{
+	void *p;
+	unsigned pagesize = getpagesize();
+	unsigned pages = (bytes + pagesize - 1) / pagesize;
+
+	if (text->clean)
+		munmap(text->clean, text->clean_bytes);
+	text->clean_bytes = bytes;
+	text->clean = NULL;
+	if (!pages)
+		return;
+	p = mmap(0, pages * pagesize, flags, MAP_SHARED, text->fd, 0);
+	if (p != MAP_FAILED)
+		text->clean = p;
+}
+
 struct view *view_open(const char *path0)
 {
 	struct view *view;
@@ -167,19 +188,19 @@ struct view *view_open(const char *path0)
 			goto fail;
 		}
 		errno = 0;
-		text->fd = creat(path, S_IRUSR|S_IWUSR);
+		text->fd = open(path, O_CREAT|O_TRUNC|O_RDWR,
+				S_IRUSR|S_IWUSR);
 		if (text->fd < 0) {
 			message("can't create %s", path);
 			goto fail;
 		}
-		text->mtime = 0;
 		text->flags |= TEXT_CREATED;
+		text->buffer = buffer_create(path);
 	} else {
 		if (!S_ISREG(statbuf.st_mode)) {
 			message("%s is not a regular file", path);
 			goto fail;
 		}
-		text->mtime = statbuf.st_mtime;
 		text->fd = open(path, O_RDWR);
 		if (text->fd < 0) {
 			errno = 0;
@@ -192,10 +213,16 @@ struct view *view_open(const char *path0)
 				goto fail;
 			}
 		}
-		if (text_read(text) < 0)
-			goto fail;
+		clean_mmap(text, statbuf.st_size, PROT_READ);
+		if (!text->clean) {
+			text->buffer = buffer_create(path);
+			if (old_fashioned_read(text) < 0)
+				goto fail;
+			text->mtime = statbuf.st_mtime;
+		}
 		newlines(text);
-		view->bytes = buffer_bytes(text->buffer);
+		view->bytes = text->buffer ? buffer_bytes(text->buffer) :
+					     text->clean_bytes;
 		locus_set(view, CURSOR, 0);
 		text_forget_undo(text);
 	}
@@ -228,11 +255,21 @@ int text_rename(struct text *text, const char *path0)
 		return 0;
 	}
 
+	if (text->flags & TEXT_CREATED) {
+		unlink(text->path);
+		text->flags &= ~TEXT_CREATED;
+	}
+
 	/* Do not truncate or overwrite yet. */
+	text->flags |= TEXT_SAVED_ORIGINAL;
+	text->flags &= ~TEXT_RDONLY;
+	text_dirty(text);
 	close(text->fd);
+	if (text->clean) {
+		munmap(text->clean, text->clean_bytes);
+		text->clean = NULL;
+	}
 	text->fd = fd;
-	text->flags &= ~TEXT_CREATED;
-	text->flags |= TEXT_DIRTY | TEXT_SAVED_ORIGINAL;
 	allocate(text->path, 0);
 	text->path = path;
 	for (view = text->views; view; view = view->next)
@@ -242,21 +279,31 @@ int text_rename(struct text *text, const char *path0)
 
 void text_dirty(struct text *text)
 {
-	char *save_path, *raw;
-	int fd;
-	unsigned length;
-
+	struct stat statbuf;
 	if (text->path &&
 	    (text->flags & (TEXT_DIRTY | TEXT_RDONLY)) == TEXT_RDONLY)
 		message("%s is a read-only file, changes will not be saved.",
 			text->path);
-
 	text->flags |= TEXT_DIRTY;
+	if (!text->buffer) {
+		text->buffer = buffer_create(text->path);
+		if (text->clean)
+			buffer_insert(text->buffer, text->clean, 0, text->clean_bytes);
+		if (text->fd >= 0 && !fstat(text->fd, &statbuf))
+			text->mtime = statbuf.st_mtime;
+	}
+}
 
-	if (text->flags &
-	    (TEXT_SAVED_ORIGINAL | TEXT_CREATED | TEXT_EDITOR))
-		return;
-	if (!text->path)
+static void save_original(struct text *text)
+{
+	char *save_path;
+	int fd;
+
+	if (!text->clean ||
+	    !text->path ||
+	    text->flags & (TEXT_SAVED_ORIGINAL |
+			   TEXT_CREATED |
+			   TEXT_EDITOR))
 		return;
 
 	save_path = allocate(NULL, strlen(text->path)+2);
@@ -267,8 +314,7 @@ void text_dirty(struct text *text)
 		message("can't save copy of original file to %s",
 			save_path);
 	else {
-		length = buffer_raw(text->buffer, &raw, 0, ~0);
-		write(fd, raw, length);
+		write(fd, text->clean, text->clean_bytes);
 		close(fd);
 	}
 	allocate(save_path, 0);
@@ -281,21 +327,51 @@ void text_preserve(struct text *text)
 	unsigned bytes;
 	struct stat statbuf;
 
-	if (!(text->flags & TEXT_DIRTY) || text->fd < 0)
+	if (!(text->flags & TEXT_DIRTY) || text->fd < 0 || !text->buffer)
 		return;
+
+	if (text->clean) {
+		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
+		if (bytes == text->clean_bytes &&
+		    !memcmp(text->clean, raw, bytes)) {
+			text->flags &= ~TEXT_DIRTY;
+			return;
+		}
+		munmap(text->clean, text->clean_bytes);
+		text->clean = NULL;
+	}
+
+	save_original(text);
+
+	if (text->mtime &&
+	    text->path &&
+	    !fstat(text->fd, &statbuf) &&
+	    text->mtime < statbuf.st_mtime)
+		message("%s has been modified since it was read into the "
+			"editor, and those changes may have now been lost.",
+			text->path);
+
 	undo_newlines(text);
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-	lseek(text->fd, 0, SEEK_SET);
-	write(text->fd, raw, bytes);
+
 	ftruncate(text->fd, bytes);
+	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);
+	if (text->clean) {
+		memcpy(text->clean, raw, bytes);
+		msync(text->clean, bytes, MS_SYNC);
+	} else {
+		lseek(text->fd, 0, SEEK_SET);
+		write(text->fd, raw, bytes);
+	}
 	if (text->newlines)
 		newlines(text);
+
 	text->flags &= ~(TEXT_DIRTY | TEXT_CREATED);
 	if (!fstat(text->fd, &statbuf))
 		text->mtime = statbuf.st_mtime;
 }
 
-void buffers_preserve(void)
+void texts_preserve(void)
 {
 	struct text *text;
 
@@ -303,7 +379,7 @@ void buffers_preserve(void)
 		text_preserve(text);
 }
 
-void buffers_uncreate(void)
+void texts_uncreate(void)
 {
 	struct text *text;
 

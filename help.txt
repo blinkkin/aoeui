@@ -48,6 +48,7 @@ SELECTION and MODIFICATION
       ^F			replace clip buffer with copied selection
 ^Space^F			add copy of selection to clip buffer
       ^D  delete character	replace clip buffer with deleted selection
+^Space^D  select whitespace	add deleted selection to clip buffer
       ^B  paste			exchange selection with clip buffer
 
 BACKSPACE deletes the character before the cursor.

@@ -1,4 +1,5 @@
 #include "all.h"
+#include <sys/mman.h>
 
 /*
  *	A text is a container for the content of a file or
@@ -76,7 +77,8 @@ struct view *view_create(struct text *text)
 	view->text = text;
 	view->next = text->views;
 	text->views = view;
-	view->bytes = buffer_bytes(text->buffer);
+	view->bytes = text->buffer ? buffer_bytes(text->buffer) :
+			text->clean ? text->clean_bytes :0;
 	view->mode = mode_default();
 	view_name(view);
 	return view;
@@ -88,7 +90,6 @@ struct view *text_create(const char *path, unsigned flags)
 	memset(text, 0, sizeof *text);
 	text->tabstop = 8;
 	text->fd = -1;
-	text->buffer = buffer_create();
 	text->flags = flags;
 	text->path = strdup(path);
 	for (prev = NULL, bp = text_list; bp; prev = bp, bp = bp->next)
@@ -113,6 +114,8 @@ static void text_close(struct text *text)
 			break;
 		}
 
+	if (text->clean)
+		munmap(text->clean, text->clean_bytes);
 	buffer_destroy(text->buffer);
 	text_forget_undo(text);
 	if (text->fd >= 0)
@@ -203,15 +206,31 @@ void text_adjust_loci(struct text *text, unsigned offset, int delta)
 
 unsigned view_get(struct view *view, void *out, unsigned offset, unsigned bytes)
 {
-	return buffer_get(view->text->buffer, out,
-			      view->start + offset, bytes);
+	struct text *text = view->text;
+	offset += view->start;
+	if (text->buffer)
+		return buffer_get(text->buffer, out, offset, bytes);
+	if (!text->clean || offset >= text->clean_bytes)
+		return 0;
+	if (offset + bytes > text->clean_bytes)
+		bytes = text->clean_bytes - offset;
+	memcpy(out, text->clean + offset, bytes);
+	return bytes;
 }
 
 unsigned view_raw(struct view *view, char **out, unsigned offset,
 		  unsigned bytes)
 {
-	return buffer_raw(view->text->buffer, out,
-			      view->start + offset, bytes);
+	struct text *text = view->text;
+	offset += view->start;
+	if (text->buffer)
+		return buffer_raw(text->buffer, out, offset, bytes);
+	if (!text->clean || offset >= text->clean_bytes)
+		return 0;
+	if (offset + bytes > text->clean_bytes)
+		bytes = text->clean_bytes - offset;
+	*out = text->clean + offset;
+	return bytes;
 }
 
 unsigned view_delete(struct view *view, unsigned offset, unsigned bytes)

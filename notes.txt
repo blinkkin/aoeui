@@ -45,7 +45,7 @@ Control characters
   ^E	/ pipe clipbuffer to command in selection
   ^U	undo [redo]
   ^I	(TAB)
-  ^D	/ cut [pre/append]
+  ^D	cut char [select whitespace] / cut [pre/append]
   ^H	backward char(s)
   ^T	forward char(s)
   ^N	backward word(s) [sentence]

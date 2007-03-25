@@ -1,9 +1,6 @@
 #include "all.h"
 #include <sys/mman.h>
-#ifndef MAP_ANONYMOUS
-# include <fcntl.h>
-#endif
-
+#include <fcntl.h>
 
 /*
  *	Buffers contain payload bytes and a "gap" of unused space.
@@ -12,35 +9,31 @@
  *	to enlarge it (when bytes are to be deleted) or to add new
  *	bytes to its boundaries.
  *
- *	Buffers are represented by anonymous mmap'ed pages.
+ *	Buffers are represented by pages mmap'ed from the file's
+ *	temporary# file, or anonymous storage for things that aren't
+ *	file texts,
  *
  *	Besides being used to hold the content of files, buffers
  *	are used for cut/copied text (the "clip buffer") and for
  *	undo histories.
  */
 
-static unsigned log2_pagesize;
-
-static void compute_pagesize(void)
-{
-	int pgsz;
-
-	if (log2_pagesize)
-		return;
-	pgsz = getpagesize();
-	if (pgsz <= 4096)
-		pgsz = 4096;
-	for (log2_pagesize = 0; 1 << log2_pagesize < pgsz; log2_pagesize++)
-		;
-}
-
-struct buffer *buffer_create(void)
+struct buffer *buffer_create(char *path)
 {
 	struct buffer *buffer = allocate(NULL, sizeof *buffer);
 
-	if (!log2_pagesize)
-		compute_pagesize();
 	memset(buffer, 0, sizeof *buffer);
+	if (path && *path) {
+		buffer->path = allocate(NULL, strlen(path) + 2);
+		sprintf(buffer->path, "%s#", path);
+		errno = 0;
+		buffer->fd = open(buffer->path, O_CREAT|O_TRUNC|O_RDWR,
+				  S_IRUSR|S_IWUSR);
+		if (buffer->fd < 0)
+			message("could not create temporary file %s",
+				buffer->path);
+	} else
+		buffer->fd = -1;
 	return buffer;
 }
 
@@ -49,6 +42,11 @@ void buffer_destroy(struct buffer *buffer)
 	if (!buffer)
 		return;
 	munmap(buffer->data, buffer->allocated);
+	if (buffer->fd >= 0) {
+		close(buffer->fd);
+		unlink(buffer->path);
+	}
+	allocate(buffer->path, 0);
 	allocate(buffer, 0);
 }
 
@@ -66,56 +64,77 @@ static void place_gap(struct buffer *buffer, unsigned offset)
 			buffer->data + buffer->gap + gapsize,
 			offset - buffer->gap);
 	buffer->gap = offset;
+	if (buffer->fd >= 0 && gapsize)
+		memset(buffer->data + buffer->gap, ' ', gapsize);
 }
 
 static void resize(struct buffer *buffer, unsigned bytes)
 {
-	void *p, *old;
-	static int anonymous_fd;
-	int mapflags;
+	void *p;
+	char *old = buffer->data;
+	int fd, mapflags;
+	static unsigned pagesize;
 
-	bytes += (1 << log2_pagesize) - 1;
-	bytes = (bytes >> log2_pagesize) * 11 / 10 << log2_pagesize;
+	/* Whole pages, with extras as size increases */
+	if (!pagesize)
+		pagesize = getpagesize();
+	bytes += pagesize-1;
+	bytes /= pagesize;
+	bytes *= 11;
+	bytes /= 10;
+	bytes *= pagesize;
 
-	if (bytes < buffer->allocated) {
-		/* shrink */
-		munmap(buffer->data + bytes, buffer->allocated - bytes);
+	if (bytes < buffer->allocated)
+		munmap(old + bytes, buffer->allocated - bytes);
+	if (buffer->fd >= 0 && bytes != buffer->allocated) {
+		errno = 0;
+		if (ftruncate(buffer->fd, bytes))
+			die("could not adjust %s from 0x%x to 0x%x bytes",
+			    buffer->path, buffer->allocated, bytes);
+	}
+	if (bytes <= buffer->allocated) {
 		buffer->allocated = bytes;
 		return;
 	}
-	if (bytes == buffer->allocated)
-		return;
-
-	old = buffer->data;
 
 #ifdef MREMAP_MAYMOVE
 	if (old) {
 		/* attempt extension */
 		errno = 0;
-		p = mremap(buffer->data, buffer->allocated, bytes,
-			   MREMAP_MAYMOVE);
+		p = mremap(old, buffer->allocated, bytes, MREMAP_MAYMOVE);
 		if (p != MAP_FAILED)
 			goto done;
 	}
 #endif
 
 	/* new/replacement allocation */
-	mapflags = MAP_PRIVATE;
+	if ((fd = buffer->fd) >= 0) {
+		mapflags = MAP_SHARED;
+		if (old) {
+			munmap(old, buffer->allocated);
+			old = NULL;
+		}
+	} else {
+		mapflags = MAP_PRIVATE;
 #ifdef MAP_ANONYMOUS
-	mapflags |= MAP_ANONYMOUS;
+		mapflags |= MAP_ANONYMOUS;
 #else
-	if (!anonymous_fd) {
-		errno = 0;
-		anonymous_fd = open("/dev/zero", O_RDWR);
-		if (anonymous_fd <= 0)
-			die("could not open /dev/zero for anonymous "
-			    "mappings");
-	}
+		static int anonymous_fd = -1;
+		if (anonymous_fd < 0) {
+			errno = 0;
+			anonymous_fd = open("/dev/zero", O_RDWR);
+			if (anonymous_fd < 0)
+				die("could not open /dev/zero for "
+				    "anonymous mappings");
+		}
+		fd = anonymous_fd;
 #endif
+	}
+
 	errno = 0;
-	p = mmap(0, bytes, PROT_READ|PROT_WRITE, mapflags, anonymous_fd, 0);
+	p = mmap(0, bytes, PROT_READ|PROT_WRITE, mapflags, fd, 0);
 	if (p == MAP_FAILED)
-		die("anonymous mmap(%d) failed", bytes);
+		die("mmap(0x%x bytes, fd %d) failed", bytes, fd);
 
 	if (old) {
 		memcpy(p, old, buffer->allocated);
@@ -216,7 +235,6 @@ unsigned buffer_move(struct buffer *to, unsigned to_offset,
 		     unsigned bytes)
 {
 	char *raw;
-
 	bytes = buffer_raw(from, &raw, from_offset, bytes);
 	buffer_insert(to, raw, to_offset, bytes);
 	return buffer_delete(from, from_offset, bytes);

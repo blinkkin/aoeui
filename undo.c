@@ -28,8 +28,8 @@ static void resume_editing(struct text *text)
 	if (!text->undo) {
 		text->undo = allocate(NULL, sizeof *text->undo);
 		memset(text->undo, 0, sizeof *text->undo);
-		text->undo->edits = buffer_create();
-		text->undo->deleted = buffer_create();
+		text->undo->edits = buffer_create(NULL);
+		text->undo->deleted = buffer_create(NULL);
 	}
 	buffer_delete(text->undo->edits, text->undo->redo,
 		      buffer_bytes(text->undo->edits) - text->undo->redo);
@@ -44,6 +44,7 @@ unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 
 	if (!bytes)
 		return 0;
+	text_dirty(text);
 	edit.offset = offset;
 	edit.bytes = buffer_raw(text->buffer, &old, offset, bytes);
 
@@ -60,7 +61,6 @@ unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 		    text->buffer, offset, edit.bytes);
 	text->undo->saved += edit.bytes;
 	text_adjust_loci(text, offset, -edit.bytes);
-	text_dirty(text);
 	return edit.bytes;
 }
 
@@ -71,6 +71,7 @@ unsigned text_insert(struct text *text, const void *in,
 
 	if (!bytes)
 		return 0;
+	text_dirty(text);
 	bytes = buffer_insert(text->buffer, in, offset, bytes);
 	if ((last = last_edit(text)) &&
 	    last->bytes < 0 && last->offset - last->bytes == offset)
@@ -83,7 +84,6 @@ unsigned text_insert(struct text *text, const void *in,
 			      sizeof edit);
 		text->undo->redo += sizeof edit;
 	}
-	text_dirty(text);
 	text_adjust_loci(text, offset, bytes);
 	return bytes;
 }
@@ -95,6 +95,7 @@ int text_undo(struct text *text)
 
 	if (!text->undo || !text->undo->redo)
 		return -1;
+	text_dirty(text);
 	buffer_raw(text->undo->edits, &raw, text->undo->redo -= sizeof *edit,
 		   sizeof *edit);
 	edit = (struct edit *) raw;
@@ -105,7 +106,6 @@ int text_undo(struct text *text)
 		buffer_move(text->undo->deleted, text->undo->saved,
 			    text->buffer, edit->offset, -edit->bytes);
 	text_adjust_loci(text, edit->offset, edit->bytes);
-	text_dirty(text);
 	return edit->offset;
 }
 
@@ -117,6 +117,7 @@ int text_redo(struct text *text)
 	if (!text->undo ||
 	    text->undo->redo == buffer_bytes(text->undo->edits))
 		return -1;
+	text_dirty(text);
 	buffer_raw(text->undo->edits, &raw, text->undo->redo, sizeof *edit);
 	edit = (struct edit *) raw;
 	text->undo->redo += sizeof *edit;
@@ -128,7 +129,6 @@ int text_redo(struct text *text)
 		buffer_move(text->buffer, edit->offset, text->undo->deleted,
 			    text->undo->saved, -edit->bytes);
 	text_adjust_loci(text, edit->offset, -edit->bytes);
-	text_dirty(text);
 	return edit->offset;
 }
 

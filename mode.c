@@ -218,8 +218,21 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			offset = find_line_end(view, cursor+1);
 		locus_set(view, CURSOR, offset + (offset == cursor));
 		break;
-	case 'D': /* cut [pre/appending] */
-		cut(view, 1);
+	case 'D': /* [select whitespace] / cut [pre/appending] */
+		if (mark == UNSET && mode->variant) {
+			mark = cursor;
+			while (cursor &&
+			       ((ch = view_byte(view, cursor-1)) == ' ' ||
+				ch == '\t' || ch == '\n'))
+				--cursor;
+			while (mark < view->bytes &&
+			       ((ch = view_byte(view, mark)) == ' ' ||
+				ch == '\t' || ch == '\n'))
+				mark++;
+			locus_set(view, CURSOR, cursor);
+			locus_set(view, MARK, mark);
+		} else
+			cut(view, 1);
 		break;
 	case 'E':
 		mode_child(view);
@@ -252,7 +265,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		if (mode->variant)
 			text_preserve(view->text);
 		else
-			buffers_preserve();
+			texts_preserve();
 		break;
 	case 'L': /* forward screen [end of view] */
 		if (mode->variant)
@@ -288,7 +301,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case 'Q': /* suspend [quit] */
 		windows_end();
 		if (mode->variant) {
-			buffers_preserve();
+			texts_preserve();
+			while (text_list)
+				view_close(text_list->views);
 			exit(EXIT_SUCCESS);
 		}
 		fprintf(stderr, "The editor is suspended.  "
@@ -393,7 +408,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case '\\': /* quit */
 		windows_end();
-		buffers_uncreate();
+		texts_uncreate();
 		exit(EXIT_SUCCESS);
 		break;
 	case ']': /* set mark and move to corresponding bracket */

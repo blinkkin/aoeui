@@ -14,6 +14,8 @@ struct view {
 
 struct text {
 	struct view *views;
+	char *clean;
+	unsigned long clean_bytes;
 	struct buffer *buffer;
 	struct undo *undo;
 	struct text *next;
@@ -52,7 +54,12 @@ static INLINE int view_byte(struct view *view, unsigned offset)
 {
 	if (offset >= view->bytes)
 		return -1;
-	return buffer_byte(view->text->buffer, view->start + offset);
+	offset += view->start;
+	if (view->text->buffer)
+		return buffer_byte(view->text->buffer, offset);
+	if (view->text->clean)
+		return (unsigned char) view->text->clean[offset];
+	return -1;
 }
 
 /* in file.c */
@@ -60,8 +67,8 @@ struct view *view_open(const char *path);
 int text_rename(struct text *, const char *path);
 void text_dirty(struct text *);
 void text_preserve(struct text *);
-void buffers_preserve(void);
-void buffers_uncreate(void);
+void texts_preserve(void);
+void texts_uncreate(void);
 
 /* in undo.c */
 unsigned text_delete(struct text *, unsigned offset, unsigned bytes);

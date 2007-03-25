@@ -1,1 +1,7 @@
-2007-03-22 Initial Subversion check in at sourceforge.net
+2007
+03-25 pmk: Keep file gap buffers in file# for recovery
+03-24 pmk: Save original~ copy of file at write time, not open time
+03-24 pmk: Memory-map clean images of files
+03-23 pmk: Create new empty texts when view_next() finds no others
+03-23 pmk: Make variant ^D with no selection select surrounding white space
+03-22 pmk: Initial Subversion check in at sourceforge.net

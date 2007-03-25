@@ -16,7 +16,7 @@ void die(const char *msg, ...)
 		fprintf(stderr, ": %s", strerror(err));
 	fputc('\n', stderr);
 
-	buffers_preserve();
+	texts_preserve();
 	exit(EXIT_FAILURE);
 }
 

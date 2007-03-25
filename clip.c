@@ -12,7 +12,7 @@ unsigned clip(struct view *view, unsigned offset, unsigned bytes, int append)
 	char *raw;
 
 	if (!clip_gap)
-		clip_gap = buffer_create();
+		clip_gap = buffer_create(NULL);
 	bytes = view_raw(view, &raw, offset, bytes);
 	return buffer_insert(clip_gap, raw,
 				 append ? buffer_bytes(clip_gap) : 0,
