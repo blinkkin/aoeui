@@ -79,7 +79,7 @@ Non-control characters -- commands must be [variants]
   A-Z (upper case)
   : ;
 
-Missing commands
+Missing commands:
 	name, goto name
 	help
 

@@ -38,6 +38,7 @@ struct view *view_find(const char *name);
        void  view_name(struct view *);
 struct view *view_create(struct text *);
 struct view *text_create(const char *name, unsigned flags);
+struct view *text_new(void);
        void  view_close(struct view *);
 struct view *view_selection(struct view *, unsigned offset, unsigned bytes);
 void text_adjust_loci(struct text *, unsigned offset, int delta);

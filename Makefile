@@ -16,7 +16,7 @@ RELS = $(SRCS:.c=.o)
 TARGET = aoeui
 BIN_DIR = $(DESTDIR)/usr/local/bin
 SHARE_DIR = $(DESTDIR)/usr/local/share/$(TARGET)
-MAN_DIR = $(DESTDIR)/usr/local/share/man/man1
+MAN_DIR = $(DESTDIR)/usr/local/share/man
 
 default: $(TARGET)
 $(TARGET): $(RELS)
@@ -28,7 +28,7 @@ $(TARGET).1.gz: $(TARGET).1
 install: $(TARGET) $(TARGET).1.gz
 	cp $(TARGET) $(BIN_DIR)
 	cp *.txt $(SHARE_DIR)
-	cp $(TARGET).1.gz $(MAN_DIR)
+	cp $(TARGET).1.gz $(MAN_DIR)/man1
 clean:
 	rm -f *.o core
 clobber: clean

@@ -1,4 +1,4 @@
-Welcome to aoeui, pmk's text editor optimized for fellow users of
+Welcome to aoeui, pmk's text editor optimized for fellow users of...
 
 the		 ESC `  1 2 3 4 5  6 7 8 9 0  [ ] BACK
 Dvorak		   TAB  ' , . P Y  F G C R L  / = \
@@ -103,6 +103,13 @@ the standard output of the command.  Handy commands to know include:
 if it is active, otherwise ^A causes the macro to be executed by replaying
 the saved keystrokes.
 
+FILES
+aoeui can browse very large read-only files, since original texts are mapped
+from files and not duplicated until they are modified.  Original copies of
+files are saved in file~ before ^K overwrites them.  Temporary copies of
+files being edited may be found in file# if the editor aborts (^\).
+Unnamed texts newly created by ^W or ^Y are kept in $HOME/.aoeui.
+
 TIPS
  - To select the rest of the line after the cursor: ^V^C
  - It is often faster to retype a bungled word than to fix it: ^V^N (retype)
@@ -115,3 +122,8 @@ TIPS
    copy it back to the clip buffer, and proceed to the next occurrence of the
    search pattern.  But if the replacement text is short, it's sometimes
    easiest to just overwrite the selection with ^V and retyping.
+
+THANKS to my lovely wife for putting up with her Dvorak-obsessed husband
+for a few evenings recently as aoeui has been polished and uploaded!  And
+to all you brave souls curious enough to play with it!
+-- Peter Klausler

@@ -1,4 +1,5 @@
 #include "all.h"
+#include <time.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -195,7 +196,6 @@ struct view *view_open(const char *path0)
 			goto fail;
 		}
 		text->flags |= TEXT_CREATED;
-		text->buffer = buffer_create(path);
 	} else {
 		if (!S_ISREG(statbuf.st_mode)) {
 			message("%s is not a regular file", path);
@@ -223,7 +223,6 @@ struct view *view_open(const char *path0)
 		newlines(text);
 		view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 					     text->clean_bytes;
-		locus_set(view, CURSOR, 0);
 		text_forget_undo(text);
 	}
 	goto done;
@@ -232,6 +231,62 @@ fail:	view_close(view);
 	view = NULL;
 
 done:	allocate(path, 0);
+	return view;
+}
+
+static int try_dir(char *path, const char *dir, const struct tm *gmt)
+{
+	struct stat statbuf;
+
+	errno = 0;
+	if (stat(dir, &statbuf)) {
+		if (errno != ENOENT)
+			return -1;
+		if (mkdir(dir, S_IRUSR|S_IWUSR|S_IXUSR))
+			return -1;
+		if (stat(dir, &statbuf))
+			return -1;
+	}
+	if (!S_ISDIR(statbuf.st_mode))
+		return -1;
+	sprintf(path, "%s/%02d-%02d-%02d.%02d%02d%02d", dir,
+		gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday,
+		gmt->tm_hour, gmt->tm_min, gmt->tm_sec);
+	return open(path, O_CREAT|O_TRUNC|O_RDWR, S_IRUSR|S_IWUSR);
+}
+
+struct view *text_new(void)
+{
+	char dir[128], path[128];
+	const char *me, *home;
+	time_t now = time(NULL);
+	struct tm *gmt = gmtime(&now);
+	int fd = -1;
+	struct view *view;
+
+	if ((home = getenv("HOME"))) {
+		sprintf(dir, "%s/.aoeui", home);
+		fd = try_dir(path, dir, gmt);
+	}
+	if (fd < 0 && (me = getenv("LOGNAME"))) {
+		sprintf(dir, "/tmp/aoeui-%s", me);
+		fd = try_dir(path, dir, gmt);
+	}
+	if (fd < 0 && (me = cuserid(NULL))) {
+		sprintf(dir, "/tmp/aoeui-%s", me);
+		fd = try_dir(path, dir, gmt);
+	}
+	if (fd < 0)
+		fd = try_dir(path, "/tmp/aoeui", gmt);
+	if (fd < 0)
+		fd = try_dir(path, "./aoeui", gmt);
+
+	if (fd < 0)
+		view = text_create("* New *", TEXT_EDITOR);
+	else {
+		view = text_create(path, TEXT_CREATED);
+		view->text->fd = fd;
+	}
 	return view;
 }
 
@@ -286,7 +341,7 @@ void text_dirty(struct text *text)
 			text->path);
 	text->flags |= TEXT_DIRTY;
 	if (!text->buffer) {
-		text->buffer = buffer_create(text->path);
+		text->buffer = buffer_create(text->fd >= 0 ? text->path : NULL);
 		if (text->clean)
 			buffer_insert(text->buffer, text->clean, 0, text->clean_bytes);
 		if (text->fd >= 0 && !fstat(text->fd, &statbuf))

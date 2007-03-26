@@ -1,4 +1,6 @@
 2007
+03-26 pmk: Put newly-created texts in $HOME/.aoeui, etc.
+03-25 pmk: Keep active window background set to default color
 03-25 pmk: Keep file gap buffers in file# for recovery
 03-24 pmk: Save original~ copy of file at write time, not open time
 03-24 pmk: Memory-map clean images of files

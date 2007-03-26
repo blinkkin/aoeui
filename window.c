@@ -28,10 +28,10 @@ static void backgrounds(void)
 	unsigned odd = 0;
 
 	for (window = window_list; window; window = window->next) {
-		if (window->view->text->flags & TEXT_RDONLY)
-			window->background_RGBA = 0xffffff00;
+		if (window == active_window)
+			window->background_RGBA = ~0;
 		else
-			window->background_RGBA = odd ? 0xffffff00 : ~0;
+			window->background_RGBA = odd ? 0xffff0000 : 0xffffff00;
 		odd ^= window->next &&
 		       (window->next->row == window->row ||
 			window->next->column == window->column);
@@ -42,6 +42,7 @@ static struct window *activate(struct window *window)
 {
 	if ((active_window = window))
 		display_title(display, active_window->view->name);
+	backgrounds();
 	return window;
 }
 
