@@ -1,6 +1,6 @@
 #define _GNU_SOURCE /* for mremap */
 #ifndef HELP_PATH
-# define HELP_PATH "/usr/local/share/aoeui/help.txt"
+# define HELP_PATH "/usr/share/aoeui/help.txt"
 #endif
 
 #include <stddef.h>

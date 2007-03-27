@@ -1,4 +1,6 @@
 2007
+03-27 pmk: Make ^V with a selection unset it, ^Space^V exchange
+03-27 pmk: Clean up makefile, write ebuild
 03-26 pmk: Put newly-created texts in $HOME/.aoeui, etc.
 03-25 pmk: Keep active window background set to default color
 03-25 pmk: Keep file gap buffers in file# for recovery

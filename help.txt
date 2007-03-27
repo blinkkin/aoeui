@@ -43,8 +43,8 @@ NAVIGATION in a text by...	BACKWARD	FORWARD
 
 SELECTION and MODIFICATION
 	  without a selection	with a selection
-      ^V  begin a selection	exchange cursor with mark
-^Space^V  select entire line	abandon selection
+      ^V  begin a selection	abandon selection
+^Space^V  select entire line	exchange cursor with mark
       ^F			replace clip buffer with copied selection
 ^Space^F			add copy of selection to clip buffer
       ^D  delete character	replace clip buffer with deleted selection

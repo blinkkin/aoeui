@@ -341,17 +341,15 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			locus_set(view, CURSOR, offset);
 		locus_set(view, MARK, UNSET);
 		break;
-	case 'V': /* set/exchange mark [unset, or select line] */
-		if (mode->variant)
-			if (mark == UNSET) {
-				locus_set(view, MARK, find_line_end(view, cursor) + 1);
-				locus_set(view, CURSOR, find_line_start(view, cursor));
-			} else
-				locus_set(view, MARK, UNSET);
-		else {
+	case 'V': /* set/unset mark [exchange, or select line] */
+		if (!mode->variant)
+			locus_set(view, MARK, mark == UNSET ? cursor : UNSET);
+		else if (mark == UNSET) {
+			locus_set(view, MARK, find_line_end(view, cursor) + 1);
+			locus_set(view, CURSOR, find_line_start(view, cursor));
+		} else {
 			locus_set(view, MARK, cursor);
-			if (mark != UNSET)
-				locus_set(view, CURSOR, mark);
+			locus_set(view, CURSOR, mark);
 		}
 		break;
 	case 'W': /* select other view [closing current] */

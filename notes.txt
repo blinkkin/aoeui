@@ -61,7 +61,7 @@ Control characters
   ^B	paste / exchange with clipbuffer
 * ^M	(ENT)
   ^W	select other view [closing current]
-  ^V	set/exchange mark [select line / unset]
+  ^V	set/unset mark [select line / exchange]
   ^Z	recenter view [single window, reset display; go to]
  ^Space	(^@) variant, beginning of value
 
