@@ -234,7 +234,7 @@ unsigned buffer_move(struct buffer *to, unsigned to_offset,
 		     struct buffer *from, unsigned from_offset,
 		     unsigned bytes)
 {
-	char *raw;
+	char *raw = NULL;
 	bytes = buffer_raw(from, &raw, from_offset, bytes);
 	buffer_insert(to, raw, to_offset, bytes);
 	return buffer_delete(from, from_offset, bytes);
