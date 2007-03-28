@@ -7,8 +7,11 @@ Dvorak keyboard layout
        SHF ;qjkx bmwvz SHF
        CTL ALT SPC ALT CTL arrows
 
-Commands are indicated by CTL, denoted here by ^.
-ALT and ESC may also be used, and mean the same as CTL.
+Commands are denoted here in these notes by ^, which signifies use
+of Control, Alt, or a leading Escape before a key.  (Some Control
+keys don't work the same in a Linux console; Escape always works.
+Control-[ is the same as Escape.)
+
 Non-command characters are inserted or searched for.
 Self-insertion automatically cuts when cursor < mark.
 
@@ -20,17 +23,17 @@ The cursor, mark, and macro are local to their view.
 * below means "must be this character".
 () indicate synonyms
 [;] indicate variants activated by ^Space, possibly with value
-/  indicates behavior with mark set
+/  indicates behavior with mark unset / set
 
-Control characters
+Command characters
 *  ESC	function keys and query responses, ALT
   ^@	(^Space)
-* ^^	literal, control, and hex TODO
+* ^^	literal, control [; unicode]
 * ^[	(ESC)
   ^]	set mark and move to corresponding or nearest bracket
-*  TAB	tab [align; set tab stop TODO]
-  ^P	select another window / selection [closing current]
-  ^Y	split window [vertically]
+*  TAB	tab / tab completion [align; set tab stop]
+  ^P	select another window [closing current]
+  ^Y	split window [vertically] / narrow to selection
   ^F	/ copy [pre/append]
   ^G	backward to line start
   ^C	forward to line end
@@ -40,9 +43,9 @@ Control characters
 * ^?	(BCK) delete character before cursor
 * ^+	larger font
   ^\	quit without saving -- require variant?
-  ^A	macro end, execute [start]
+  ^A	macro end, execute [macro start]
   ^O
-  ^E	/ pipe clipbuffer to command in selection
+  ^E	[ end input from children ] / pipe clipbuffer to command in selection
   ^U	undo [redo]
   ^I	(TAB)
   ^D	cut char [select whitespace] / cut [pre/append]
@@ -52,35 +55,28 @@ Control characters
   ^S	forward word(s) [sentence]
 * ^-	smaller font
   ^_	(^/)
-*  ENT	(^M) newline [open]
-* ^ENT	(^J) nexline and alignment [justify TODO]
+*  ENT	(^M) newline [open line]
+* ^ENT	(^J) newline and alignment / [justify TODO]
   ^Q	suspend editor [quit]
 * ^J	(^ENT)
   ^K	save all [single]
-  ^X	/ visit file [get/set path]
+  ^X	get path / visit file [set path]
   ^B	paste / exchange with clipbuffer
 * ^M	(ENT)
   ^W	select other view [closing current]
-  ^V	set/unset mark [select line / exchange]
-  ^Z	recenter view [single window, reset display; go to]
+  ^V	set/unset mark [select line / exchange mark with cursor]
+  ^Z	recenter view [single window, reset display; go to line]
  ^Space	(^@) variant, beginning of value
 
-
 Non-control characters -- commands must be [variants]
-  ` ~
-  1-0	argument (for ^Z, ^H/^T/^N/^S)
-  !-%
-  &-)
-  { }
-  ' "
-  , <
-  . >
-   |
-  A-Z (upper case)
-  : ;
+  =	[; set bookmark]
+  -	[; goto bookmark]
+  ;	[new anonymous text]
+  0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
+  x 0-9 a-f A-F		hexadecimal argument
+  unused: ` ~ ! @ # $ % & ( ) { } ' "  , <  . >  | :
 
 Missing commands:
-	name, goto name
 	help
 
 Idioms

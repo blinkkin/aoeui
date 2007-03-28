@@ -30,26 +30,20 @@ void locus_destroy(struct view *view, unsigned locus)
 		view->locus[locus] = DELETED;
 }
 
-unsigned locus_offset(struct view *view, unsigned locus, int delta)
+unsigned locus_get(struct view *view, unsigned locus)
 {
 	unsigned offset;
 
-	if (locus >= view->loci)
-		return view->bytes;
+	if (!view || locus >= view->loci)
+		return UNSET;
 	offset = view->locus[locus];
 	if (offset == UNSET)
 		return UNSET;
-	offset += delta;
 	if ((int) offset < 0)
 		offset = 0;
 	else if (offset > view->bytes)
 		offset = view->bytes;
 	return offset;
-}
-
-unsigned locus_get(struct view *view, unsigned locus)
-{
-	return locus_offset(view, locus, 0);
 }
 
 unsigned locus_set(struct view *view, unsigned locus, unsigned offset)

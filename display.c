@@ -408,42 +408,22 @@ void display_beep(struct display *display)
 	display_sync(display);
 }
 
-int display_getch(struct display *display)
+int display_getch(struct display *display, int block)
 {
 	unsigned char ch;
 	int n;
 
+	if (!display)
+		return DISPLAY_EOF;
 	display_sync(display);
+	if (display->size_changed)
+		return DISPLAY_WINCH;
+	if (!multiplexor(block))
+		return DISPLAY_NONE;
 	do {
-		if (display->size_changed)
-			return DISPLAY_WINCH;
 		errno = 0;
 		n = read(0, &ch, 1);
 	} while (n < 0 && (errno == EAGAIN || errno == EINTR));
-
-	if (!n)
-		return DISPLAY_EOF;
-	if (n < 0)
-		return DISPLAY_ERR;
-	return ch;
+	return !n ? DISPLAY_EOF : n < 0 ? DISPLAY_ERR : ch;
 }
 
-int display_any_input(struct display *display, unsigned millisecs)
-{
-	int n;
-	struct timeval timeval;
-
-	do {
-		fd_set fds;
-		if (display->size_changed)
-			return 1;
-		FD_ZERO(&fds);
-		FD_SET(0, &fds);
-		timeval.tv_sec = millisecs / 1000;
-		timeval.tv_usec = millisecs % 1000 * 1000;
-		errno = 0;
-		n = select(1, &fds, NULL, NULL, &timeval);
-	} while (n < 0 && (errno == EAGAIN || errno == EINTR));
-
-	return !!n;
-}

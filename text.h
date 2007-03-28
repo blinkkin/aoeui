@@ -24,7 +24,6 @@ struct text {
 	int fd;
 	time_t mtime;
 	unsigned tabstop;
-	unsigned newlines; /* 0: UNIX, 1: old Mac, 2: DOS */
 };
 
 /* flags */
@@ -33,6 +32,9 @@ struct text {
 #define TEXT_RDONLY 4
 #define TEXT_EDITOR 8
 #define TEXT_CREATED 16
+
+extern struct text *text_list;
+extern int default_tab_stop;
 
 struct view *view_find(const char *name);
        void  view_name(struct view *);
@@ -81,5 +83,15 @@ void text_forget_undo(struct text *);
 
 /* in window.c */
 unsigned view_screen_start(struct view *);
+
+/* in bookmark.c */
+void bookmark_set(unsigned, struct view *, unsigned cursor, unsigned mark);
+int bookmark_get(struct view **, unsigned *cursor, unsigned *mark,
+		 unsigned id);
+void bookmark_unset(unsigned);
+void bookmark_unset_view(struct view *);
+
+/* in child.c */
+void demultiplex_view(struct view *);
 
 /* see also util.h */

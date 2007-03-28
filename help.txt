@@ -24,9 +24,9 @@ the beginning of a selection, the selection is first cut as if ^D had
 been used.  If the cursor is at the end of a selection, the new text is
 appended to it.
 
-Many commands have variant forms that are accessed by first hitting
-^Space before the command.  Also, many commands alter their behavior
-depending on the presence or absence of a selection, which is a highlighted
+Many commands have variant forms that are accessed by first hitting ^Space
+before the command.  Also, many commands alter their behavior depending
+on the presence or absence of a selection, which is a highlighted
 contiguous fragment of text that has the cursor at one end and the "mark"
 at its other.
 
@@ -58,12 +58,16 @@ repeats the undone command.  Any command that modifies the text after ^U
 beside ^Space^U commits the undone commands.
 
 ^Space TAB (or ^I) aligns the current line to the indentation of the
-previous one.  ^ENTER (or ^J) inserts a new line with automatic indentation.
-^Space ENTER (or ^M) opens up a new line after the current one.
+previous one.  ^Space 8 TAB (or ^I) sets the text's tab stop to 8, say;
+any value between 1 and 20 will work.  ^ENTER (or ^J) inserts
+a new line with automatic indentation.  ^Space ENTER (or ^M) opens up
+a new line after the current one.
 
 ^^ (that's Control-Caret, shift-6) reads the next character that you
 type and inserts it into the text without interpreting it as a command.
-If it's a non-control character, ^^ converts it into one.
+If it's a non-control character, ^^ converts it into one.  With a
+decimal argument (^Space 65 ^^) or hexadecimal one (^Space x200 ^^),
+this command inserts Unicode code points encoded as UTF-8.
 
 VIEWS, TEXTS, and WINDOWS
       ^Y  split the current window horizontally
@@ -80,25 +84,43 @@ VIEWS, TEXTS, and WINDOWS
       ^Q  suspend the editor
 ^Space^Q  save all buffers and terminate the editor
       ^\  abort the editor without saving any text
+^Space ;  create a new anonymous text (note that ; is not a Control character)
 
 ^/ and ^_ enter SEARCH MODE.  Characters that are typed are appended to the
 search pattern and the next occurrence of the pattern is selected.  Case of
 alphabetic characters is not significant to the search.  In search mode,
   BACKSPACE removes characters from the search pattern
   ^/	    with no pattern causes the last search's pattern to be used
-  RETURN    terminates the search and unselects the latest occurrence
   ^H and ^T  move backward and forward to other instances of the pattern
 All other commands leave search mode and use the latest hit as the selection.
+^V is commonly used to leave search mode and unset the selection.
 
 EXTENSION
-^E executes the shell pipeline command in the selection, passes the contents
-of the clip buffer as its standard input, and replaces the selection with
-the standard output of the command.  Handy commands to know include:
-	cat path	to insert the contents of a file into the text
-	sort		to rearrange lines
-	sed 's/FROM/TO/g' to perform global search-and-replace
-	tr a-z A-Z	to convert lower to upper case
+^E executes the shell pipeline command in the selection, passes the
+contents of the clip buffer as its standard input, and replaces the
+selection with the standard output of the command.  The child process
+executes asynchronously and its output appears in the view in real time.
+^Space^E with no selection terminates any active child process.
 
+Handy commands to use with ^E include:
+
+   cd path	to change the current working directory (a special case)
+   cat path	to insert the contents of a file or FIFO into the text
+   sort		to rearrange lines
+   uniq		to discard duplicated lines
+   sed 's/FROM/TO/g' to perform global search-and-replace
+   fmt		to reformat paragraphs of text
+   indent -st -kr -i8 -nbbo	to reformat C source code sensibly
+   tr a-z A-Z	to convert lower to upper case
+   tr -d '[\r]'	to remove DOS carriage-returns (^M)
+   make		to compile (run it in a scratch text)
+
+To capture the output of commands run in other windows, use "mkfifo foo"
+to create a FIFO,  "cat foo" with ^E to catch whatever is written there,
+and then redirect the other commands' output with ">foo".  This is a
+very powerful technique.
+
+MACROS
 ^Space^A begins recording keystrokes as the view's macro.  ^A ends recording
 if it is active, otherwise ^A causes the macro to be executed by replaying
 the saved keystrokes.
@@ -108,7 +130,14 @@ aoeui can browse very large read-only files, since original texts are mapped
 from files and not duplicated until they are modified.  Original copies of
 files are saved in file~ before ^K overwrites them.  Temporary copies of
 files being edited may be found in file# if the editor aborts (^\).
-Unnamed texts newly created by ^W or ^Y are kept in $HOME/.aoeui.
+Anonymous texts newly created by ^W, ^Y, and ^Space; are kept in $HOME/.aoeui.
+
+BOOKMARKS
+The location of the current position or selection, if any, can be recorded
+as numbered bookmark 6, say, with the command ^Space 6 = .  The command
+^Space 6 - returns to the bookmark, raising or activating its view if
+necessary.  (Note that the = and - characters are not Control characters.)
+The default bookmark is number 0.
 
 TIPS
  - To select the rest of the line after the cursor: ^V^C

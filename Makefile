@@ -1,7 +1,8 @@
 TARGET = aoeui
-VERSION = 1.0_alpha2
+VERSION = 1.0_alpha3
+PACKAGE = $(TARGET)-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c undo.c \
-	utf8.c window.c util.c clip.c mode.c search.c child.c
+	utf8.c window.c util.c clip.c mode.c search.c child.c bookmark.c
 HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h window.h \
 	util.h clip.h
 RELS = $(SRCS:.c=.o)
@@ -39,6 +40,6 @@ release: spotless
 	rm -rf .tar
 	mkdir .tar
 	find . | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
-	mv .tar $(TARGET)-$(VERSION)
-	tar czf $(TARGET)-$(VERSION).tgz $(TARGET)-$(VERSION)
-	rm -rf $(TARGET)-$(VERSION)
+	mv .tar $(PACKAGE)
+	tar czf $(PACKAGE).tgz $(PACKAGE)
+	rm -rf $(PACKAGE)

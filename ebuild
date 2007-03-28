@@ -7,7 +7,7 @@ SRC_URI="http://downloads.sourceforge.net/aoeui/${P}.tgz"
 # ? use_mirror=internap
 HOMEPAGE="http://aoeui.sourceforge.net"
 LICENSE="GPL-2"
-KEYWORDS="x86"
+KEYWORDS="x86 amd64"
 SLOT="0"
 IUSE=""
 

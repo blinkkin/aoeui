@@ -53,9 +53,9 @@ gets into the action too.
 For example, ^V is the key that creates and modifies the selection.
 When no selection exists, ^V starts one by placing the mark at the
 current cursor position.  When a selection has already been started,
-^V exchanges the positions of the cursor and the mark.  The variant
-form ^Space^V selects the entire current line in the absence of a
-selection, or cancels the selection if one already exists.
+^V unsets the mark.  The variant form ^Space^V selects the entire
+current line in the absence of a selection, or exchanges the cursor
+with the mark if one already exists.
 
 Typing new text in the presence of a selection will add the new text
 to the selection if the cursor is at its end, or cut the selection
@@ -176,7 +176,8 @@ fully aware of UTF-8 Unicode encodings, and is capable of displaying
 and entering control characters.  They appear in the display with
 a red background and a leading caret (^).  To enter a control
 character, use ^^ (Control-^) and a valid letter or punctuation
-symbol.  Hex control characters are also supported.
+symbol.  Raw Unicode code points in decimal and hexadecimal are
+also supported.
 
 It should go without saying that the arrow, Home/End, and Page
 Up/Down keys on your keyboard are also supported, as is Backspace,
@@ -203,6 +204,6 @@ I sincerely hope that the aoeui editor can fill that role for you
 as well as it has for me, and look forward to hearing whether or
 not it has.  Thanks for giving it a look.
 
-(aoeui source code is now located at http://sf.net/projects/aoeui)
+(aoeui source code is now located at http://aoeui.sourceforge.net)
 
 Peter Klausler, 3-18-2007

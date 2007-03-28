@@ -27,3 +27,5 @@ static INLINE int view_unicode(struct view *view, unsigned offset,
 	}
 	return view_unicode_slow(view, offset, length);
 }
+
+char *tab_complete(const char *);

@@ -103,15 +103,15 @@ static void command_handler(struct view *view, unsigned ch)
 	/* Backspace removes the last character from the search target and
 	 * returns to the previous hit
 	 */
-	if (ch == 0x7f /*BCK*/) {
-		if (!mode->bytes)
+	if (ch == 0x7f /*BCK*/)
+		if (!mode->bytes) {
 			window_beep(view);
-		else {
+			goto done;
+		} else {
 			mode->bytes--;
 			search(view, !mode->backward, 1);
+			return;
 		}
-		return;
-	}
 
 	/* Non-control characters are appended to the search target and
 	 * we proceed to the next hit if the current position does not
@@ -154,7 +154,7 @@ static void command_handler(struct view *view, unsigned ch)
 	}
 
 	/* Search is done */
-	if (mode->bytes) {
+done:	if (mode->bytes) {
 		view->last_search = allocate(view->last_search, mode->bytes+1);
 		memcpy(view->last_search, mode->pattern, mode->bytes);
 		view->last_search[mode->bytes] = '\0';
@@ -165,7 +165,7 @@ static void command_handler(struct view *view, unsigned ch)
 	allocate(mode, 0);
 	if (ch == '\r' || ch == '_'-'@')
 		locus_set(view, MARK, UNSET);
-	else
+	else if (ch != 0x7f /*BCK*/)
 		view->mode->command(view, ch);
 }
 

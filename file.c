@@ -4,79 +4,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-static void newlines(struct text *text)
-{
-	char *raw;
-	unsigned offset, bytes;
-	int ch, last = 0;
-	unsigned lfs = 0, crs = 0, crlfs = 0;
-
-	if (text->buffer)
-		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-	else if (text->clean) {
-		raw = text->clean;
-		bytes = text->clean_bytes;
-	} else
-		return;
-
-	text->newlines = 0; /* no conversion */
-	if ('\n' != '\x0a')
-		return;
-	for (offset = 0; offset < bytes; last = ch, offset++) {
-		ch = raw[offset];
-		if (ch == '\n') {
-			lfs++;
-			if (last == '\r')
-				crlfs++;
-		} else if (ch == '\r')
-			crs++;
-		else if (ch < ' ' && ch != '\t')
-			return;
-	}
-
-	if (!crs || lfs && (lfs != crs || lfs != crlfs))
-		return;
-
-	text_dirty(text);
-	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-
-	if (!lfs) {
-		text->newlines = 1; /* old Mac, CR is newline */
-		for (offset = 0; offset < bytes; offset++)
-			if (raw[offset] == '\r')
-				raw[offset] = '\n';
-	} else {
-		text->newlines = 2; /* DOS CR-LF is newline */
-		for (last = offset = 0; offset < bytes; offset++)
-			if ((raw[last] = raw[offset]) != '\r')
-				last++;
-		buffer_delete(text->buffer, last, bytes - last);
-	}
-}
-
-static void undo_newlines(struct text *text)
-{
-	char *raw;
-	unsigned bytes, offset, lines;
-
-	if (!text->newlines || !text->buffer)
-		return;
-	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-	if (text->newlines == 1) {
-		for (offset = 0; offset < bytes; offset++)
-			if (raw[offset] == '\n')
-				raw[offset] = '\r';
-	} else {
-		for (lines = offset = 0; offset < bytes; offset++)
-			lines += raw[offset] == '\n';
-		buffer_insert(text->buffer, NULL, bytes, lines);
-		buffer_raw(text->buffer, &raw, 0, offset = bytes + lines);
-		while (bytes--)
-			if ((raw[--offset] = raw[bytes]) == '\n')
-				raw[--offset] = '\r';
-	}
-}
-
 static int old_fashioned_read(struct text *text)
 {
 	char *raw;
@@ -220,7 +147,6 @@ struct view *view_open(const char *path0)
 				goto fail;
 			text->mtime = statbuf.st_mtime;
 		}
-		newlines(text);
 		view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 					     text->clean_bytes;
 		text_forget_undo(text);
@@ -406,9 +332,7 @@ void text_preserve(struct text *text)
 			"editor, and those changes may have now been lost.",
 			text->path);
 
-	undo_newlines(text);
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-
 	ftruncate(text->fd, bytes);
 	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);
 	if (text->clean) {
@@ -418,8 +342,6 @@ void text_preserve(struct text *text)
 		lseek(text->fd, 0, SEEK_SET);
 		write(text->fd, raw, bytes);
 	}
-	if (text->newlines)
-		newlines(text);
 
 	text->flags &= ~(TEXT_DIRTY | TEXT_CREATED);
 	if (!fstat(text->fd, &statbuf))

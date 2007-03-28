@@ -1,4 +1,15 @@
 2007
+1.0_alpha3
+03-28 pmk: support -t tabstop
+03-28 pmk: special-case 'cd' in ^E
+03-28 pmk: tab completion when cursor is at the end of a selection
+03-28 pmk: hexadecimal arguments and Unicode ^^ literals
+03-28 pmk: bookmarks
+03-28 pmk: *remove* bogus DOS/Mac newline handling
+03-28 pmk: ^Space # TAB sets tab stop
+03-28 pmk: reap terminated children
+03-28 pmk: asynchronous child I/O
+03-27 1.0_alpha2
 03-27 pmk: Make ^V with a selection unset it, ^Space^V exchange
 03-27 pmk: Clean up makefile, write ebuild
 03-26 pmk: Put newly-created texts in $HOME/.aoeui, etc.

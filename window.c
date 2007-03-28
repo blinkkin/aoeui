@@ -12,7 +12,6 @@ struct window {
 	unsigned start; /* locus index */
 	unsigned row, column;
 	unsigned rows, columns;
-	unsigned background_RGBA;
 	unsigned cursor_row, cursor_column;
 	struct window *next;
 };
@@ -22,27 +21,10 @@ static struct window *active_window;
 static struct display *display;
 static unsigned display_rows, display_columns;
 
-static void backgrounds(void)
-{
-	struct window *window;
-	unsigned odd = 0;
-
-	for (window = window_list; window; window = window->next) {
-		if (window == active_window)
-			window->background_RGBA = ~0;
-		else
-			window->background_RGBA = odd ? 0xffff0000 : 0xffffff00;
-		odd ^= window->next &&
-		       (window->next->row == window->row ||
-			window->next->column == window->column);
-	}
-}
-
 static struct window *activate(struct window *window)
 {
 	if ((active_window = window))
 		display_title(display, active_window->view->name);
-	backgrounds();
 	return window;
 }
 
@@ -67,7 +49,6 @@ static struct window *window_create(struct view *view, struct view *after)
 		window->row = window->column = 0;
 	window->rows = display_rows;
 	window->columns = display_columns;
-	backgrounds();
 	return window;
 }
 
@@ -137,7 +118,6 @@ static void window_close(struct window *window)
 	if (window == active_window)
 		activate(window_list);
 	allocate(window, 0);
-	backgrounds();
 }
 
 struct window *window_raise(struct view *view)
@@ -386,7 +366,7 @@ static int lame_tab(struct view *view, unsigned offset)
 	return 1;
 }
 
-static void paint(struct window *window)
+static void paint(struct window *window, unsigned default_bgrgba)
 {
 	unsigned at, row;
 	struct view *view = window->view;
@@ -418,7 +398,7 @@ static void paint(struct window *window)
 				bgrgba = 0x00ffff00;
 				fgrgba = bgrgba ^ 0xffffff00;
 			} else {
-				bgrgba = window->background_RGBA;
+				bgrgba = default_bgrgba;
 				if (view->text->flags & TEXT_RDONLY)
 					fgrgba = 0xff000000;
 				else
@@ -457,7 +437,7 @@ static void paint(struct window *window)
 		}
 
 		display_erase(display, row, window->column + column,
-			      1, columns - column, window->background_RGBA);
+			      1, columns - column, default_bgrgba);
 	}
 }
 
@@ -529,26 +509,35 @@ void window_beep(struct view *view)
 static void repaint(void)
 {
 	struct window *window;
+	unsigned odd = 0;
 
-	for (window = window_list; window; window = window->next)
-		paint(window);
+	for (window = window_list; window; window = window->next) {
+		unsigned bgrgba;
+		if (window == active_window)
+			bgrgba = ~0;
+		else
+			bgrgba = odd ? 0xffff0000 : 0xffffff00;
+		odd ^= window->next &&
+		       (window->next->row == window->row ||
+			window->next->column == window->column);
+		paint(window, bgrgba);
+	}
+
 	display_cursor(display, active_window->row + active_window->cursor_row,
 		       active_window->column + active_window->cursor_column);
 }
 
 int window_getch(void)
 {
+	int block = 0;
 	for (;;) {
-		int ch;
-		if (!display)
-			return DISPLAY_EOF;
-		if (!display_any_input(display, 0))
-			repaint();
-		ch = display_getch(display);
+		int ch = display_getch(display, block);
 		if (ch == DISPLAY_WINCH)
 			window_raise(active_window->view);
-		else
+		else if (ch != DISPLAY_NONE)
 			return ch;
+		repaint();
+		block = 1;
 	}
 }
 

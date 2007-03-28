@@ -24,9 +24,7 @@
 #include "util.h"
 #include "clip.h"
 
-void *allocate(const void *, unsigned bytes);
-
-void die(const char *, ...);
+void *allocate(const void *, unsigned bytes);	/* mem.c */
+void die(const char *, ...);			/* die.c */
 void message(const char *, ...);
-
-extern struct text *text_list;
+int multiplexor(int block);			/* child.c */

@@ -18,8 +18,7 @@ void display_erase(struct display *, unsigned row, unsigned column,
 void display_beep(struct display *);
 void display_sync(struct display *);
 
-int display_any_input(struct display *, unsigned millisecs);
-int display_getch(struct display *);	/* can block if !display_any_input() */
+int display_getch(struct display *, int block);
 #define DISPLAY_EOF   (-1)
 #define DISPLAY_WINCH (-2)
 #define DISPLAY_ERR   (-3)

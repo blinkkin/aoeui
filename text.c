@@ -11,6 +11,7 @@
  */
 
 struct text *text_list;
+int default_tab_stop = 8; /* dammit */
 
 struct view *view_find(const char *name)
 {
@@ -88,7 +89,7 @@ struct view *text_create(const char *path, unsigned flags)
 {
 	struct text *text = allocate(NULL, sizeof *text), *prev, *bp;
 	memset(text, 0, sizeof *text);
-	text->tabstop = 8;
+	text->tabstop = default_tab_stop;
 	text->fd = -1;
 	text->flags = flags;
 	text->path = strdup(path);
@@ -133,6 +134,9 @@ void view_close(struct view *view)
 		return;
 
 	window_unmap(view);
+	demultiplex_view(view);
+	bookmark_unset_view(view);
+
 	if (text)
 		for (vp = text->views; vp; prev = vp, vp = vp->next)
 			if (vp == view) {

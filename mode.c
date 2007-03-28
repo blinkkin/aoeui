@@ -6,7 +6,7 @@
 
 struct mode_default {
 	command command;
-	int variant, value;
+	int variant, value, is_hex;
 };
 
 static void command_handler(struct view *, unsigned);
@@ -141,7 +141,7 @@ static void command_handler(struct view *view, unsigned ch)
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned mark = locus_get(view, MARK);
 	char buf[8];
-	int ok = 1;
+	int ok = 1, literal_unicode = 0;
 	unsigned offset;
 	struct view *new_view;
 	char *path;
@@ -157,25 +157,59 @@ static void command_handler(struct view *view, unsigned ch)
 
 	/* Non-control characters are self-inserted, with a prior
 	 * automatic cut of the selection if one exists and the cursor
-	 * is at its beginning.
+	 * is at its beginning.  But if we're in a variant, some
+	 * characters may contribute to the value, or be non-Control
+	 * commands.
 	 */
 	if (ch >= ' ' /*0x20*/) {
-		/* self insertion or replacement */
-		if (isdigit(ch) && mode->variant) {
-			mode->value *= 10;
-			mode->value += ch - '0';
-			return;
+
+		if (mode->variant) {
+			if (mode->is_hex && isxdigit(ch)) {
+				mode->value *= 16;
+				if (isdigit(ch))
+					mode->value += ch - '0';
+				else
+					mode->value += tolower(ch) - 'a';
+				return;
+			}
+			if (isdigit(ch)) {
+				mode->value *= 10;
+				mode->value += ch - '0';
+				return;
+			}
+			if (!mode->value && (ch == 'x' || ch == 'X')) {
+				mode->is_hex = 1;
+				return;
+			}
+			switch (ch) {
+			case '=':
+				bookmark_set(mode->value, view, cursor, mark);
+				goto done;
+			case '-':
+				if (bookmark_get(&new_view, &cursor, &mark,
+						 mode->value)) {
+					locus_set(new_view, CURSOR, cursor);
+					locus_set(new_view, MARK, mark);
+					window_activate(new_view);
+				} else
+					ok = 0;
+				goto done;
+			case ';':
+				window_after(view, text_new(), -1);
+				goto done;
+			}
 		}
+
+		/* self insertion or replacement */
 self_insert:	if (mark != UNSET && mark > cursor) {
 			cursor = cut(view, 1);
 			mark = UNSET;
 		}
-		if (ch >= 0x100)
-			view_insert(view, buf, cursor, utf8_out(buf, ch));
-		else {
+		if (ch <= 0x100 && !literal_unicode) {
 			buf[0] = ch;
 			view_insert(view, buf, cursor, 1);
-		}
+		} else
+			view_insert(view, buf, cursor, utf8_out(buf, ch));
 		if (mark == cursor)
 			locus_set(view, MARK, /*old*/ cursor);
 		goto done;
@@ -184,11 +218,14 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	/* Control character commands */
 	switch ((ch += '@')) {
 	case '@': /* (^Space) */
+		if (mode->variant)
+			break; /* unset variant */
 		mode->variant = 1;
 		return;
 	case 'A': /* macro end/execute [start] */
 		if (mode->variant) {
-			view->macro = allocate(view->macro, view->macro_alloc = 64);
+			view->macro_alloc = 64;
+			view->macro = allocate(view->macro, view->macro_alloc);
 			view->macro_bytes = 0;
 			view->macro_at = 1; /* recording */
 		} else if (view->macro && view->macro_bytes)
@@ -235,7 +272,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			cut(view, 1);
 		break;
 	case 'E':
-		mode_child(view);
+		if (mark == UNSET && mode->variant)
+			demultiplex_view(view);
+		else
+			mode_child(view);
 		break;
 	case 'F': /* copy [pre/appending] */
 		cut(view, 0);
@@ -244,19 +284,38 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, CURSOR, find_line_start(view, cursor - !!cursor));
 		break;
 	case 'H': /* backward char(s) */
-		if (mode->variant && mode->value && mode->value <= cursor)
+		if (mode->value && mode->value <= cursor)
 			cursor -= mode->value;
 		else
 			cursor -= !!cursor;
 		locus_set(view, CURSOR, cursor);
 		break;
-	case 'I': /* (TAB) tab [align] */
-		if (mode->variant) {
+	case 'I': /* (TAB) tab / tab completion [align; set tab stop] */
+		if (!mode->variant) {
+			char *completed;
+			path = NULL;
+			if (mark < cursor &&
+			    (path = view_extract_selection(view)) &&
+			    (completed = tab_complete(path))) {
+				view_delete_selection(view);
+				view_insert(view, completed, mark, -1);
+				locus_set(view, MARK, mark);
+				allocate(path, 0);
+				allocate(completed, 0);
+			} else {
+				allocate(path, 0);
+				ch = '\t';
+				goto self_insert;
+			}
+		} else if (mode->value)
+			if (mode->value >= 1 && mode->value <= 20)
+				view->text->tabstop =
+					default_tab_stop = mode->value;
+			else
+				window_beep(view);
+		else
 			align(view);
-			break;
-		}
-		ch = '\t';
-		goto self_insert;
+		break;
 	case 'J':
 		view_insert(view, "\n", cursor++, 1);
 		align(view);
@@ -283,7 +342,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		ch = '\n';
 		goto self_insert;
 	case 'N': /* backward word(s) [sentence] */
-		if (mode->variant && mode->value)
+		if (mode->value)
 			while (mode->value--)
 				cursor = find_word_start(view, cursor);
 		else if (mode->variant)
@@ -318,7 +377,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			window_page_up(view);
 		break;
 	case 'S': /* forward word(s) [sentence] */
-		if (mode->variant && mode->value)
+		if (mode->value)
 			while (mode->value--)
 				cursor = find_word_end(view, cursor);
 		else if (mode->variant)
@@ -328,7 +387,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'T': /* forward char(s) */
-		if (mode->variant && mode->value)
+		if (mode->value)
 			cursor += mode->value;
 		else
 			cursor++;
@@ -365,7 +424,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		} else if ((path = view_extract_selection(view))) {
 			if (mode->variant) {
 				if ((ok = text_rename(view->text, path)))
-					window_activate(view); /* title */
+					window_activate(view);
 				new_view = NULL;
 			} else
 				ok = !!(new_view = view_open(path));
@@ -418,10 +477,13 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			locus_set(view, MARK, cursor + (mark < cursor));
 		}
 		break;
-	case '^': /* literal */
-		if ((signed) (ch = view_getch(view)) < 0)
-			ok = 0;
-		else {
+	case '^': /* literal [; unicode] */
+		if (mode->value) {
+			ch = mode->value;
+			literal_unicode = 1;
+			goto self_insert;
+		}
+		if ((signed) (ch = view_getch(view)) >= 0) {
 			if (ch >= '@' && ch <= '_')
 				ch -= '@';
 			else if (ch >= 'a' && ch <= 'z')
@@ -430,6 +492,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 				ch = 0x7f;
 			goto self_insert;
 		}
+		ok = 0;
 		break;
 	case '_': /* ^/: search */
 		mode_search(view);
@@ -439,7 +502,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	}
 
-done:	mode->variant = mode->value = 0;
+done:	mode->variant = mode->value = mode->is_hex = 0;
 	if (!ok)
 		window_beep(view);
 }
