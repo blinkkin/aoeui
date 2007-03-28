@@ -334,7 +334,6 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'M': /* (ENT) new line [opened] */
 		if (mode->variant) {
-			cursor = find_line_end(view, cursor) + 1;
 			view_insert(view, "\n", cursor, 1);
 			locus_set(view, CURSOR, cursor);
 			break;

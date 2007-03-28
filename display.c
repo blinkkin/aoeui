@@ -307,6 +307,17 @@ static void sigwinch(int signo, siginfo_t *info, void *data)
 		old_sigwinch(signo, info, data);
 }
 
+#ifndef __linux__
+void cfmakeraw(struct termios *termios)
+{
+	termios->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|IXON);
+	termios->c_oflag &= ~OPOST;
+	termios->c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
+	termios->c_cflag &= ~(CSIZE|PARENB);
+	termios->c_cflag |= CS8;
+}
+#endif
+
 struct display *display_init(void)
 {
 	struct display *display = allocate(NULL, sizeof *display);
@@ -321,6 +332,7 @@ struct display *display_init(void)
 	if (tcgetattr(1, &display->original))
 		goto error;
 
+	termios = display->original;
 	cfmakeraw(&termios);
 	errno = 0;
 	step = "tcsetattr";

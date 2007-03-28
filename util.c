@@ -1,5 +1,8 @@
 #include "all.h"
 #include <dirent.h>
+#ifndef NAME_MAX
+# define NAME_MAX 256
+#endif
 
 unsigned find_line_start(struct view *view, unsigned offset)
 {
@@ -182,21 +185,20 @@ struct view *view_next(struct view *view)
 
 int view_corresponding_bracket(struct view *view, unsigned offset)
 {
-	static char peer[0x100] = {
-		['('] = ')', [')'] = '(',
-		['['] = ']', [']'] = '[',
-		['{'] = '}', ['}'] = '{',
-	};
-	static signed char updown[0x100] = {
-		['('] = 1, [')'] = -1,
-		['['] = 1, [']'] = -1,
-		['{'] = 1, ['}'] = -1,
-	};
+	static signed char peer[0x100], updown[0x100];
 
 	int ch = view_byte(view, offset);
 	unsigned char stack[32];
 	int stackptr = 0;
 	int dir;
+
+	if (!peer['(']) {
+		peer['('] = ')', peer[')'] = '(';
+		peer['['] = ']', peer[']'] = '[';
+		peer['{'] = '}', peer['}'] = '{';
+		updown['('] = updown['['] = updown['{'] = 1;
+		updown[')'] = updown[']'] = updown['}'] = -1;
+	}
 
 	if (ch < 0 || !(dir = updown[ch])) {
 		unsigned back, ahead;

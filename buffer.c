@@ -72,7 +72,7 @@ static void resize(struct buffer *buffer, unsigned bytes)
 {
 	void *p;
 	char *old = buffer->data;
-	int fd, mapflags;
+	int fd, mapflags = 0;
 	static unsigned pagesize;
 
 	/* Whole pages, with extras as size increases */
@@ -109,13 +109,12 @@ static void resize(struct buffer *buffer, unsigned bytes)
 
 	/* new/replacement allocation */
 	if ((fd = buffer->fd) >= 0) {
-		mapflags = MAP_SHARED;
+		mapflags |= MAP_SHARED;
 		if (old) {
 			munmap(old, buffer->allocated);
 			old = NULL;
 		}
 	} else {
-		mapflags = MAP_PRIVATE;
 #ifdef MAP_ANONYMOUS
 		mapflags |= MAP_ANONYMOUS;
 #else
@@ -129,6 +128,7 @@ static void resize(struct buffer *buffer, unsigned bytes)
 		}
 		fd = anonymous_fd;
 #endif
+		mapflags |= MAP_PRIVATE;
 	}
 
 	errno = 0;

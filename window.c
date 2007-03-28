@@ -503,7 +503,10 @@ void window_page_down(struct view *view)
 
 void window_beep(struct view *view)
 {
-	display_beep(display);
+	if (display)
+		display_beep(display);
+	else
+		fputc('\a', stderr);
 }
 
 static void repaint(void)

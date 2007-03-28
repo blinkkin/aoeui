@@ -57,12 +57,10 @@ unsigned utf8_length_backwards(const char *in, unsigned max)
 unsigned utf8_unicode(const char *in, unsigned length)
 {
 	const unsigned char *p = (const unsigned char *) in;
-	unsigned unicode, bits;
+	unsigned unicode;
 
 	if (length <= 1 || length > 6)
 		return *p;
-
-	bits = length * 5 + 1;
 	unicode = *p & (1 << 7-length)-1;
 	while (--length)
 		unicode <<= 6, unicode |= *++p & 0x3f;

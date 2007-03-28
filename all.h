@@ -13,7 +13,13 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define INLINE __inline__
+#ifndef INLINE
+# ifdef __GNUC__
+#  define INLINE __inline__
+# else
+#  define INLINE
+# endif
+#endif
 
 #include "buffer.h"
 #include "mode.h"

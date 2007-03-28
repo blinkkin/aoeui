@@ -55,7 +55,8 @@ static char *fix_path(const char *path)
 		freepath = 1;
 	}
 	if (*path != '/') {
-		char *cwd = getcwd(NULL, 0);
+		char cwdbuf[256];
+		char *cwd = getcwd(cwdbuf, sizeof cwdbuf);
 		char *apath = allocate(NULL, strlen(cwd) + pathlen + 2);
 		sprintf(apath, "%s/%s", cwd, path);
 		if (freepath)

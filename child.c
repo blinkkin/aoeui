@@ -1,4 +1,5 @@
 #include "all.h"
+#include <sys/time.h>
 
 /*
  *	Handle the ^E command, which runs the shell command pipeline
