@@ -62,7 +62,6 @@ static char *fix_path(const char *path)
 		if (freepath)
 			allocate(path, 0);
 		path = apath;
-		allocate(cwd, 0);
 		freepath = 1;
 	}
 	fpath = strdup(path);
