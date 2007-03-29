@@ -21,17 +21,17 @@ struct text {
 	struct text *next;
 	char *path;
 	unsigned flags;
+	unsigned dirties, preserved;
 	int fd;
 	time_t mtime;
 	unsigned tabstop;
 };
 
 /* flags */
-#define TEXT_DIRTY 1
-#define TEXT_SAVED_ORIGINAL 2
-#define TEXT_RDONLY 4
-#define TEXT_EDITOR 8
-#define TEXT_CREATED 16
+#define TEXT_SAVED_ORIGINAL 1
+#define TEXT_RDONLY 2
+#define TEXT_EDITOR 4
+#define TEXT_CREATED 8
 
 extern struct text *text_list;
 extern int default_tab_stop;
@@ -53,7 +53,7 @@ int view_getch(struct view *);
 /* Use only for raw bytes.  See util.h for character access with
  * view_unicode() and view_unicode_prior().
  */
-static INLINE int view_byte(struct view *view, unsigned offset)
+INLINE int view_byte(struct view *view, unsigned offset)
 {
 	if (offset >= view->bytes)
 		return -1;

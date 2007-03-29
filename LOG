@@ -1,5 +1,7 @@
 2007
 1.0_alpha3
+03-29 pmk: some optimization of repainting
+03-29 pmk: debug behavior when xterm window size changes
 03-28 pmk: support -t tabstop
 03-28 pmk: special-case 'cd' in ^E
 03-28 pmk: tab completion when cursor is at the end of a selection

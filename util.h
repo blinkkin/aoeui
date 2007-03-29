@@ -17,8 +17,8 @@ struct view *view_next(struct view *);
 int view_corresponding_bracket(struct view *, unsigned offset);
 
 int view_unicode_slow(struct view *, unsigned offset, unsigned *length);
-static INLINE int view_unicode(struct view *view, unsigned offset,
-			       unsigned *length)
+INLINE int view_unicode(struct view *view, unsigned offset,
+			unsigned *length)
 {
 	int ch = view_byte(view, offset);
 	if (ch < 0x80) {

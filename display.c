@@ -26,7 +26,7 @@ struct display {
 	unsigned at_row, at_column;
 	struct cell *image;
 	struct termios original;
-	struct display *prev, *next;
+	struct display *next;
 	unsigned buffered_bytes;
 	char *buffer;
 	int is_xterm;
@@ -339,16 +339,15 @@ struct display *display_init(void)
 	if (tcsetattr(1, TCSADRAIN, &termios))
 		goto recover;
 
-	if ((display->next = display_list))
-		display->next->prev = display;
-	else {
+	if (!(display->next = display_list)) {
 		struct sigaction sigact, old_sigact;
 		memset(&sigact, 0, sizeof sigact);
 		sigact.sa_sigaction = sigwinch;
 		sigact.sa_flags = SA_SIGINFO;
 		sigaction(SIGWINCH, &sigact, &old_sigact);
 		if ((void (*)(int)) old_sigact.sa_sigaction != SIG_DFL &&
-		    (void (*)(int)) old_sigact.sa_sigaction != SIG_IGN)
+		    (void (*)(int)) old_sigact.sa_sigaction != SIG_IGN &&
+		    old_sigact.sa_sigaction != sigwinch)
 			old_sigwinch = old_sigact.sa_sigaction;
 	}
 
@@ -374,6 +373,8 @@ error:
 
 void display_end(struct display *display)
 {
+	struct display *d, *prev = NULL;
+
 	if (!display)
 		return;
 
@@ -387,12 +388,14 @@ void display_end(struct display *display)
 	allocate(display->image, 0);
 	allocate(display->buffer, 0);
 
-	if (display->prev)
-		display->prev->next = display->next;
-	else
-		display_list = display->next;
-	if (display->next)
-		display->next->prev = display->prev;
+	for (d = display_list; d; prev = d, d = d->next)
+		if (d == display) {
+			if (prev)
+				prev->next = display->next;
+			else
+				display_list = display->next;
+			break;
+		}
 
 	allocate(display, 0);
 }
@@ -438,4 +441,3 @@ int display_getch(struct display *display, int block)
 	} while (n < 0 && (errno == EAGAIN || errno == EINTR));
 	return !n ? DISPLAY_EOF : n < 0 ? DISPLAY_ERR : ch;
 }
-

@@ -453,10 +453,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			while (--mode->value)
 				cursor = find_line_end(view, cursor) + 1;
 			locus_set(view, CURSOR, cursor);
-		} else if (mode->variant) {
+		} else if (mode->variant)
 			windows_reset();
-			window_raise(view);
-		}
 		window_recenter(view);
 		break;
 	case '[': /* ESC */

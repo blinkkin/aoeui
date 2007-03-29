@@ -18,6 +18,8 @@ $(RELS): $(HDRS)
 $(TARGET).1.gz: $(TARGET).1
 	gzip -c $(TARGET).1 >$@
 
+optimized: clean
+	$(MAKE) CFLAGS="-O3"
 debug: clean
 	$(MAKE) CFLAGS="-g -O0"
 profile: clean

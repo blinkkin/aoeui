@@ -14,6 +14,7 @@ struct window {
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
 	struct window *next;
+	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
 };
 
 static struct window *window_list;
@@ -49,6 +50,7 @@ static struct window *window_create(struct view *view, struct view *after)
 		window->row = window->column = 0;
 	window->rows = display_rows;
 	window->columns = display_columns;
+	window->last_dirties = ~0;
 	return window;
 }
 
@@ -195,10 +197,30 @@ void window_unmap(struct view *view)
 		window_close(view->window);
 }
 
+struct view *window_current_view(void)
+{
+	if (!active_window) {
+		if (!text_list) {
+			if (!access(HELP_PATH, R_OK))
+				view_open(HELP_PATH);
+			else {
+				errno = 0;
+				message("\nWelcome to aoeui, pmk's "
+					"Dvorak-optimized display editor.\n");
+			}
+		}
+		window_raise(text_list->views);
+	}
+	return active_window->view;
+}
+
 void windows_reset(void)
 {
-	if (display)
-		display_reset(display);
+	if (display) {
+		display_end(display);
+		display = NULL;
+	}
+	window_raise(window_current_view());
 }
 
 void windows_end(void)
@@ -211,8 +233,8 @@ void windows_end(void)
 	}
 }
 
-static INLINE unsigned char_columns(unsigned ch, unsigned column,
-				    unsigned tabstop)
+INLINE unsigned char_columns(unsigned ch, unsigned column,
+				unsigned tabstop)
 {
 	if (ch == '\n')
 		return 0;
@@ -375,6 +397,16 @@ static void paint(struct window *window, unsigned default_bgrgba)
 	unsigned mark = locus_get(view, MARK);
 	unsigned columns = window->columns;
 
+	if (window->view->text->dirties == window->last_dirties &&
+	    window->last_bgrgba == default_bgrgba &&
+	    window->last_cursor == cursor &&
+	    window->last_mark == mark)
+		return;
+	window->last_dirties = window->view->text->dirties;
+	window->last_bgrgba = default_bgrgba;
+	window->last_cursor = cursor;
+	window->last_mark = mark;
+
 	if (mark == UNSET)
 		mark = cursor;
 
@@ -536,27 +568,10 @@ int window_getch(void)
 	for (;;) {
 		int ch = display_getch(display, block);
 		if (ch == DISPLAY_WINCH)
-			window_raise(active_window->view);
+			windows_reset();
 		else if (ch != DISPLAY_NONE)
 			return ch;
 		repaint();
 		block = 1;
 	}
-}
-
-struct view *window_current_view(void)
-{
-	if (!active_window) {
-		if (!text_list) {
-			if (!access(HELP_PATH, R_OK))
-				view_open(HELP_PATH);
-			else {
-				errno = 0;
-				message("\nWelcome to aoeui, pmk's "
-					"Dvorak-optimized display editor.\n");
-			}
-		}
-		window_raise(text_list->views);
-	}
-	return active_window->view;
 }

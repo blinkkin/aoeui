@@ -18,17 +18,17 @@ unsigned buffer_insert(struct buffer *, const void *,
 unsigned buffer_move(struct buffer *dest, unsigned,
 		     struct buffer *src, unsigned, unsigned bytes);
 
-static INLINE unsigned buffer_bytes(struct buffer *buffer)
+INLINE unsigned buffer_bytes(struct buffer *buffer)
 {
 	return buffer ? buffer->payload : 0;
 }
 
-static INLINE unsigned buffer_gap_bytes(struct buffer *buffer)
+INLINE unsigned buffer_gap_bytes(struct buffer *buffer)
 {
 	return buffer->allocated - buffer->payload;
 }
 
-static INLINE int buffer_byte(struct buffer *buffer, unsigned offset)
+INLINE int buffer_byte(struct buffer *buffer, unsigned offset)
 {
 	if (!buffer || offset >= buffer->payload)
 		return -1;

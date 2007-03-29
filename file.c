@@ -261,11 +261,10 @@ int text_rename(struct text *text, const char *path0)
 void text_dirty(struct text *text)
 {
 	struct stat statbuf;
-	if (text->path &&
-	    (text->flags & (TEXT_DIRTY | TEXT_RDONLY)) == TEXT_RDONLY)
+	if (text->path && !text->dirties && text->flags & TEXT_RDONLY)
 		message("%s is a read-only file, changes will not be saved.",
 			text->path);
-	text->flags |= TEXT_DIRTY;
+	text->dirties++;
 	if (!text->buffer) {
 		text->buffer = buffer_create(text->fd >= 0 ? text->path : NULL);
 		if (text->clean)
@@ -308,16 +307,16 @@ void text_preserve(struct text *text)
 	unsigned bytes;
 	struct stat statbuf;
 
-	if (!(text->flags & TEXT_DIRTY) || text->fd < 0 || !text->buffer)
+	if (text->preserved == text->dirties || text->fd < 0 || !text->buffer)
 		return;
+
+	text->preserved = text->dirties;
 
 	if (text->clean) {
 		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 		if (bytes == text->clean_bytes &&
-		    !memcmp(text->clean, raw, bytes)) {
-			text->flags &= ~TEXT_DIRTY;
+		    !memcmp(text->clean, raw, bytes))
 			return;
-		}
 		munmap(text->clean, text->clean_bytes);
 		text->clean = NULL;
 	}
@@ -343,7 +342,8 @@ void text_preserve(struct text *text)
 		write(text->fd, raw, bytes);
 	}
 
-	text->flags &= ~(TEXT_DIRTY | TEXT_CREATED);
+	text->preserved = text->dirties;
+	text->flags &= ~TEXT_CREATED;
 	if (!fstat(text->fd, &statbuf))
 		text->mtime = statbuf.st_mtime;
 }

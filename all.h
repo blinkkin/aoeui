@@ -15,9 +15,9 @@
 
 #ifndef INLINE
 # ifdef __GNUC__
-#  define INLINE __inline__
+#  define INLINE static __inline__
 # else
-#  define INLINE
+#  define INLINE static
 # endif
 #endif
 
