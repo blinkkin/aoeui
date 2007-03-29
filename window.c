@@ -305,6 +305,7 @@ static unsigned find_row_start(struct window *window, unsigned position,
 static void new_start(struct view *view, unsigned start)
 {
 	locus_set(view, view->window->start, start ? start-1 : UNSET);
+	view->window->last_dirties = ~0;
 }
 
 static unsigned screen_start(struct view *view)

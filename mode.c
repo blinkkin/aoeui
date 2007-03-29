@@ -189,7 +189,8 @@ static void command_handler(struct view *view, unsigned ch)
 				if (bookmark_get(&new_view, &cursor, &mark,
 						 mode->value)) {
 					locus_set(new_view, CURSOR, cursor);
-					locus_set(new_view, MARK, mark);
+					if (mark != UNSET)
+						locus_set(new_view, MARK, mark);
 					window_activate(new_view);
 				} else
 					ok = 0;

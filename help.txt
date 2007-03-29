@@ -106,13 +106,18 @@ Handy commands to use with ^E include:
 
    cd path	to change the current working directory (a special case)
    cat path	to insert the contents of a file or FIFO into the text
+   grep -n	to search for lines containing a pattern
    sort		to rearrange lines
    uniq		to discard duplicated lines
    sed 's/FROM/TO/g' to perform global search-and-replace
-   fmt		to reformat paragraphs of text
-   indent -st -kr -i8 -nbbo	to reformat C source code sensibly
    tr a-z A-Z	to convert lower to upper case
    tr -d '[\r]'	to remove DOS carriage-returns (^M)
+   fmt		to reformat paragraphs of text
+   indent -st -kr -i8 -nbbo
+		to reformat C source code sensibly
+   column	to align data into columns
+   man | colcrt	to read a man page ("| col -b" works, too)
+   tailf	to monitor additions to a file you're watching
    make		to compile (run it in a scratch text)
 
 To capture the output of commands run in other windows, use "mkfifo foo"
