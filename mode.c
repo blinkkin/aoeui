@@ -462,9 +462,11 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		ok &= escape(view);
 		break;
 	case '\\': /* quit */
-		windows_end();
-		texts_uncreate();
-		exit(EXIT_SUCCESS);
+		if (mode->variant) {
+			windows_end();
+			texts_uncreate();
+			exit(EXIT_SUCCESS);
+		}
 		break;
 	case ']': /* set mark and move to corresponding bracket */
 		mark = view_corresponding_bracket(view, cursor);

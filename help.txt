@@ -6,8 +6,10 @@ Simplified	  LOCK  A O E U I  D H T N S  - ENTER
 Keyboard	 SHIFT  ; Q J K X  B M W V Z  SHIFT
 layout		  CTRL  ALT	Space	 ALT  CTRL
 
-To leave aoeui now, perhaps because you arrived here by accident, hit the
-backslash key (\) while holding down one of the Control keys.
+To leave aoeui now, perhaps because you arrived here by accident,
+hold down the Control key, hit the Space bar, and then the backslash (\)
+key.  (This emergency escape sequence is deliberately hard to type
+so that you won't accidentally terminate the editor and lose work.)
 
 COMMANDS are indicated here with notation like ^L, which means that
 the L key is to be struck
@@ -83,7 +85,7 @@ VIEWS, TEXTS, and WINDOWS
 ^Space^K  save just the current text
       ^Q  suspend the editor
 ^Space^Q  save all buffers and terminate the editor
-      ^\  abort the editor without saving any text
+^Space^\  abort the editor without saving any text
 ^Space ;  create a new anonymous text (note that ; is not a Control character)
 
 ^/ and ^_ enter SEARCH MODE.  Characters that are typed are appended to the
@@ -134,7 +136,7 @@ FILES
 aoeui can browse very large read-only files, since original texts are mapped
 from files and not duplicated until they are modified.  Original copies of
 files are saved in file~ before ^K overwrites them.  Temporary copies of
-files being edited may be found in file# if the editor aborts (^\).
+files being edited may be found in file# if the editor aborts (^Space^\).
 Anonymous texts newly created by ^W, ^Y, and ^Space; are kept in $HOME/.aoeui.
 
 BOOKMARKS
@@ -156,6 +158,9 @@ TIPS
    copy it back to the clip buffer, and proceed to the next occurrence of the
    search pattern.  But if the replacement text is short, it's sometimes
    easiest to just overwrite the selection with ^V and retyping.
+ - Reconfigure your keyboard so that the key to the left of A, which is probably
+   labelled Caps Lock, is interpreted as a Control modifier, while the left
+   Control key takes on the rare Caps Lock function.
 
 THANKS to my lovely wife for putting up with her Dvorak-obsessed husband
 for a few evenings recently as aoeui has been polished and uploaded!  And

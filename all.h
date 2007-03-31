@@ -34,3 +34,4 @@ void *allocate(const void *, unsigned bytes);	/* mem.c */
 void die(const char *, ...);			/* die.c */
 void message(const char *, ...);
 int multiplexor(int block);			/* child.c */
+void multiplex_write(int fd, const char *, unsigned, int close);

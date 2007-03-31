@@ -1,5 +1,7 @@
 2007
-1.0_alpha3
+03-31 1.0_alpha3
+03-30 pmk: generalize the asynchronous child I/O implementation
+03-30 pmk: change emergency exit from ^\ to ^Space^\
 03-29 pmk: some optimization of repainting
 03-29 pmk: debug behavior when xterm window size changes
 03-28 pmk: support -t tabstop

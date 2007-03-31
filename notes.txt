@@ -15,10 +15,10 @@ Control-[ is the same as Escape.)
 Non-command characters are inserted or searched for.
 Self-insertion automatically cuts when cursor < mark.
 
-There are multiple windows, views, and texts;  Every window has
-a view, but not every view has a window.  Every view has a text
-and every text has at least one view.  Some texts have files.
-The cursor, mark, and macro are local to their view.
+There are multiple windows, views, and texts;  Every window has a view,
+but not every view has a window.  Every view has a text and every text
+has at least one view.  Some texts have files.  The cursor, mark, and
+macro are local to their view.
 
 * below means "must be this character".
 () indicate synonyms
@@ -42,7 +42,7 @@ Command characters
   ^/	(^_) search mode [regexp TODO]
 * ^?	(BCK) delete character before cursor
 * ^+	larger font
-  ^\	quit without saving -- require variant?
+  ^\	[quit without saving]
   ^A	macro end, execute [macro start]
   ^O
   ^E	[ end input from children ] / pipe clipbuffer to command in selection
@@ -78,6 +78,8 @@ Non-control characters -- commands must be [variants]
 
 Missing commands:
 	help
+	tags
+	screen(1)/readline mode
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

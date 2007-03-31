@@ -25,6 +25,9 @@ debug: clean
 profile: clean
 	$(MAKE) CFLAGS="-pg" LIBS="-pg"
 
+tags: $(SRCS) $(HDRS)
+	ctags -x $(SRCS) $(HDRS) >$@
+
 install: $(TARGET) $(TARGET).1.gz
 	install -d $(INST_DIR)/bin
 	install -d $(INST_DIR)/share/$(TARGET)
@@ -35,7 +38,7 @@ install: $(TARGET) $(TARGET).1.gz
 clean:
 	rm -f *.o core
 clobber: clean
-	rm -f $(TARGET) $(TARGET).1.gz
+	rm -f $(TARGET) $(TARGET).1.gz tags
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless
