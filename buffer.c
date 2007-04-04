@@ -239,3 +239,11 @@ unsigned buffer_move(struct buffer *to, unsigned to_offset,
 	buffer_insert(to, raw, to_offset, bytes);
 	return buffer_delete(from, from_offset, bytes);
 }
+
+void buffer_snap(struct buffer *buffer)
+{
+	if (buffer && buffer->fd >= 0) {
+		place_gap(buffer, buffer->payload);
+		ftruncate(buffer->fd, buffer->payload);
+	}
+}

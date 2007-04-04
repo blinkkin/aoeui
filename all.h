@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <unistd.h>
+#include <termios.h>
 
 #ifndef INLINE
 # ifdef __GNUC__
@@ -30,8 +31,11 @@
 #include "util.h"
 #include "clip.h"
 
+extern struct termios original_termios;
+
 void *allocate(const void *, unsigned bytes);	/* mem.c */
 void die(const char *, ...);			/* die.c */
 void message(const char *, ...);
-int multiplexor(int block);			/* child.c */
-void multiplex_write(int fd, const char *, unsigned, int close);
+int child(int *stdfd, unsigned stdfds, const char *argv[]);	/* child.c */
+int multiplexor(int block);
+void multiplex_write(int fd, const char *, int bytes, int retain);

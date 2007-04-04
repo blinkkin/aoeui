@@ -17,6 +17,7 @@ unsigned buffer_insert(struct buffer *, const void *,
 		       unsigned offset, unsigned bytes);
 unsigned buffer_move(struct buffer *dest, unsigned,
 		     struct buffer *src, unsigned, unsigned bytes);
+void buffer_snap(struct buffer *);
 
 INLINE unsigned buffer_bytes(struct buffer *buffer)
 {

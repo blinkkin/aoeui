@@ -198,6 +198,9 @@ static void command_handler(struct view *view, unsigned ch)
 			case ';':
 				window_after(view, text_new(), -1);
 				goto done;
+			case '.':
+				find_tag(view);
+				goto done;
 			}
 		}
 
@@ -213,6 +216,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			view_insert(view, buf, cursor, utf8_out(buf, ch));
 		if (mark == cursor)
 			locus_set(view, MARK, /*old*/ cursor);
+		else if (ch == '\n')
+			shell_command(view);
 		goto done;
 	}
 
@@ -258,23 +263,26 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'D': /* [select whitespace] / cut [pre/appending] */
 		if (mark == UNSET && mode->variant) {
-			mark = cursor;
+			mark = find_nonspace(view, cursor);
 			while (cursor &&
 			       ((ch = view_byte(view, cursor-1)) == ' ' ||
 				ch == '\t' || ch == '\n'))
 				--cursor;
-			while (mark < view->bytes &&
-			       ((ch = view_byte(view, mark)) == ' ' ||
-				ch == '\t' || ch == '\n'))
-				mark++;
 			locus_set(view, CURSOR, cursor);
 			locus_set(view, MARK, mark);
 		} else
 			cut(view, 1);
 		break;
 	case 'E':
-		if (mark == UNSET && mode->variant)
-			demultiplex_view(view);
+		if (mark == UNSET)
+			if (mode->variant)
+				demultiplex_view(view);
+			else if (view->shell_std_in < 0) {
+				new_view = text_new();
+				window_after(view, new_view, -1);
+				mode_shell_pipe(new_view);
+			} else
+				window_beep(view);
 		else
 			mode_child(view);
 		break;
@@ -401,9 +409,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, MARK, UNSET);
 		break;
 	case 'V': /* set/unset mark [exchange, or select line] */
-		if (!mode->variant)
-			locus_set(view, MARK, mark == UNSET ? cursor : UNSET);
-		else if (mark == UNSET) {
+		if (!mode->variant) {
+			mark = mark == UNSET ? cursor : UNSET;
+			locus_set(view, MARK, mark);
+		} else if (mark == UNSET) {
 			locus_set(view, MARK, find_line_end(view, cursor) + 1);
 			locus_set(view, CURSOR, find_line_start(view, cursor));
 		} else {
@@ -451,7 +460,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case 'Z': /* recenter/goto */
 		if (mode->value) {
 			cursor = 0;
-			while (--mode->value)
+			while (--mode->value && cursor < view->bytes)
 				cursor = find_line_end(view, cursor) + 1;
 			locus_set(view, CURSOR, cursor);
 		} else if (mode->variant)

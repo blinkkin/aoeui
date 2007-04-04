@@ -10,6 +10,7 @@ struct view {
 	char *macro;
 	unsigned macro_bytes, macro_alloc;
 	int macro_at;
+	int shell_std_in, shell_out_locus;
 };
 
 struct text {
@@ -80,9 +81,6 @@ unsigned text_insert(struct text *, const void *,
 int text_undo(struct text *);
 int text_redo(struct text *);
 void text_forget_undo(struct text *);
-
-/* in window.c */
-unsigned view_screen_start(struct view *);
 
 /* in bookmark.c */
 void bookmark_set(unsigned, struct view *, unsigned cursor, unsigned mark);

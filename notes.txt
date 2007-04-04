@@ -45,7 +45,7 @@ Command characters
   ^\	[quit without saving]
   ^A	macro end, execute [macro start]
   ^O
-  ^E	[ end input from children ] / pipe clipbuffer to command in selection
+  ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
   ^I	(TAB)
   ^D	cut char [select whitespace] / cut [pre/append]
@@ -72,14 +72,14 @@ Non-control characters -- commands must be [variants]
   =	[; set bookmark]
   -	[; goto bookmark]
   ;	[new anonymous text]
+  .	[go to tag]
   0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
   x 0-9 a-f A-F		hexadecimal argument
-  unused: ` ~ ! @ # $ % & ( ) { } ' "  , <  . >  | :
+  unused: ` ~ ! @ # $ % & ( ) { } ' "  , <  >  | :
 
 Missing commands:
 	help
 	tags
-	screen(1)/readline mode
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

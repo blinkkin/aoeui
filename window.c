@@ -7,16 +7,6 @@
  *	it directs keyboard input to its view's command handler.
  */
 
-struct window {
-	struct view *view;
-	unsigned start; /* locus index */
-	unsigned row, column;
-	unsigned rows, columns;
-	unsigned cursor_row, cursor_column;
-	struct window *next;
-	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
-};
-
 static struct window *window_list;
 static struct window *active_window;
 static struct display *display;

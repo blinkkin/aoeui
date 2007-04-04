@@ -40,6 +40,20 @@ static int insertion_activity(struct stream *stream, char *received, int bytes)
 	return 1;
 }
 
+static int shell_output_activity(struct stream *stream, char *received,
+				 int bytes)
+{
+	unsigned offset;
+	if (bytes <= 0)
+		return 0;
+	offset = locus_get(stream->view, stream->view->shell_out_locus);
+	if (offset == UNSET)
+		offset = stream->view->bytes;
+	view_insert(stream->view, received, offset, bytes);
+	locus_set(stream->view, stream->view->shell_out_locus, offset + bytes);
+	return 1;
+}
+
 static int error_activity(struct stream *stream, char *received, int bytes)
 {
 	if (bytes <= 0)
@@ -59,10 +73,11 @@ static int out_activity(struct stream *stream, char *x, int bytes)
 		bytes = write(stream->fd, stream->data + stream->writ,
 			      chunk);
 	} while (bytes < 0 && (errno == EAGAIN || errno == EINTR));
+
 	if (bytes <= 0)
 		die("write of %d bytes failed", chunk);
 	stream->writ += bytes;
-	return 1;
+	return bytes > 0;
 }
 
 static struct stream *stream_create(int fd)
@@ -109,8 +124,6 @@ int multiplexor(int block)
 	FD_SET(0, &fds[2]);
 	maxfd = 0;
 	for (stream = streams; stream; stream = stream->next) {
-		if (FD_ISSET(stream->fd, &fds[2]))
-			continue;
 		FD_SET(stream->fd, &fds[!!stream->data]);
 		FD_SET(stream->fd, &fds[2]);
 		if (stream->fd > maxfd)
@@ -123,23 +136,22 @@ int multiplexor(int block)
 
 	errno = 0;
 	if (select(maxfd + 1, &fds[0], &fds[1], &fds[2], tvp) < 0)
-		if (errno == EAGAIN || errno == EINTR)
-			return 0;
-		else
-			die("select() failed");
+		return errno != EAGAIN && errno != EINTR;
 
 	for (prev = NULL, stream = streams; stream; stream = next) {
 		next = stream->next;
 		if (!FD_ISSET(stream->fd, &fds[!!stream->data]) &&
-		    !FD_ISSET(stream->fd, &fds[2]))
+		    !FD_ISSET(stream->fd, &fds[2])) {
+			prev = stream;
 			continue;
+		}
 		if (stream->data)
 			bytes = 0;
 		else {
 			if (!rdbuff)
-				rdbuff = allocate(NULL, 512);
+				rdbuff = allocate(NULL, 1024);
 			errno = 0;
-			bytes = read(stream->fd, rdbuff, 511);
+			bytes = read(stream->fd, rdbuff, 1023);
 		}
 		if (stream->activity(stream, rdbuff, bytes))
 			prev = stream;
@@ -151,6 +163,20 @@ int multiplexor(int block)
 	return FD_ISSET(0, &fds[0]) || FD_ISSET(0, &fds[2]);
 };
 
+static void child_close(struct view *view)
+{
+	if (!view)
+		return;
+	if (view->shell_std_in >= 0) {
+		close(view->shell_std_in);
+		view->shell_std_in = -1;
+	}
+	if (view->shell_out_locus >= 0) {
+		locus_destroy(view, view->shell_out_locus);
+		view->shell_out_locus = -1;
+	}
+}
+
 void demultiplex_view(struct view *view)
 {
 	struct stream *stream, *prev = NULL, *next;
@@ -161,18 +187,20 @@ void demultiplex_view(struct view *view)
 		else
 			prev = stream;
 	}
+	child_close(view);
 }
 
-void multiplex_write(int fd, const char *data, unsigned bytes, int retain)
+void multiplex_write(int fd, const char *data, int bytes, int retain)
 {
 	struct stream *stream;
 
+	if (bytes < 0)
+		bytes = data ? strlen(data) : 0;
 	if (!bytes) {
 		if (!retain)
 			close(fd);
 		return;
 	}
-
 	stream = stream_create(fd);
 	stream->retain = retain;
 	stream->activity = out_activity;
@@ -180,21 +208,78 @@ void multiplex_write(int fd, const char *data, unsigned bytes, int retain)
 	stream->bytes = bytes;
 }
 
+static void newline(int fd)
+{
+	char *str = allocate(NULL, 2);
+	strcpy(str, "\n");
+	multiplex_write(fd, str, 1, 1 /*retain*/);
+}
+
+int child(int *stdfd, unsigned stdfds, const char *argv[])
+{
+	int pipefd[3][2];
+	int j, k, pid;
+
+	errno = 0;
+	for (j = 0; j < stdfds; j++)
+		if (pipe(pipefd[j])) {
+			message("could not create pipes");
+			return 0;
+		}
+	for (; j < 3; j++)
+		for (k = 0; k < 2; k++)
+			pipefd[j][k] = dup(pipefd[j-1][k]);
+	fflush(NULL);
+	errno = 0;
+	if ((pid = fork()) < 0) {
+		message("could not fork");
+		return 0;
+	}
+	if (!pid) {
+		for (j = 0; j < 3; j++) {
+			dup2(pipefd[j][!!j], j);
+			for (k = 0; k < 2; k++)
+				close(pipefd[j][k]);
+		}
+		errno = 0;
+		execvp(argv[0], (char *const *) argv);
+		fprintf(stderr, "could not execute %s: %s\n",
+			argv[0], strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	for (j = 0; j < 3; j++) {
+		stdfd[j] = pipefd[j][!j];
+		close(pipefd[j][!!j]);
+	}
+	return 1;
+}
+
 void mode_child(struct view *view)
 {
 	char *command = view_extract_selection(view);
 	char *wrbuff = NULL;
 	unsigned cursor, to_write;
-	int pipefd[3][2];
-	int j, pid;
+	int stdfd[3];
+	const char *argv[4];
 	struct stream *std_out, *std_err;
+	const char *shell = getenv("SHELL");
 
 	if (!command) {
 		window_beep(view);
 		return;
 	}
 
+	if (view->shell_std_in >= 0) {
+		locus_set(view, MARK, UNSET);
+		multiplex_write(view->shell_std_in, command, strlen(command),
+				1 /*retain*/);
+		newline(view->shell_std_in);
+		return;
+	}
+
 	view_delete_selection(view);
+
 	if (command[0] == 'c' && command[1] == 'd' &&
 	    (!command[2] || command[2] == ' ')) {
 		const char *dir = command + 2;
@@ -217,41 +302,60 @@ void mode_child(struct view *view)
 		view_delete_selection(view);
 	}
 
-	errno = 0;
-	for (j = 0; j < 3; j++)
-		if (pipe(pipefd[j])) {
-			message("could not create pipes");
-			return;
-		}
-	fflush(NULL);
-	if ((pid = fork()) < 0) {
-		message("could not fork");
+	argv[0] = shell ? shell : "/bin/sh";
+	argv[1] = "-c";
+	argv[2] = command;
+	argv[3] = NULL;
+	if (!child(stdfd, 3, argv))
 		return;
-	}
-	if (!pid) {
-		const char *shell = getenv("SHELL");
-		if (!shell)
-			shell = "/bin/sh";
-		for (j = 0; j < 3; j++) {
-			dup2(pipefd[j][!!j], j);
-			close(pipefd[j][0]);
-			close(pipefd[j][1]);
-		}
-		errno = 0;
-		execl(shell, shell, "-c", command, NULL);
-		fprintf(stderr, "could not execute %s: %s\n",
-			shell, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
 
-	for (j = 0; j < 3; j++)
-		close(pipefd[j][!!j]);
-
-	multiplex_write(pipefd[0][1], wrbuff, to_write, 0 /*retain*/);
-	std_out = stream_create(pipefd[1][0]);
+	multiplex_write(stdfd[0], wrbuff, to_write, 0 /*retain*/);
+	std_out = stream_create(stdfd[1]);
 	std_out->activity = insertion_activity;
 	std_out->view = view;
 	std_out->locus = locus_create(view, cursor);
-	std_err = stream_create(pipefd[2][0]);
+	std_err = stream_create(stdfd[2]);
 	std_err->activity = error_activity;
+}
+
+void mode_shell_pipe(struct view *view)
+{
+	int stdfd[3];
+	const char *argv[4];
+	struct stream *output;
+	const char *shell = getenv("SHELL");
+
+	argv[0] = shell ? shell : "/bin/sh";
+	argv[1] = "--noediting";
+	argv[2] = "-il";
+	argv[3] = NULL;
+	if (!child(stdfd, 2, argv))
+		return;
+	child_close(view);
+	view->shell_std_in = stdfd[0];
+	view->shell_out_locus = locus_create(view, locus_get(view, CURSOR));
+	output = stream_create(stdfd[1]);
+	output->activity = shell_output_activity;
+	output->view = view;
+	close(stdfd[2]);
+}
+
+void shell_command(struct view *view)
+{
+	unsigned offset, cursor, linestart;
+	char *command;
+
+	if (view->shell_std_in < 0)
+		return;
+	cursor = locus_get(view, CURSOR);
+	linestart = cursor ? find_line_start(view, cursor-1) : 0;
+	offset = locus_get(view, view->shell_out_locus);
+	if (offset < linestart || offset >= cursor)
+		offset = linestart;
+	command = view_extract(view, offset, cursor - offset);
+	if (command)
+		multiplex_write(view->shell_std_in, command,
+				-1, 1 /*retain*/);
+	locus_set(view, view->shell_out_locus, view->bytes);
+	locus_set(view, CURSOR, view->bytes);
 }

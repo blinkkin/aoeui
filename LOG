@@ -1,4 +1,8 @@
 2007
+04-?? 1.0_alpha4
+04-04 commit
+04-02 pmk: TAGS support (^Space.)
+04-01 pmk: shell mode (^E without selection)
 03-31 1.0_alpha3
 03-30 pmk: generalize the asynchronous child I/O implementation
 03-30 pmk: change emergency exit from ^\ to ^Space^\

@@ -4,19 +4,19 @@ void die(const char *msg, ...)
 {
 	int err = errno;
 	va_list ap;
+	struct text *text;
 
-	window_beep(NULL);
-	windows_end();
-
-	fputs("editor error: ", stderr);
+	tcsetattr(1, TCSANOW, &original_termios);
+	fputs("\aaoeui editor fatal error: ", stderr);
 	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
 	va_end(ap);
 	if (err)
 		fprintf(stderr, ": %s", strerror(err));
-	fputc('\n', stderr);
-
-	texts_preserve();
+	fprintf(stderr, "\ncheck working files with # at the ends of their "
+		"names for current unsaved data\n");
+	for (text = text_list; text; text = text->next)
+		buffer_snap(text->buffer);
 	exit(EXIT_FAILURE);
 }
 

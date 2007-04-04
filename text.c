@@ -81,6 +81,7 @@ struct view *view_create(struct text *text)
 	view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 			text->clean ? text->clean_bytes :0;
 	view->mode = mode_default();
+	view->shell_std_in = view->shell_out_locus = -1;
 	view_name(view);
 	return view;
 }
@@ -262,7 +263,8 @@ int view_getch(struct view *view)
 	    view->macro_at == view->macro_bytes+1) {
 		/* record */
 		if (view->macro_bytes == view->macro_alloc)
-			view->macro = allocate(view->macro, view->macro_alloc += 64);
+			view->macro = allocate(view->macro,
+						view->macro_alloc += 64);
 		view->macro[view->macro_bytes++] = ch;
 		view->macro_at++;
 	}

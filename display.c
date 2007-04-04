@@ -1,6 +1,5 @@
 #include "all.h"
 #include "display.h"
-#include <termios.h>
 #include <sys/ioctl.h>
 
 /*
@@ -25,7 +24,6 @@ struct display {
 	unsigned fgrgba, bgrgba;
 	unsigned at_row, at_column;
 	struct cell *image;
-	struct termios original;
 	struct display *next;
 	unsigned buffered_bytes;
 	char *buffer;
@@ -321,23 +319,13 @@ void cfmakeraw(struct termios *termios)
 struct display *display_init(void)
 {
 	struct display *display = allocate(NULL, sizeof *display);
-	struct termios termios;
+	struct termios termios = original_termios;
 	const char *term;
-	const char *step;
 
 	memset(display, 0, sizeof *display);
 
-	errno = 0;
-	step = "tcgetattr";
-	if (tcgetattr(1, &display->original))
-		goto error;
-
-	termios = display->original;
 	cfmakeraw(&termios);
-	errno = 0;
-	step = "tcsetattr";
-	if (tcsetattr(1, TCSADRAIN, &termios))
-		goto recover;
+	tcsetattr(1, TCSADRAIN, &termios);
 
 	if (!(display->next = display_list)) {
 		struct sigaction sigact, old_sigact;
@@ -360,15 +348,6 @@ struct display *display_init(void)
 	display_reset(display);
 	display_sync(display);
 	return display;
-
-recover:
-	tcsetattr(1, TCSADRAIN, &display->original);
-error:
-	fprintf(stderr, "The display could not be initialized with %s, "
-		"so aoeui can't run.  Sorry!\n"
-		"The error code is: %s\n", step, strerror(errno));
-	exit(EXIT_FAILURE);
-	return NULL;
 }
 
 void display_end(struct display *display)
@@ -383,7 +362,7 @@ void display_end(struct display *display)
 	outs(display, ESC "[0m");
 	flush(display);
 
-	tcsetattr(1, TCSADRAIN, &display->original);
+	tcsetattr(1, TCSADRAIN, &original_termios);
 
 	allocate(display->image, 0);
 	allocate(display->buffer, 0);

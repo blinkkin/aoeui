@@ -5,7 +5,7 @@
 .TH aoeui 1 "March 17, 2007"
 .LO 1
 .SH NAME
-aoeui \- a lightweight visual editor optimized for Dvorak
+aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
 .SH SYNOPSIS
 .B aoeui
 [
@@ -17,10 +17,134 @@ aoeui \- a lightweight visual editor optimized for Dvorak
 .B aoeui
 is an interactive display text editor optimized for users of the
 Dvorak keyboard layout.
+.SH BASICS
+A
+.I text
+is a sequence of characters to be viewed or edited, such as a file.
+A
+.I view
+comprises all or part of a text.
+A text in the editor has at least one view, and possibly more.
+.P
+A
+.I window
+is a rectilinear portion of the display, and is always associated
+with a single view, a contiguous portion of whose text is rendered
+in the window.  Not every view has a window.
+.P
+Each view has a
+.I cursor
+and possibly a
+.IR selection ,
+which has the cursor at one end and the
+.I mark
+at the other.
+The view's window, if any, always renders part of the text containing
+the view's cursor.
 .SH COMMANDS
 .B aoeui
 run with no file name arguments displays a short command
 introduction and summary.
+.P
+Commands are denoted here by
+.B ^key
+to signify the use of Control, Alt, or a leading Escape key.
+They all mean the same thing.
+.P
+.B Variant
+commands always begin with
+.BR ^Space ,
+or its synonym,
+.BR ^@ .
+A few commands take a numeric argument, which is specified by
+.B ^Space
+followed by a decimal or hexadecimal number, the latter
+using C language syntax (0xdeadbeef).
+.P
+Many commands are sensitive to the presence or absence of a
+.BR selection .
+.SH "NON-COMMAND CHARACTERS"
+In the default mode, characters typed without a command indicator
+are inserted at the current cursor position.
+If the cursor is at the beginning of a selection, the selection is
+first cut to the clip buffer, so that the new text replaces it.
+.SH NAVIGATION
+.TP
+.B ^H
+moves the cursor backward one character.
+.TP
+.B ^T
+moves the cursor forward one characters.
+.TP
+.B ^N
+moves the cursor backward one word.
+.TP
+.B ^S
+moves the cursor forward one word.
+.TP
+.B ^Space^N
+moves the cursor backward one sentence.
+.TP
+.B ^Space^S
+moves the cursor forward one sentence.
+.TP
+.B ^G
+moves the cursor back to the beginning of the line.
+If already there, it moves back to the beginniong of the previous line.
+.TP
+.B ^C
+moves the cursor forward to the end of the line.
+If already there, it moves forward to the end of the next line.
+.TP
+.B ^R
+moves the window backward one screenful.
+.TP
+.B ^L
+moves the window forward one screenful.
+.TP
+.B ^Space^R
+moves to the very beginning of the view.
+.TP
+.B ^Space^L
+moves to the very end of the view.
+.TP
+.B ^]
+moves to the corresponding parenthesis, bracket, or brace, respecting
+nesting, if the cursor sits atop such a character.
+Otherwise, it moves to the nearest enclosing bracketing character.
+Either way, if successful, it leaves the mark set at the original
+cursor position so that the enclosed text constitutes the selection.
+.TP
+.B ^Z
+recenters the window so that the line containing the cursor lies in
+the middle of its portion of the display.
+.TP
+.B ^Space^Z
+causes the current window to occupy the entire display and recenters
+the window.
+With a numeric argument, however, it simply
+moves the cursor to the indicated line in the view, where 1 is the first.
+.SH SELECTION
+These commands are sensitive to the presence or absence of a current selection.
+.TP
+.B ^V
+begins a new selection if non exists, setting its mark at the current cursor,
+which is then typically navigated to its intended other end.
+.B ^V in the presence of selection simply removes the mark.
+.TP
+.B ^Space^V
+without a selection causes the entire current line to be
+selected by placing the mark at the end of the line and the cursor at
+its beginning.  It is short for
+.BR ^C^V^G .
+With a selection present,
+.B ^Space^V
+exchanges its cursor with its mark.
+.TP
+.B ^Space^D
+with no selection causes all of the contiguous white space characters surrounding
+the cursor to be selected, with the cursor at the beginning so that they can be
+easily replaced by retyping.
 .SH ENVIRONMENT
 .TP
 .B SHELL

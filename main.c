@@ -1,6 +1,8 @@
 #include "all.h"
 #include <sys/wait.h>
 
+struct termios original_termios;
+
 static void sighandler(int signo)
 {
 	if (signo == SIGCHLD) {
@@ -31,6 +33,9 @@ int main(int argc, char *const *argv)
 	int ch, value;
 	struct view *view;
 
+	errno = 0;
+	if (tcgetattr(1, &original_termios))
+		die("not running in a terminal");
 	signals();
 
 	while ((ch = getopt(argc, argv, "t:")) >= 0)

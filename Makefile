@@ -1,5 +1,5 @@
 TARGET = aoeui
-VERSION = 1.0_alpha3
+VERSION = 1.0_alpha4
 PACKAGE = $(TARGET)-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c undo.c \
 	utf8.c window.c util.c clip.c mode.c search.c child.c bookmark.c
@@ -10,6 +10,7 @@ INST_DIR = $(DESTDIR)/usr
 CFLAGS += -Wall -Werror -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
+LIBS = -lutil
 
 default: $(TARGET)
 $(TARGET): $(RELS)
@@ -23,9 +24,9 @@ optimized: clean
 debug: clean
 	$(MAKE) CFLAGS="-g -O0"
 profile: clean
-	$(MAKE) CFLAGS="-pg" LIBS="-pg"
+	$(MAKE) CFLAGS="-pg" LIBS="$(LIBS) -pg"
 
-tags: $(SRCS) $(HDRS)
+TAGS: $(SRCS) $(HDRS)
 	ctags -x $(SRCS) $(HDRS) >$@
 
 install: $(TARGET) $(TARGET).1.gz
