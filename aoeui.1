@@ -2,7 +2,7 @@
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH aoeui 1 "March 17, 2007"
+.TH aoeui 1 "April 4, 2007"
 .LO 1
 .SH NAME
 aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
@@ -16,7 +16,16 @@ aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
 .SH DESCRIPTION
 .B aoeui
 is an interactive display text editor optimized for users of the
-Dvorak keyboard layout.
+Dvorak keyboard layout, although QWERTY users are welcome to
+use it as well.
+.B aoeui
+run with no file name arguments displays a short command
+introduction and summary.
+.P
+.B aoeui
+can browse very large read-only files with quick start-up,
+since original texts are memory-mapped from files and not
+duplicated in memory until they are about to be modified.
 .SH BASICS
 A
 .I text
@@ -41,10 +50,18 @@ which has the cursor at one end and the
 at the other.
 The view's window, if any, always renders part of the text containing
 the view's cursor.
+.P
+The
+.I clip buffer
+is not visible in any window.
+It receives snippets of data that have been cut or copied out of
+texts, so that they may be moved or copied elsewhere.
+It also supplies the standard input to a background command
+launched with
+.B ^E
+(below).
+There is one clip buffer shared by all views.
 .SH COMMANDS
-.B aoeui
-run with no file name arguments displays a short command
-introduction and summary.
 .P
 Commands are denoted here by
 .B ^key
@@ -63,11 +80,23 @@ using C language syntax (0xdeadbeef).
 .P
 Many commands are sensitive to the presence or absence of a
 .BR selection .
-.SH "NON-COMMAND CHARACTERS"
-In the default mode, characters typed without a command indicator
-are inserted at the current cursor position.
-If the cursor is at the beginning of a selection, the selection is
-first cut to the clip buffer, so that the new text replaces it.
+.SH LEAVING
+.TP
+.B ^Space^\e
+aborts the editor, leaving no original file modified since the
+last time
+.B ^K
+was used.
+.TP
+.B ^Q
+suspends the editor and returns the terminal to the shell that
+invoked it.
+Use the shell's foreground command, probably
+.BR fg ,
+to resume editing.
+.TP
+.B ^Space^Q
+saves all modified texts and terminates the editor.
 .SH NAVIGATION
 .TP
 .B ^H
@@ -123,7 +152,22 @@ the middle of its portion of the display.
 causes the current window to occupy the entire display and recenters
 the window.
 With a numeric argument, however, it simply
-moves the cursor to the indicated line in the view, where 1 is the first.
+moves the cursor to the indicated line in the view, with 1 being the
+number of the first line.
+.TP
+.B ^Space=
+(note that
+.B =
+is not a control character)
+sets a bookmark on the current selection or cursor position.
+A numeric argument may be used to manage multiple bookmarks.
+.TP
+.B ^Space-
+(note that
+.B -
+is not a control character)
+returns to a previous set bookmark, possibly identified with a
+numeric argument.
 .SH SELECTION
 These commands are sensitive to the presence or absence of a current selection.
 .TP
@@ -135,20 +179,251 @@ which is then typically navigated to its intended other end.
 .B ^Space^V
 without a selection causes the entire current line to be
 selected by placing the mark at the end of the line and the cursor at
-its beginning.  It is short for
-.BR ^C^V^G .
+its beginning.  It is the same as the command sequence
+.B ^C^V^G
+with no selection.
 With a selection present,
 .B ^Space^V
 exchanges its cursor with its mark.
 .TP
 .B ^Space^D
-with no selection causes all of the contiguous white space characters surrounding
-the cursor to be selected, with the cursor at the beginning so that they can be
-easily replaced by retyping.
+with no selection causes all of the contiguous white space characters
+surrounding the cursor to be selected, with the cursor at the beginning so
+that they can be easily replaced by retyping.
+.SH UNDO
+.B aoeui
+has infinite undo capabilities.
+.TP
+.B ^U
+reverses the effects of the last command that modified the current
+text in any of its views.
+.TP
+.B ^Space^U
+reverses the effects of the most recent undo.
+After
+.BR ^U ,
+any
+.I other
+command that modifies the text will permanently commit the undo.
+.SH MODIFICATION
+In the default mode, characters typed without a command indicator
+are inserted at the current cursor position.
+Further, if the cursor is at the beginning of a selection, the selection is
+first cut to the clip buffer, so that the new text replaces it.
+.TP
+.B ^^
+inserts an untypable control character into the text.
+The very next key to be pressed is either taken literally,
+if it is a control character, or converted to a control character
+if it is not, and inserted.
+(For example, you can press
+.B ^^
+and then hit ether Control-A or just a plain A, to get the
+character code 0x01 inserted.)
+.TP
+.B ^Space^^
+with a numeric argument, probably in hexadecimal, inserts the
+specified Unicode character into the text in UTF-8 format.
+.TP
+.B Tab
+(or
+.BR ^I )
+with no selection will simply insert a TAB character.
+If at the end of a selection, however,
+.B Tab
+will attempt "tab completion" on the path name in the selection,
+so that it may be used later to open up a file with
+.BR ^X .
+.TP
+.B ^SpaceTab
+(or
+.BR ^Space^I )
+will align the current line to the indentation of the previous one.
+With a numeric argument between 1 and 20, it will set the tabstop pitch.
+.TP
+.B ^J
+(or
+.B ^Enter
+under some terminal emulators)
+inserts a new line into the text with automatic indentation.
+.TP
+.B ^SpaceEnter
+(or
+.BR ^Space^M )
+opens up a new line after the current one.
+.TP
+.B Backspace
+(or more properly, its synonym
+.BR ^? ),
+deletes the character immediately before the cursor.
+.TP
+.B ^D
+with no selection deletes the character "under" the cursor.
+When a selection exists,
+.B ^D
+moves it into the clip buffer, discarding any previously clipped text.
+.TP
+.B ^Space^D
+with no selection will select surrounding white space, as described
+earlier.
+When a selection exists,
+.B ^Space^D
+moves it into the clip buffer, putting it before any old text if the cursor
+was at its beginning and appending it to the clip buffer if the cursor
+was at its end.
+The intent is for multiple
+.B ^Space^D
+commands to collect data together in the same order in which
+they are most likely to have been visited.
+.TP
+.B ^F
+requires a selection, which is copied into the clip buffer and
+then unmarked.
+.TP
+.B ^Space^F
+is to
+.B ^F
+what
+.B ^Space^D
+is to
+.BR ^D .
+It copies the selection to the clip buffer, putting it at the beginning or the end in the same way as
+.B ^Space^D
+(above).
+.TP
+.B ^B
+with no selection will paste the current clip buffer's contents.
+But in the presence of a selection it performs a more general function:
+the contents of the selection and the clip buffer are exchanged.
+.SH SEARCHING
+.TP
+.B ^/
+and its synonym
+.B ^_
+enter search mode.
+Each non-command character that is typed thereafter will be appended
+to the current search target string and the selection is moved to the
+next occurence thereof.
+Backspace will remove the last character from the search target and
+move the selection back to its previous position.
+.P
+The case of alphabetic characters is
+.I not
+significant to the search.
+.P
+Most command characters will automatically take the editor out of
+search mode before executing, and the most recently discovered
+occurrence of the search target string will be its selection.
+.B ^V
+is typically used to leave search mode and abandon the selection.
+A few commands, besides Backspace, have different
+meanings in search mode:
+.TP
+.B ^/
+with no characters in the search target string will cause the
+last search's target string to be reused.
+.TP
+.B ^H
+and
+.B ^T
+cause motion to the previous and next occurrences of the search
+target string, not single-character motion.
+.TP
+.B Enter
+simply leaves search mode and unsets the selection.
+.SH TEXTS, VIEWS, and WINDOWS
+.TP
+.B ^K
+saves
+.I all
+modified texts back to their files.
+.TP
+.B ^Space^K
+saves just the current text.
+.TP
+.B ^X
+with no selection inserts, as the new selection, the path name of the
+current text.  With a selection containing a path name,
+possibly constructed with the assistance of tab completion (above),
+.B ^X
+will raise up a window containing a view into the indicated file,
+creating a new text to hold it if one does not already exist.
+.TP
+.B ^Space^X
+with a selection will rename the current text, so that it will be
+saved in another file.
+.TP
+.B ^W
+finds an invisible view and associates it with the current window,
+making its currint view invisible.  Hitting
+.B ^W
+repeatedly will cycle through all of the views.
+If there was no invisible view,
+.B ^W
+creates a new scratch text, as does
+.B ^Space;
+below.
+.TP
+.B ^Space^W
+does the same thing. but will close the window's current view,
+and also its text if it was the last view thereof.
+.TP
+.B ^Y
+splits the current window horizontally, raising up an invisible
+or new view in the lower half of the original window.
+.TP
+.B ^Space^Y
+splits the current window vertically, raising up an invisible or new
+view in the right half of the original window.
+.TP
+.B ^P
+moves to another window.
+.TP
+.B ^Space^P
+moves to another window, closing the old one.
+.TP
+.B ^Space;
+(note that
+.B ;
+is not a control character)
+creates a new anonymous text.
+.SH MACROS
+.TP
+.B ^Space^A
+commences the recording of your keystrokes in the current view
+as its
+.IR macro,
+which may contain anything but another macro or macro invocation.
+.TP
+.B ^A
+replays the view's macro.
+.SH SHELLS
+.TP
+.B ^E
+with no selection will launch an interactive shell in a new scratch
+text.
+With a selection, however,
+.B ^E
+will execute the shell command in the selection with the contents
+of the clip buffer, if any, as its standard input, and collect its
+output asynchronously in the background to replace the selection.
+This allows many helpful UNIX text processing commands to be
+used directly upon portions of text, such as
+.BI fmt (1),
+.BI tr (1),
+and a simple
+.BI cat (1),
+which is how you insert a copy of another file.
+.TP
+.B ^Space^E
+with no selection will terminate the output of any asynchronous
+child process that's still running.
 .SH ENVIRONMENT
 .TP
 .B SHELL
-is used to name the program run by the ^E command.
+is used to name the program run by the
+.B ^E
+command.
 .SH FILES
 .TP
 .IB file ~
