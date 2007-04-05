@@ -168,6 +168,23 @@ A numeric argument may be used to manage multiple bookmarks.
 is not a control character)
 returns to a previous set bookmark, possibly identified with a
 numeric argument.
+.TP
+.B ^Space.
+(note that the period
+.B .
+is not a control character)
+looks up the identifier immediately before the cursor in the
+.B TAGS
+file, which is automatically loaded into the editor if it is
+not already present, and if the identifier is found therein,
+the corresponding file name and line number are sought.
+The
+.B TAGS
+file should be generated with the
+.B ctags
+utility and its
+.B -x
+output format.
 .SH SELECTION
 These commands are sensitive to the presence or absence of a current selection.
 .TP
@@ -212,6 +229,8 @@ Further, if the cursor is at the beginning of a selection, the selection is
 first cut to the clip buffer, so that the new text replaces it.
 .TP
 .B ^^
+(that's Control-Shift-6, the caret character, on most keyboards,
+and ^6 will probably also work)
 inserts an untypable control character into the text.
 The very next key to be pressed is either taken literally,
 if it is a control character, or converted to a control character
@@ -239,7 +258,7 @@ so that it may be used later to open up a file with
 (or
 .BR ^Space^I )
 will align the current line to the indentation of the previous one.
-With a numeric argument between 1 and 20, it will set the tabstop pitch.
+With a numeric argument between 1 and 20, it will set the tab stop pitch.
 .TP
 .B ^J
 (or
@@ -408,16 +427,106 @@ will execute the shell command in the selection with the contents
 of the clip buffer, if any, as its standard input, and collect its
 output asynchronously in the background to replace the selection.
 This allows many helpful UNIX text processing commands to be
-used directly upon portions of text, such as
-.BI fmt (1),
-.BI tr (1),
-and a simple
-.BI cat (1),
-which is how you insert a copy of another file.
+used directly.
+Some handy commands to know:
 .TP
+.BI cat (1)
+to include another entire file, or to receive writes to a named pipe
+.TP
+.BI mkfifo (1)
+to create a named pipe so that commands in other windows may direct
+their output into a text running
+.B cat
+in the background.
+.TP
+.BI "cd " path
+to change the editor's current working directory (a special case command
+that is not actually passed to a shell)
+.TP
+.BI grep (1)
+to search for lines containing a pattern
+.TP
+.BI sort (1)
+to rearrange lines alphabetically or numerically, possibly reversed
+.TP
+.BI uniq (1)
+to discard duplicated lines
+.TP
+.BI sed (1)
+as in
+.B "sed 's/FROM/TO/g'"
+to perform unconditional search-and-replace with regular expressions
+.TP
+.BI tr (1)
+to convert lower to upper case with
+.B "a-z A-Z"
+and to remove DOS carriage returns with
+.BR "-d '[\er]'"
+.TP
+.BI fmt (1)
+to reformat paragraphs of natural language text
+.TP
+.BI "indent -st -kr -i8 -nbbo"
+to reformat C language source code sensibly
+.TP
+.BI column (1)
+to align data into columns
+.TP
+.B "man | colcrt"
+to read a man page
+.TP
+.BI tailf (1)
+to monitor additions to a file such as a log
+.TP
+.BI make (1)
+to compile your code
 .B ^Space^E
 with no selection will terminate the output of any asynchronous
 child process that's still running.
+.SH TIPS
+.TP
+.B *
+To select the rest of the line after the cursor, use
+.B ^V^C
+.TP
+.B *
+It is often faster to retype a bungled word than to fix it, using
+.B ^V^N
+and then retyping.
+.TP
+.B *
+Transposing multiple blocks of text is easy with
+.BR ^B ,
+which generalized the usual paste operation into an exchange of the clip buffer
+with the selection.
+.TP
+.B *
+Incremental search and replacement can be done with a macro or by
+clipping the replacement text, and on search hits that are to be
+replaced, using
+.B ^B^F^/^/
+to exchange the hit with the replacement text, copy it back to the
+clip buffer, and proceed to the next occurrence of the search pattern.
+But when the replacement text is short, it's sometimes easiest to just
+overwrite the selection with
+.B ^Space^V
+to move to its beginning and then retyping it.
+.TP
+.B *
+Reconfigure your keyboards so that the key to the left of A, which is
+probably labelled
+.BR "Caps Lock" ,
+is interpreted as a Control modifier instead.
+.TP
+.B *
+The
+.BI gnome-terminal (1)
+terminal emulator works well with
+.B aoeui
+if you configure the terminal's scrollback limit to a relatively
+small value.
+.SH BUGS
+Probably lots; please tell me about them.
 .SH ENVIRONMENT
 .TP
 .B SHELL
@@ -436,6 +545,17 @@ while
 .B aoeui
 is running, and may be useful in recovery if the editor
 is killed.
+.TP
+.B TAGS
+is read in by the
+.B ^Space.
+command, if not already present, to supply the tags that are
+scanned.  It should contain the output of
+.B "ctags -x"
+.IR files .
+.TP
+.B $HOME/.aoeui
+holds any new "anonymous" texts created during editing sessions.
 .SH AUTHOR
 Peter Klausler <peter@klausler.com> wrote
 .BR "aoeui" .

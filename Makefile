@@ -12,7 +12,7 @@ CFLAGS += -Wall -Werror -Wno-parentheses \
 -Wmissing-prototypes -Wmissing-declarations
 LIBS = -lutil
 
-default: $(TARGET)
+default: $(TARGET) TAGS
 $(TARGET): $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
@@ -39,7 +39,7 @@ install: $(TARGET) $(TARGET).1.gz
 clean:
 	rm -f *.o core
 clobber: clean
-	rm -f $(TARGET) $(TARGET).1.gz tags
+	rm -f $(TARGET) $(TARGET).1.gz TAGS
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless

@@ -1,5 +1,6 @@
 2007
 04-?? 1.0_alpha4
+04-05 pmk: fix cursor placement at end of full line, make it smart
 04-04 commit
 04-02 pmk: TAGS support (^Space.)
 04-01 pmk: shell mode (^E without selection)

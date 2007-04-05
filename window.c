@@ -226,8 +226,6 @@ void windows_end(void)
 INLINE unsigned char_columns(unsigned ch, unsigned column,
 				unsigned tabstop)
 {
-	if (ch == '\n')
-		return 0;
 	if (ch == '\t')
 		return tabstop - column % tabstop;
 	if (ch < ' ' || ch == 0x7f)
@@ -238,36 +236,49 @@ INLINE unsigned char_columns(unsigned ch, unsigned column,
 static unsigned row_bytes(struct view *view, int offset0, int columns)
 {
 	int offset = offset0;
-	unsigned column, chlen;
+	unsigned column = 0, chlen;
 	unsigned tabstop = view->text->tabstop;
-	int ch;
+	int ch = 0;
 
-	for (column = 0;
-	     column < columns;
-	     column += char_columns(ch, column, tabstop)) {
+	for (column = 0; column < columns; ) {
 		ch = view_unicode(view, offset, &chlen);
 		offset += chlen;
-		if (ch < 0 || ch == '\n')
+		if (ch == '\n' || ch < 0)
 			break;
+		column += char_columns(ch, column, tabstop);
 	}
 
 	if (column > columns)
 		offset -= chlen;
+	else if (column == columns &&
+		 offset != locus_get(view, CURSOR)) {
+		ch = view_unicode(view, offset, &chlen);
+		if (ch < 0 || ch == '\n')
+			offset += chlen;
+	}
 	return offset - offset0;
 }
 
-static void set_cursor_column(struct window *window, unsigned offset)
+static void set_cursor(struct window *window, unsigned offset,
+			unsigned row)
 {
 	struct view *view = window->view;
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned tabstop = view->text->tabstop;
-	unsigned chlen, code, column;
+	unsigned chlen, column;
+	int ch;
 
 	for (column = 0; offset < cursor; offset += chlen) {
-		code = view_unicode(view, offset, &chlen);
-		column += char_columns(code, column, tabstop);
+		ch = view_unicode(view, offset, &chlen);
+		if (ch < 0)
+			break;
+		if (ch == '\n') {
+			row++;
+			column = 0;
+		} else
+			column += char_columns(ch, column, tabstop);
 	}
-
+	window->cursor_row = row;
 	window->cursor_column = column;
 }
 
@@ -284,11 +295,12 @@ static unsigned count_rows(struct window *window, unsigned start, unsigned end)
 static unsigned find_row_start(struct window *window, unsigned position,
 			       unsigned start)
 {
-	unsigned next;
-
-	while ((next = start + row_bytes(window->view, start,
-					 window->columns)) < position)
-		start = next;
+	unsigned bytes;
+	while ((bytes = row_bytes(window->view, start, window->columns))) {
+		if (start + bytes > position)
+			break;
+		start += bytes;
+	}
 	return start;
 }
 
@@ -311,7 +323,7 @@ static unsigned focus(struct window *window)
 	struct view *view = window->view;
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned cursorrow = find_row_start(window, cursor,
-					   find_line_start(view, cursor));
+					    find_line_start(view, cursor));
 	unsigned start = screen_start(view);
 	unsigned end, above, below, at, bytes;
 
@@ -346,8 +358,7 @@ static unsigned focus(struct window *window)
 	for (; above + below > window->rows; above--)
 		start += row_bytes(view, start, window->columns);
 
-done:	window->cursor_row = above;
-	set_cursor_column(window, cursorrow);
+done:	set_cursor(window, cursorrow, above);
 	new_start(view, start);
 	return start;
 }
@@ -549,7 +560,7 @@ static void repaint(void)
 		paint(window, bgrgba);
 	}
 
-	display_cursor(display, active_window->row + active_window->cursor_row,
+	display_cursor(display, active_window->row +  active_window->cursor_row,
 		       active_window->column + active_window->cursor_column);
 }
 
