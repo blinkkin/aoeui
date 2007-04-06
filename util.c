@@ -41,50 +41,66 @@ unsigned find_nonspace(struct view *view, unsigned offset)
 	return offset;
 }
 
+static int is_wordch(int ch)
+{
+	return ch > 0x100 || isalnum(ch);
+}
+
 unsigned find_word_start(struct view *view, unsigned offset)
 {
 	int ch;
+	unsigned prev;
 	while ((ch = view_byte(view, --offset)) >= 0)
 		if (!isspace(ch)) {
 			offset--;
 			break;
 		}
-	for (; (ch = view_byte(view, offset)) >= 0; offset--)
-		if (!isalnum(ch))
-			break;
+	for (; (ch = view_unicode_prior(view, offset, &prev)) >= 0;
+	     offset = prev)
+		if (!is_wordch(ch))
+			return offset;
 	return offset+1;
 }
 
 unsigned find_word_end(struct view *view, unsigned offset)
 {
 	int ch;
+	unsigned chlen;
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_byte(view, offset)) >= 0; offset++)
-		if (!isalnum(ch))
+	for (; (ch = view_unicode(view, offset, &chlen)) >= 0; offset += chlen)
+		if (!is_wordch(ch))
 			break;
 	return offset;
+}
+
+static int is_idch(int ch)
+{
+	return ch == '_' || is_wordch(ch);
 }
 
 unsigned find_id_start(struct view *view, unsigned offset)
 {
 	int ch;
+	unsigned prev;
 	while ((ch = view_byte(view, --offset)) >= 0)
 		if (!isspace(ch)) {
 			offset--;
 			break;
 		}
-	for (; (ch = view_byte(view, offset)) >= 0; offset--)
-		if (!isalnum(ch) && ch != '_')
-			break;
+	for (; (ch = view_unicode_prior(view, offset, &prev)) >= 0;
+	     offset = prev)
+		if (!is_idch(ch))
+			return offset;
 	return offset+1;
 }
 
 unsigned find_id_end(struct view *view, unsigned offset)
 {
 	int ch;
+	unsigned chlen;
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_byte(view, offset)) >= 0; offset++)
-		if (!isalnum(ch) && ch != '_')
+	for (; (ch = view_unicode(view, offset, &chlen)) >= 0; offset += chlen)
+		if (!is_idch(ch))
 			break;
 	return offset;
 }
@@ -120,6 +136,19 @@ unsigned find_sentence_end(struct view *view, unsigned offset)
 	return offset;
 }
 
+static char *extract_id(struct view *view)
+{
+	unsigned at = locus_get(view, CURSOR);
+	char *id;
+
+	if (is_idch(view_unicode(view, at, NULL)))
+		locus_set(view, CURSOR, at = find_id_end(view, at));
+	locus_set(view, MARK, find_id_start(view, at));
+	id = view_extract_selection(view);
+	locus_set(view, MARK, UNSET);
+	return id;
+}
+
 void find_tag(struct view *view)
 {
 	struct view *tags = view_find("TAGS");
@@ -135,13 +164,15 @@ void find_tag(struct view *view)
 			return;
 		}
 	}
-	at = find_id_end(view, locus_get(view, CURSOR));
-	locus_set(view, CURSOR, at);
-	locus_set(view, MARK, find_id_start(view, at));
-	id = view_extract_selection(view);
-	locus_set(view, MARK, UNSET);
-	if (!id)
+	if (locus_get(view, MARK) != UNSET) {
+		id = view_extract_selection(view);
+		view_delete_selection(view);
+	} else
+		id = extract_id(view);
+	if (!id) {
+		window_beep(view);
 		return;
+	}
 
 	first = 0;
 	last = tags->bytes;
@@ -195,9 +226,11 @@ done:	errno = 0;
 int view_unicode_slow(struct view *view, unsigned offset, unsigned *length)
 {
 	char *raw;
-	*length = view_raw(view, &raw, offset, 8);
-	*length = utf8_length(raw, *length);
-	return utf8_unicode(raw, *length);
+	unsigned len = view_raw(view, &raw, offset, 8);
+	len = utf8_length(raw, len);
+	if (length)
+		*length = len;
+	return utf8_unicode(raw, len);
 }
 
 int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev)

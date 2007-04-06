@@ -117,7 +117,7 @@ struct view *view_open(const char *path0)
 		}
 		errno = 0;
 		text->fd = open(path, O_CREAT|O_TRUNC|O_RDWR,
-				S_IRUSR|S_IWUSR);
+				S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 		if (text->fd < 0) {
 			message("can't create %s", path);
 			goto fail;
@@ -230,7 +230,8 @@ int text_rename(struct text *text, const char *path0)
 			return 0;
 
 	errno = 0;
-	if ((fd = open(path, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR)) < 0) {
+	if ((fd = open(path, O_CREAT|O_RDWR,
+			S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)) < 0) {
 		message("can't create %s", path);
 		allocate(path, 0);
 		return 0;

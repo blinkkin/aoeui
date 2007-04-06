@@ -173,7 +173,7 @@ numeric argument.
 (note that the period
 .B .
 is not a control character)
-looks up the identifier immediately before the cursor in the
+looks an identifier up the identifier in the
 .B TAGS
 file, which is automatically loaded into the editor if it is
 not already present, and if the identifier is found therein,
@@ -185,6 +185,9 @@ file should be generated with the
 utility and its
 .B -x
 output format.
+If there is a selection, it is deleted from the view and its entire contents
+will constitute the identifer to be looked up; otherwise, the identifier
+that is immediately before or around the cursor is sought.
 .SH SELECTION
 These commands are sensitive to the presence or absence of a current selection.
 .TP

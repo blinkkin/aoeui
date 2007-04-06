@@ -190,15 +190,8 @@ void window_unmap(struct view *view)
 struct view *window_current_view(void)
 {
 	if (!active_window) {
-		if (!text_list) {
-			if (!access(HELP_PATH, R_OK))
-				view_open(HELP_PATH);
-			else {
-				errno = 0;
-				message("\nWelcome to aoeui, pmk's "
-					"Dvorak-optimized display editor.\n");
-			}
-		}
+		if (!text_list)
+			view_help();
 		window_raise(text_list->views);
 	}
 	return active_window->view;
@@ -251,11 +244,9 @@ static unsigned row_bytes(struct view *view, int offset0, int columns)
 	if (column > columns)
 		offset -= chlen;
 	else if (column == columns &&
-		 offset != locus_get(view, CURSOR)) {
-		ch = view_unicode(view, offset, &chlen);
-		if (ch < 0 || ch == '\n')
-			offset += chlen;
-	}
+		 offset != locus_get(view, CURSOR) &&
+		 view_byte(view, offset) == '\n')
+		offset++;
 	return offset - offset0;
 }
 
@@ -296,6 +287,8 @@ static unsigned find_row_start(struct window *window, unsigned position,
 			       unsigned start)
 {
 	unsigned bytes;
+	if (position && position >= window->view->bytes)
+		position--;
 	while ((bytes = row_bytes(window->view, start, window->columns))) {
 		if (start + bytes > position)
 			break;
@@ -422,7 +415,9 @@ static void paint(struct window *window, unsigned default_bgrgba)
 		for (column = 0; at < limit; at += chlen) {
 
 			ch = view_unicode(view, at, &chlen);
-			if (ch < 0 || ch == '\n') {
+			if (ch < 0)
+				default_bgrgba = 0xff00ff00;
+			if (ch == '\n') {
 				at = limit;
 				break;
 			}

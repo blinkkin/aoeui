@@ -1,5 +1,9 @@
 2007
 04-?? 1.0_alpha4
+04-06 commit
+04-06 pmk: improve tag command
+04-06 pmk: create new files 644, not 600
+04-06 pmk: pull basic help text into program
 04-05 pmk: fix cursor placement at end of full line, make it smart
 04-04 commit
 04-02 pmk: TAGS support (^Space.)

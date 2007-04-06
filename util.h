@@ -11,7 +11,6 @@ unsigned find_id_end(struct view *, unsigned offset);
 unsigned find_sentence_start(struct view *, unsigned offset);
 unsigned find_sentence_end(struct view *, unsigned offset);
 void find_tag(struct view *);
-int view_unicode_prior(struct view *, unsigned offset, unsigned *prev);
 void view_erase(struct view *);
 int view_vprintf(struct view *, const char *, va_list);
 int view_printf(struct view *, const char *, ...);
@@ -28,10 +27,12 @@ INLINE int view_unicode(struct view *view, unsigned offset,
 {
 	int ch = view_byte(view, offset);
 	if (ch < 0x80) {
-		*length = ch >= 0;
+		if (length)
+			*length = ch >= 0;
 		return ch;
 	}
 	return view_unicode_slow(view, offset, length);
 }
+int view_unicode_prior(struct view *, unsigned offset, unsigned *prev);
 
 char *tab_complete(const char *);

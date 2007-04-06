@@ -92,4 +92,7 @@ void bookmark_unset_view(struct view *);
 /* in child.c */
 void demultiplex_view(struct view *);
 
+/* in help.c */
+struct view *view_help(void);
+
 /* see also util.h */

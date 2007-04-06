@@ -1,10 +1,11 @@
 TARGET = aoeui
 VERSION = 1.0_alpha4
 PACKAGE = $(TARGET)-$(VERSION)
-SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c undo.c \
-	utf8.c window.c util.c clip.c mode.c search.c child.c bookmark.c
-HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h window.h \
-	util.h clip.h
+SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
+	undo.c utf8.c window.c util.c clip.c mode.c search.c \
+	child.c bookmark.c help.c
+HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h \
+	window.h util.h clip.h
 RELS = $(SRCS:.c=.o)
 INST_DIR = $(DESTDIR)/usr
 CFLAGS += -Wall -Werror -Wno-parentheses \
