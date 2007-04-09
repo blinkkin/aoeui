@@ -3,7 +3,7 @@ VERSION = 1.0_alpha4
 PACKAGE = $(TARGET)-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
-	child.c bookmark.c help.c
+	child.c bookmark.c help.c find.c tags.c
 HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h \
 	window.h util.h clip.h
 RELS = $(SRCS:.c=.o)
@@ -38,7 +38,7 @@ install: $(TARGET) $(TARGET).1.gz
 	install *.txt $(INST_DIR)/share/$(TARGET)
 	install *.1.gz $(INST_DIR)/share/man/man1
 clean:
-	rm -f *.o core
+	rm -f *.o core gmon.out
 clobber: clean
 	rm -f $(TARGET) $(TARGET).1.gz TAGS
 spotless: clobber

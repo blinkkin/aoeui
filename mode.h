@@ -1,5 +1,7 @@
 struct view;
 typedef void (*command)(struct view *, unsigned);
+
+/* All modes start with this header. */
 struct mode {
 	command command;
 };

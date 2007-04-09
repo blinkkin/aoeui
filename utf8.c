@@ -19,22 +19,49 @@ int utf8_out(char *out, unsigned unicode)
 	return p - out;
 }
 
+static char utf8_bytes[0x100] = {
+	/* 00-7f are themselves */
+/*00*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*10*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*20*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*30*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*40*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*50*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*60*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*70*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	/* 80-bf are later bytes, out-of-sync if first */
+/*80*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*90*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*a0*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+/*b0*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	/* c0-df are first byte of two-byte sequences (5+6=11 bits) */
+/*c0*/	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+/*d0*/	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+	/* e0-ef are first byte of three-byte (4+6+6=16 bits) */
+/*e0*/	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	/* f0-f7 are first byte of four-byte (3+6+6+6=21 bits) */
+/*f0*/	4, 4, 4, 4, 4, 4, 4, 4,
+	/* f8-fb are first byte of five-byte (2+6+6+6+6+6=26 bits) */
+/*f8*/	5, 5, 5, 5,
+	/* fc-fd are first byte of six-byte (1+6+6+6+6+6+6=31 bits) */
+/*fc*/	6, 6,
+	/* fe and ff are not part of valid UTF-8 so they stand alone */
+/*fe*/	1, 1
+};
+
 unsigned utf8_length(const char *in, unsigned max)
 {
-	int n;
 	const unsigned char *p = (const unsigned char *) in;
+	int n = utf8_bytes[*p];
 
-	if ((*p & 0xc0) != 0xc0)
+	if (max > n)
+		max = n;
+	else if (max < n)
 		return 1;
-	if (max > 6)
-		max = 6;
-	for (n = 1; n < max; n++) {
-		if (p[n] & 0xc0 != 0x80)
+	for (n = 1; n < max; n++)
+		if ((p[n] & 0xc0) != 0x80)
 			return 1;
-		if (!((unsigned char)(*p ^ 0xfc << 5-n) >> 5-n))
-			return n+1;
-	}
-	return 1;
+	return max;
 }
 
 unsigned utf8_length_backwards(const char *in, unsigned max)
@@ -49,7 +76,7 @@ unsigned utf8_length_backwards(const char *in, unsigned max)
 	for (n = 1; n < max; n++)
 		if ((p[-n] & 0xc0) != 0x80)
 			break;
-	if (!((unsigned char)(p[-n] ^ 0xfc << 5-n) >> 5-n))
+	if (utf8_bytes[p[-n]] == n+1)
 		return n+1;
 	return 1;
 }

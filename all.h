@@ -1,3 +1,6 @@
+/* All sources #include this file. */
+
+/* Standard and system headers */
 #define _GNU_SOURCE /* for mremap */
 #include <stddef.h>
 #include <stdlib.h>
@@ -18,6 +21,7 @@
 # endif
 #endif
 
+/* Module headers */
 #include "buffer.h"
 #include "mode.h"
 #include "text.h"
@@ -27,8 +31,8 @@
 #include "util.h"
 #include "clip.h"
 
+/* Miscellaneous declarations and prototypes */
 extern struct termios original_termios;
-
 void *allocate(const void *, unsigned bytes);	/* mem.c */
 void die(const char *, ...);			/* die.c */
 void message(const char *, ...);

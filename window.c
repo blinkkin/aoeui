@@ -7,6 +7,16 @@
  *	it directs keyboard input to its view's command handler.
  */
 
+struct window {
+	struct view *view;
+	unsigned start; /* locus index */
+	unsigned row, column;
+	unsigned rows, columns;
+	unsigned cursor_row, cursor_column;
+	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
+	struct window *next;
+};
+
 static struct window *window_list;
 static struct window *active_window;
 static struct display *display;
@@ -221,31 +231,32 @@ INLINE unsigned char_columns(unsigned ch, unsigned column,
 {
 	if (ch == '\t')
 		return tabstop - column % tabstop;
-	if (ch < ' ' || ch == 0x7f)
+	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
 		return 2; /* ^X */
 	return 1;
 }
 
-static unsigned row_bytes(struct view *view, int offset0, int columns)
+static unsigned row_bytes(struct view *view, unsigned offset0, int columns)
 {
-	int offset = offset0;
-	unsigned column = 0, chlen;
+	unsigned offset = offset0, next;
 	unsigned tabstop = view->text->tabstop;
-	int ch = 0;
+	int ch = 0, column = 0;
 
-	for (column = 0; column < columns; ) {
-		ch = view_unicode(view, offset, &chlen);
-		offset += chlen;
-		if (ch == '\n' || ch < 0)
+	while (column < columns) {
+		ch = view_char(view, offset, &next);
+		if (ch < 0)
 			break;
 		column += char_columns(ch, column, tabstop);
+		if (column > columns)
+			break;
+		offset = next;
+		if (ch == '\n')
+			break;
 	}
 
-	if (column > columns)
-		offset -= chlen;
-	else if (column == columns &&
-		 offset != locus_get(view, CURSOR) &&
-		 view_byte(view, offset) == '\n')
+	if (column == columns &&
+	    offset != locus_get(view, CURSOR) &&
+	    view_byte(view, offset) == '\n')
 		offset++;
 	return offset - offset0;
 }
@@ -256,11 +267,11 @@ static void set_cursor(struct window *window, unsigned offset,
 	struct view *view = window->view;
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned tabstop = view->text->tabstop;
-	unsigned chlen, column;
+	unsigned next, column;
 	int ch;
 
-	for (column = 0; offset < cursor; offset += chlen) {
-		ch = view_unicode(view, offset, &chlen);
+	for (column = 0; offset < cursor; offset = next) {
+		ch = view_char(view, offset, &next);
 		if (ch < 0)
 			break;
 		if (ch == '\n') {
@@ -360,13 +371,11 @@ static int lame_space(struct view *view, unsigned offset, unsigned look)
 {
 	int all_spaces_lame = look > 1;
 	while (look--) {
-		unsigned chlen;
-		int ch = view_unicode(view, offset, &chlen);
+		int ch = view_char(view, offset, &offset);
 		if (ch < 0 || ch == '\n' || ch == '\t')
 			return 1;
 		if (ch != ' ')
 			return 0;
-		offset += chlen;
 	}
 	return all_spaces_lame;
 }
@@ -374,10 +383,8 @@ static int lame_space(struct view *view, unsigned offset, unsigned look)
 static int lame_tab(struct view *view, unsigned offset)
 {
 	int ch;
-	unsigned chlen;
 
-	for (; (ch = view_unicode(view, offset, &chlen)) >= 0 && ch != '\n';
-	     offset += chlen)
+	for (; (ch = view_char(view, offset, &offset)) >= 0 && ch != '\n';)
 		if (ch != ' ' && ch != '\t')
 			return 0;
 	return 1;
@@ -409,12 +416,12 @@ static void paint(struct window *window, unsigned default_bgrgba)
 	for (row = window->row; row < window->row + window->rows; row++) {
 
 		unsigned limit = at + row_bytes(view, at, columns);
-		unsigned chlen, column, fgrgba, bgrgba;
+		unsigned next, column, fgrgba, bgrgba;
 		int ch;
 
-		for (column = 0; at < limit; at += chlen) {
+		for (column = 0; at < limit; at = next) {
 
-			ch = view_unicode(view, at, &chlen);
+			ch = view_char(view, at, &next);
 			if (ch < 0)
 				default_bgrgba = 0xff00ff00;
 			if (ch == '\n') {
@@ -444,13 +451,17 @@ static void paint(struct window *window, unsigned default_bgrgba)
 					bg = bgrgba;
 				} while (column % tabstop);
 			} else {
-				if (ch < ' ' || ch == 0x7f) {
+				if (ch < ' ' || ch == 0x7f ||
+				    ch >= FOLD_START && ch < FOLD_END) {
 					bgrgba = 0xff000000;
 					fgrgba = 0xffffff00;
 					display_put(display, row,
 						    window->column + column++,
-						    '^', fgrgba, bgrgba);
-					if (ch == 0x7f)
+						    ch >= FOLD_START ? '<' : '^',
+						    fgrgba, bgrgba);
+					if (ch >= FOLD_START)
+						ch = '>';
+					else if (ch == 0x7f)
 						ch = '?';
 					else
 						ch += '@';

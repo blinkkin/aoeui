@@ -104,7 +104,7 @@ static void align(struct view *view)
 {
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned lnstart0 = find_line_start(view, cursor);
-	unsigned nonspace0, lnstart, nonspace, lnend, chlen;
+	unsigned nonspace0, lnstart, nonspace, lnend, next;
 	int ch;
 	char *indentation;
 	unsigned indent_bytes;
@@ -112,22 +112,22 @@ static void align(struct view *view)
 	if (!lnstart0)
 		return;
 	for (nonspace0 = lnstart0;
-	     (ch = view_unicode(view, nonspace0, &chlen)) >= 0;
-	     nonspace0 += chlen)
+	     (ch = view_char(view, nonspace0, &next)) >= 0;
+	     nonspace0 = next)
 		if (ch == '\n' || (ch != ' ' && ch != '\t'))
 			break;
 	lnstart = find_line_start(view, lnstart0-1);
-	while (lnstart && view_unicode(view, lnstart, &chlen) == '\n')
+	while (lnstart && view_char(view, lnstart, NULL) == '\n')
 		lnstart = find_line_start(view, lnstart-1);
 	nonspace = lnstart;
-	while ((ch = view_unicode(view, nonspace, &chlen)) != '\n' &&
+	while ((ch = view_char(view, nonspace, &next)) != '\n' &&
 	       (ch == ' ' || ch == '\t'))
-		nonspace += chlen;
+		nonspace = next;
 	indent_bytes = nonspace - lnstart;
 	lnend = find_line_end(view, lnstart);
 	indentation = allocate(NULL, lnend - lnstart);
 	view_get(view, indentation, lnstart, indent_bytes);
-	if ((ch = view_unicode_prior(view, lnend, NULL)) != ';' &&
+	if ((ch = view_char_prior(view, lnend, NULL)) != ';' &&
 	    ch != '}')
 		indentation[indent_bytes++] = '\t';
 	view_delete(view, lnstart0, nonspace0 - lnstart0);
@@ -140,15 +140,15 @@ static void command_handler(struct view *view, unsigned ch)
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned mark = locus_get(view, MARK);
+	unsigned offset;
 	char buf[8];
 	int ok = 1, literal_unicode = 0;
-	unsigned offset;
 	struct view *new_view;
 	char *path;
 
 	/* Backspace always deletes the character before cursor. */
 	if (ch == 0x7f /*BCK*/) {
-		if (view_unicode_prior(view, cursor, &mark) >= 0)
+		if (view_char_prior(view, cursor, &mark) >= 0)
 			view_delete(view, mark, cursor-mark);
 		else
 			window_beep(view);
@@ -198,8 +198,29 @@ static void command_handler(struct view *view, unsigned ch)
 			case ';':
 				window_after(view, text_new(), -1);
 				goto done;
-			case '.':
+			case '\'':
 				find_tag(view);
+				goto done;
+			case ',':
+				if (mode->value)
+					view_fold_indented(view);
+				else if (mark == UNSET)
+					window_beep(view);
+				else {
+					view_fold(view, cursor, mark);
+					locus_set(view, MARK, UNSET);
+				}
+				goto done;
+			case '.':
+				if (mode->value)
+					view_unfold_all(view);
+				else {
+					mark = view_unfold(view, cursor);
+					if ((signed) mark < 0)
+						window_beep(view);
+					else
+						locus_set(view, MARK, mark);
+				}
 				goto done;
 			}
 		}
@@ -257,19 +278,19 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		}
 		break;
 	case 'C': /* forward to line end */
-		if ((offset = find_line_end(view, cursor)) == cursor)
-			offset = find_line_end(view, cursor+1);
-		locus_set(view, CURSOR, offset + (offset == cursor));
+		offset = mode->variant ? mode->value : 1;
+		while (offset-- && cursor < view->bytes)
+			cursor = find_line_end(view, cursor+1);
+		locus_set(view, CURSOR, cursor);
 		break;
 	case 'D': /* [select whitespace] / cut [pre/appending] */
 		if (mark == UNSET && mode->variant) {
-			mark = find_nonspace(view, cursor);
-			while (cursor &&
-			       ((ch = view_byte(view, cursor-1)) == ' ' ||
-				ch == '\t' || ch == '\n'))
-				--cursor;
+			locus_set(view, MARK, find_nonspace(view, cursor));
+			while ((ch = view_char_prior(view, cursor, &offset))
+					>= 0 &&
+			       isspace(ch))
+				cursor = offset;
 			locus_set(view, CURSOR, cursor);
-			locus_set(view, MARK, mark);
 		} else
 			cut(view, 1);
 		break;
@@ -290,13 +311,15 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		cut(view, 0);
 		break;
 	case 'G': /* backward line */
-		locus_set(view, CURSOR, find_line_start(view, cursor - !!cursor));
+		offset = mode->variant ? mode->value : 1;
+		while (offset-- && cursor)
+			cursor = find_line_start(view, cursor-1);
+		locus_set(view, CURSOR, cursor);
 		break;
 	case 'H': /* backward char(s) */
-		if (mode->value && mode->value <= cursor)
-			cursor -= mode->value;
-		else
-			cursor -= !!cursor;
+		offset = mode->variant ? mode->value : 1;
+		while (offset-- && cursor)
+			view_char_prior(view, cursor, &cursor);
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'I': /* (TAB) tab / tab completion [align; set tab stop] */
@@ -395,10 +418,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'T': /* forward char(s) */
-		if (mode->value)
-			cursor += mode->value;
-		else
-			cursor++;
+		offset = mode->variant ? mode->value : 1;
+		while (offset-- && view_char(view, cursor, &mark) >= 0)
+			cursor = mark;
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'U': /* undo [redo] */
@@ -478,12 +500,14 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		}
 		break;
 	case ']': /* set mark and move to corresponding bracket */
-		mark = view_corresponding_bracket(view, cursor);
+		mark = find_corresponding_bracket(view, cursor);
 		if ((signed) mark < 0)
 			window_beep(view);
 		else {
-			locus_set(view, CURSOR, mark + (mark > cursor));
-			locus_set(view, MARK, cursor + (mark < cursor));
+			locus_set(view, CURSOR, mark);
+			if (mark < cursor)
+				view_char(view, cursor, &cursor);
+			locus_set(view, MARK, cursor);
 		}
 		break;
 	case '^': /* literal [; unicode] */

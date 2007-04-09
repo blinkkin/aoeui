@@ -15,7 +15,7 @@ Control-[ is the same as Escape.)
 Non-command characters are inserted or searched for.
 Self-insertion automatically cuts when cursor < mark.
 
-There are multiple windows, views, and texts;  Every window has a view,
+There are multiple windows, views, and texts.  Every window has a view,
 but not every view has a window.  Every view has a text and every text
 has at least one view.  Some texts have files.  The cursor, mark, and
 macro are local to their view.
@@ -72,14 +72,17 @@ Non-control characters -- commands must be [variants]
   =	[; set bookmark]
   -	[; goto bookmark]
   ;	[new anonymous text]
-  .	[go to tag]
+  '	[go to tag]
+  ,	[; fold view on indentation] / [fold selection]
+  .	[unfold; unfold entire view]
   0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
   x 0-9 a-f A-F		hexadecimal argument
-  unused: ` ~ ! @ # $ % & ( ) { } ' "  , <  >  | :
+  unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
 
-Missing commands:
-	help
-	tags
+Missing features:
+	registers
+	color cue for clean/dirty text
+	color cue for bracket pairing
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

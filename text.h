@@ -1,3 +1,5 @@
+/* Texts and views */
+
 struct view {
 	struct view *next;
 	struct text *text;
@@ -28,21 +30,23 @@ struct text {
 	unsigned tabstop;
 };
 
-/* flags */
+/* text->flags */
 #define TEXT_SAVED_ORIGINAL 1
 #define TEXT_RDONLY 2
 #define TEXT_EDITOR 4
 #define TEXT_CREATED 8
+#define TEXT_FOLDED 16
 
 extern struct text *text_list;
 extern int default_tab_stop;
 
+/* text.c */
 struct view *view_find(const char *name);
-       void  view_name(struct view *);
+void view_name(struct view *);
 struct view *view_create(struct text *);
 struct view *text_create(const char *name, unsigned flags);
 struct view *text_new(void);
-       void  view_close(struct view *);
+void view_close(struct view *);
 struct view *view_selection(struct view *, unsigned offset, unsigned bytes);
 void text_adjust_loci(struct text *, unsigned offset, int delta);
 unsigned view_get(struct view *, void *, unsigned offset, unsigned bytes);
@@ -51,8 +55,8 @@ unsigned view_delete(struct view *, unsigned offset, unsigned bytes);
 unsigned view_insert(struct view *, const void *, unsigned offset, int bytes);
 int view_getch(struct view *);
 
-/* Use only for raw bytes.  See util.h for character access with
- * view_unicode() and view_unicode_prior().
+/* Use only for raw bytes.  See util.h for general folded and Unicode
+ * character access with view_char[_prior]().
  */
 INLINE int view_byte(struct view *view, unsigned offset)
 {
@@ -66,7 +70,7 @@ INLINE int view_byte(struct view *view, unsigned offset)
 	return -1;
 }
 
-/* in file.c */
+/* file.c */
 struct view *view_open(const char *path);
 int text_rename(struct text *, const char *path);
 void text_dirty(struct text *);
@@ -74,7 +78,7 @@ void text_preserve(struct text *);
 void texts_preserve(void);
 void texts_uncreate(void);
 
-/* in undo.c */
+/* undo.c */
 unsigned text_delete(struct text *, unsigned offset, unsigned bytes);
 unsigned text_insert(struct text *, const void *,
 		       unsigned offset, unsigned bytes);
@@ -82,17 +86,14 @@ int text_undo(struct text *);
 int text_redo(struct text *);
 void text_forget_undo(struct text *);
 
-/* in bookmark.c */
+/* bookmark.c */
 void bookmark_set(unsigned, struct view *, unsigned cursor, unsigned mark);
 int bookmark_get(struct view **, unsigned *cursor, unsigned *mark,
 		 unsigned id);
 void bookmark_unset(unsigned);
 void bookmark_unset_view(struct view *);
 
-/* in child.c */
-void demultiplex_view(struct view *);
-
-/* in help.c */
-struct view *view_help(void);
+void demultiplex_view(struct view *);	/* child.c */
+struct view *view_help(void);		/* help.c */
 
 /* see also util.h */

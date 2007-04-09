@@ -1,9 +1,6 @@
-struct buffer {
-	char *data;
-	unsigned allocated, payload, gap;
-	int fd;
-	char *path;
-};
+/* Gap buffers */
+
+struct buffer;
 
 struct buffer *buffer_create(char *path);
 void buffer_destroy(struct buffer *);
@@ -18,6 +15,16 @@ unsigned buffer_insert(struct buffer *, const void *,
 unsigned buffer_move(struct buffer *dest, unsigned,
 		     struct buffer *src, unsigned, unsigned bytes);
 void buffer_snap(struct buffer *);
+
+/* do *not* use directly; this definition is here
+ * just for the inline functions.
+ */
+struct buffer {
+	char *data;
+	unsigned allocated, payload, gap;
+	int fd;
+	char *path;
+};
 
 INLINE unsigned buffer_bytes(struct buffer *buffer)
 {

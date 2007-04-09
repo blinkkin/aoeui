@@ -1,3 +1,6 @@
+/* A locus is a fixed point in a view, an offset that get adjusted
+ * when insertions and deletions occur before its position.
+ */
 
 /* loci in all views */
 #define CURSOR 0
@@ -9,7 +12,7 @@
 struct view;
 
 unsigned locus_create(struct view *, unsigned offset);
-    void locus_destroy(struct view *, unsigned locus);
+void locus_destroy(struct view *, unsigned locus);
 unsigned locus_get(struct view *, unsigned locus);
 unsigned locus_set(struct view *, unsigned locus, unsigned offset);
-    void loci_adjust(struct view *, unsigned offset, int delta);
+void loci_adjust(struct view *, unsigned offset, int delta);

@@ -1,12 +1,4 @@
-struct window {
-	struct view *view;
-	unsigned start; /* locus index */
-	unsigned row, column;
-	unsigned rows, columns;
-	unsigned cursor_row, cursor_column;
-	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
-	struct window *next;
-};
+/* Windows */
 
 struct window *window_raise(struct view *);
 struct window *window_activate(struct view *);
