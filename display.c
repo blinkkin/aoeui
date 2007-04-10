@@ -288,7 +288,10 @@ void display_reset(struct display *display)
 	display->image = NULL;
 	display->cursor_row = display->cursor_column = 0;
 	display->at_row = display->at_column = 0;
-	outs(display, ESC "c");		/* reset */
+	if (display->is_xterm)
+		outs(display, ESC "[?47h"); /* alt screen */
+	else
+		outs(display, ESC "c");		/* reset */
 	outs(display, ESC "%G");	/* UTF-8 */
 	outs(display, ESC "[2J");	/* erase all */
 	reset_modes(display);
@@ -358,8 +361,12 @@ void display_end(struct display *display)
 		return;
 
 	display_title(display, NULL);
-	outs(display, ESC "c");
-	outs(display, ESC "[0m");
+	if (display->is_xterm)
+		outs(display, ESC "[?47l"); /* normal screen */
+	else {
+		outs(display, ESC "c");		/* reset */
+		outs(display, ESC "[0m");	/* reset modes */
+	}
 	flush(display);
 
 	tcsetattr(1, TCSADRAIN, &original_termios);

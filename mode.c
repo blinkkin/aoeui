@@ -480,12 +480,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			window_beep(view);
 		break;
 	case 'Z': /* recenter/goto */
-		if (mode->value) {
-			cursor = 0;
-			while (--mode->value && cursor < view->bytes)
-				cursor = find_line_end(view, cursor) + 1;
-			locus_set(view, CURSOR, cursor);
-		} else if (mode->variant)
+		if (mode->value)
+			locus_set(view, CURSOR,
+				  find_line_number(view, mode->value));
+		else if (mode->variant)
 			windows_reset();
 		window_recenter(view);
 		break;

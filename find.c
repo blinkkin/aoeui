@@ -188,3 +188,14 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 
 	return offset;
 }
+
+unsigned find_line_number(struct view *view, unsigned line)
+{
+	unsigned offset;
+	for (offset = 0;
+	     offset < view->bytes;
+	     offset = find_line_end(view, offset) + 1)
+		if (!--line)
+			break;
+	return offset;
+}

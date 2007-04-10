@@ -17,7 +17,7 @@ static char *extract_id(struct view *view)
 
 void find_tag(struct view *view)
 {
-	struct view *tags = view_find("TAGS");
+	struct view *tags = view_find("TAGS"), *new_view;
 	char *id, *this;
 	unsigned first, last, at, wordstart, wordend, line;
 	int cmp;
@@ -74,14 +74,11 @@ void find_tag(struct view *view)
 	wordstart = find_nonspace(tags, wordend); /* file name */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
-	view = view_open(this);
+	new_view = view_open(this);
 	allocate(this, 0);
-	for (at = 0; at < view->bytes; at = find_line_end(view, at) + 1)
-		if (!--line)
-			break;
-	locus_set(view, CURSOR, at);
-	locus_set(view, MARK, UNSET);
-	window_raise(view);
+	locus_set(new_view, CURSOR, find_line_number(new_view, line));
+	locus_set(new_view, MARK, UNSET);
+	window_after(view, new_view, -1);
 	return;
 
 done:	errno = 0;
