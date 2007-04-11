@@ -203,7 +203,7 @@ static void command_handler(struct view *view, unsigned ch)
 				goto done;
 			case ',':
 				if (mode->value)
-					view_fold_indented(view);
+					view_fold_indented(view, mode->value);
 				else if (mark == UNSET)
 					window_beep(view);
 				else {

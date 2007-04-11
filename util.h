@@ -32,7 +32,7 @@ int view_char(struct view *view, unsigned offset, unsigned *length);
 int view_char_prior(struct view *view, unsigned offset, unsigned *prev);
 void view_fold(struct view *, unsigned, unsigned);
 int view_unfold(struct view *, unsigned);
-void view_fold_indented(struct view *);
+void view_fold_indented(struct view *, unsigned);
 void view_unfold_all(struct view *);
 
 INLINE int is_wordch(int ch)

@@ -432,11 +432,13 @@ has an automatic nested folding capability.
 with a selection and no numeric value will fold the selection.
 With a numeric value and no selection, it will repeatedly fold
 indented regions of the text to provide an outline view.
+The numeric value specifies the number of leading spaces or
+equivalent tabs at which code lines will be folded.
 .TP
 .B ^Space.
 with no numeric value will unfold the folded region under the
 cursor.
-With a numeric value, it will unfold the entire view.
+With a numeric value, which is ignored, it will unfold the entire view.
 .SH SHELLS
 .TP
 .B ^E

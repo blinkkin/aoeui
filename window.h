@@ -3,6 +3,7 @@
 struct window *window_raise(struct view *);
 struct window *window_activate(struct view *);
 struct window *window_after(struct view *, struct view *, int vertical);
+struct window *window_below(struct view *, struct view *, unsigned rows);
 struct window *window_replace(struct view *, struct view *);
 void window_unmap(struct view *);
 void window_next(struct view *);

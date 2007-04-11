@@ -78,7 +78,7 @@ void find_tag(struct view *view)
 	allocate(this, 0);
 	locus_set(new_view, CURSOR, find_line_number(new_view, line));
 	locus_set(new_view, MARK, UNSET);
-	window_after(view, new_view, -1);
+	window_below(view, new_view, 4);
 	return;
 
 done:	errno = 0;

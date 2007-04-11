@@ -174,6 +174,21 @@ struct window *window_after(struct view *before, struct view *view,
 	return activate(window);
 }
 
+struct window *window_below(struct view *above, struct view *view,
+			    unsigned rows)
+{
+	struct window *window, *old;
+	if (view->window)
+		return view->window;
+	if (!above || !(old = above->window) || old->rows < rows*2)
+		return window_raise(view);
+	window = window_create(view, above);
+	window->column = old->column;
+	window->columns = old->columns;
+	window->row = old->row + (old->rows -= (window->rows = rows));
+	return activate(window);
+}
+
 struct window *window_replace(struct view *old, struct view *new)
 {
 	struct window *window = old->window;
@@ -232,7 +247,7 @@ INLINE unsigned char_columns(unsigned ch, unsigned column,
 	if (ch == '\t')
 		return tabstop - column % tabstop;
 	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
-		return 2; /* ^X */
+		return 2; /* ^X or folded <> */
 	return 1;
 }
 
@@ -240,18 +255,20 @@ static unsigned row_bytes(struct view *view, unsigned offset0, int columns)
 {
 	unsigned offset = offset0, next;
 	unsigned tabstop = view->text->tabstop;
-	int ch = 0, column = 0;
+	int ch = 0, column = 0, charcols;
 
 	while (column < columns) {
-		ch = view_char(view, offset, &next);
-		if (ch < 0)
+		if ((ch = view_char(view, offset, &next)) < 0)
 			break;
-		column += char_columns(ch, column, tabstop);
-		if (column > columns)
+		if (ch == '\n') {
+			offset = next;
 			break;
+		}
+		charcols = char_columns(ch, column, tabstop);
+		if (column+charcols > columns)
+			break;
+		column += charcols;
 		offset = next;
-		if (ch == '\n')
-			break;
 	}
 
 	if (column == columns &&

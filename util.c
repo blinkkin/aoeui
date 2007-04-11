@@ -252,10 +252,11 @@ static unsigned max_indentation(struct view *view)
 	return maxindent;
 }
 
-void view_fold_indented(struct view *view)
+void view_fold_indented(struct view *view, unsigned minindent)
 {
 	unsigned maxindent;
-	while ((maxindent = max_indentation(view))) {
+	minindent |= !minindent;
+	while ((maxindent = max_indentation(view)) >= minindent) {
 		unsigned offset, next;
 		int start = -1;
 		for (offset = 0; offset < view->bytes; offset = next) {

@@ -241,6 +241,9 @@ int child(int *stdfd, unsigned stdfds, const char *argv[])
 			for (k = 0; k < 2; k++)
 				close(pipefd[j][k]);
 		}
+		setenv("PS1", geteuid() ? "# " : "$ ", 1);
+		unsetenv("LS_COLORS");
+		unsetenv("TERM");
 		errno = 0;
 		execvp(argv[0], (char *const *) argv);
 		fprintf(stderr, "could not execute %s: %s\n",
