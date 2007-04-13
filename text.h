@@ -35,7 +35,8 @@ struct text {
 #define TEXT_RDONLY 2
 #define TEXT_EDITOR 4
 #define TEXT_CREATED 8
-#define TEXT_FOLDED 16
+#define TEXT_SCRATCH 16
+#define TEXT_FOLDED 32
 
 extern struct text *text_list;
 extern int default_tab_stop;

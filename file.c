@@ -210,7 +210,7 @@ struct view *text_new(void)
 	if (fd < 0)
 		view = text_create("* New *", TEXT_EDITOR);
 	else {
-		view = text_create(path, TEXT_CREATED);
+		view = text_create(path, TEXT_CREATED | TEXT_SCRATCH);
 		view->text->fd = fd;
 	}
 	return view;
@@ -239,7 +239,7 @@ int text_rename(struct text *text, const char *path0)
 
 	if (text->flags & TEXT_CREATED) {
 		unlink(text->path);
-		text->flags &= ~TEXT_CREATED;
+		text->flags &= ~(TEXT_CREATED | TEXT_SCRATCH);
 	}
 
 	/* Do not truncate or overwrite yet. */
@@ -352,7 +352,6 @@ void text_preserve(struct text *text)
 void texts_preserve(void)
 {
 	struct text *text;
-
 	for (text = text_list; text; text = text->next)
 		text_preserve(text);
 }
@@ -360,7 +359,6 @@ void texts_preserve(void)
 void texts_uncreate(void)
 {
 	struct text *text;
-
 	for (text = text_list; text; text = text->next)
 		if (text->flags & TEXT_CREATED)
 			unlink(text->path);

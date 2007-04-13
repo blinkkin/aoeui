@@ -1,5 +1,7 @@
 #include "all.h"
 
+/* Routines that scan characters in views */
+
 unsigned find_line_start(struct view *view, unsigned offset)
 {
 	int ch;
@@ -198,4 +200,62 @@ unsigned find_line_number(struct view *view, unsigned line)
 		if (!--line)
 			break;
 	return offset;
+}
+
+INLINE unsigned char_columns(unsigned ch, unsigned column,
+				unsigned tabstop)
+{
+	if (ch == '\t')
+		return tabstop - column % tabstop;
+	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
+		return 2; /* ^X or folded <> */
+	return 1;
+}
+
+unsigned find_row_bytes(struct view *view, unsigned offset0, unsigned columns)
+{
+	unsigned offset = offset0, next;
+	unsigned tabstop = view->text->tabstop;
+	int ch = 0, column = 0, charcols;
+
+	while (column < columns) {
+		if ((ch = view_char(view, offset, &next)) < 0)
+			break;
+		if (ch == '\n') {
+			offset = next;
+			break;
+		}
+		charcols = char_columns(ch, column, tabstop);
+		if (column+charcols > columns)
+			break;
+		column += charcols;
+		offset = next;
+	}
+
+	if (column == columns &&
+	    offset != locus_get(view, CURSOR) &&
+	    view_byte(view, offset) == '\n')
+		offset++;
+	return offset - offset0;
+}
+
+unsigned find_column(unsigned *row, struct view *view, unsigned offset)
+{
+	unsigned cursor = locus_get(view, CURSOR);
+	unsigned tabstop = view->text->tabstop;
+	unsigned next, column;
+	int ch;
+
+	for (column = 0; offset < cursor; offset = next) {
+		ch = view_char(view, offset, &next);
+		if (ch < 0)
+			break;
+		if (ch == '\n') {
+			if (row)
+				++*row;
+			column = 0;
+		} else
+			column += char_columns(ch, column, tabstop);
+	}
+	return column;
 }

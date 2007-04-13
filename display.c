@@ -14,6 +14,8 @@
 #define ESC "\x1b"
 #define CSI ESC "["
 #define OSC ESC "]"
+#define RESET ESC "c"
+#define UTF8 ESC "%G"
 #define ST  "\x07"
 #define MAX_COLORS 8
 
@@ -90,18 +92,14 @@ static void outf(struct display *display, const char *msg, ...)
 
 static void moveto(struct display *display, unsigned row, unsigned column)
 {
-	outf(display, CSI "%d;%df", row+1, column+1);
-}
-
-static void cursor(struct display *display)
-{
-	moveto(display, display->at_row = display->cursor_row,
-	       display->at_column = display->cursor_column);
+	if (row != display->at_row || column != display->at_column)
+		outf(display, CSI "%d;%df", (display->at_row = row) + 1,
+		       (display->at_column = column) + 1);
 }
 
 void display_sync(struct display *display)
 {
-	cursor(display);
+	moveto(display, display->cursor_row, display->cursor_column);
 	flush(display);
 }
 
@@ -183,38 +181,34 @@ static unsigned colormap(struct display *display, unsigned rgba)
 	return best;
 }
 
-static void background_color(struct display *display, unsigned rgba)
+static void set_color(struct display *display, unsigned rgba, unsigned magic)
 {
-	if (rgba == display->bgrgba)
-		return;
 	if (display->is_xterm) {
 		unsigned c = colormap(display, rgba);
 		if (c >= 18)
-			outf(display, CSI "48;5;%dm", c);
+			outf(display, CSI "%d;5;%dm", magic+8, c);
 		else if (c >= 10)
-			outf(display, CSI "%dm", c - 10 + 100);
+			outf(display, CSI "%dm", c - 10 + magic + 60);
 		else
-			outf(display, CSI "%dm", c + 40);
+			outf(display, CSI "%dm", c + magic);
 	} else
-		outf(display, CSI "%dm", 40 + linux_colormap(rgba));
-	display->bgrgba = rgba;
+		outf(display, CSI "%dm", linux_colormap(rgba) + magic);
+}
+
+static void background_color(struct display *display, unsigned rgba)
+{
+	if (rgba != display->bgrgba) {
+		set_color(display, rgba, 40);
+		display->bgrgba = rgba;
+	}
 }
 
 static void foreground_color(struct display *display, unsigned rgba)
 {
-	if (rgba == display->fgrgba)
-		return;
-	if (display->is_xterm) {
-		unsigned c = colormap(display, rgba);
-		if (c >= 18)
-			outf(display, CSI "38;5;%dm", c);
-		else if (c >= 10)
-			outf(display, CSI "%dm", c - 10 + 90);
-		else
-			outf(display, CSI "%dm", c + 30);
-	} else
-		outf(display, CSI "%dm", 30 + linux_colormap(rgba));
-	display->fgrgba = rgba;
+	if (rgba != display->fgrgba) {
+		set_color(display, rgba, 30);
+		display->fgrgba = rgba;
+	}
 }
 
 void display_put(struct display *display, unsigned row, unsigned column,
@@ -222,36 +216,24 @@ void display_put(struct display *display, unsigned row, unsigned column,
 {
 	char buf[8];
 	struct cell *cell;
-
 	if (row >= display->rows || column >= display->columns)
 		return;
 	if (unicode < ' ')
 		unicode = ' ';
-
 	cell = &display->image[row*display->columns + column];
-	if (cell->unicode == unicode &&
-	    (cell->fgrgba == fgrgba || unicode == ' ') &&
-	    cell->bgrgba == bgrgba)
-		return;
-
-	if (row != display->at_row ||
-	    column != display->at_column ||
-	    bgrgba != display->bgrgba ||
-	    fgrgba != display->fgrgba && unicode != ' ') {
-		if (row != display->at_row || column != display->at_column)
-			moveto(display, display->at_row = row,
-			       display->at_column = column);
+	if (cell->unicode != unicode ||
+	    cell->fgrgba != fgrgba && unicode != ' ' ||
+	    cell->bgrgba != bgrgba) {
+		moveto(display, row, column);
 		background_color(display, bgrgba);
 		if (unicode != ' ')
 			foreground_color(display, fgrgba);
+		out(display, buf, utf8_out(buf, unicode));
+		display->at_column++;
+		cell->unicode = unicode;
+		cell->fgrgba = display->fgrgba;
+		cell->bgrgba = display->bgrgba;
 	}
-
-	out(display, buf, utf8_out(buf, unicode));
-	display->at_column++;
-
-	cell->unicode = unicode;
-	cell->fgrgba = display->fgrgba;
-	cell->bgrgba = display->bgrgba;
 }
 
 void display_erase(struct display *display, unsigned row, unsigned column,
@@ -269,7 +251,6 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 		return;
 
 	background_color(display, bgrgba);
-
 	if (column + columns == display->columns)
 		if (!column && rows == display->rows - row) {
 			moveto(display, row, column);
@@ -284,7 +265,6 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 			moveto(display, row + r, column);
 			outf(display, CSI "%dX", columns);
 		}
-
 	for (; rows--; row++) {
 		struct cell *cell = &display->image[row*display->columns +
 						    column];
@@ -293,8 +273,7 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 			cell++->bgrgba = bgrgba;
 		}
 	}
-
-	moveto(display, display->at_row, display->at_column);
+	moveto(display, display->cursor_row, display->cursor_column);
 }
 
 static struct cell *resize(struct display *display, struct cell *old,
@@ -385,8 +364,8 @@ void display_reset(struct display *display)
 		outs(display, CSI "?47h"); /* alt screen */
 		outs(display, CSI "?67h"); /* BCK is ^? */
 	} else
-		outs(display, ESC "c");		/* reset */
-	outs(display, ESC "%G");	/* UTF-8 */
+		outs(display, RESET);
+	outs(display, UTF8);
 	outs(display, CSI "0;39;49m"); /* reset modes and colors */
 	display->colors = 0;
 	display->fgrgba = 1;
@@ -459,7 +438,7 @@ void display_end(struct display *display)
 	if (display->is_xterm)
 		outs(display, CSI "?47l"); /* normal screen */
 	else {
-		outs(display, ESC "c");		/* reset */
+		outs(display, RESET);
 		outs(display, CSI "0m");	/* reset modes */
 	}
 	flush(display);
@@ -491,11 +470,13 @@ void display_title(struct display *display, const char *title)
 
 void display_cursor(struct display *display, unsigned row, unsigned column)
 {
-	display->cursor_row =
-		row >= display->rows ? display->rows-1 : row;
-	display->cursor_column =
-		column >= display->columns ? display->columns-1 : column;
-	cursor(display);
+	moveto(display,
+		display->cursor_row =
+			row >= display->rows ?
+				display->rows-1 : row,
+		display->cursor_column =
+			column >= display->columns ?
+				display->columns-1 : column);
 }
 
 void display_beep(struct display *display)

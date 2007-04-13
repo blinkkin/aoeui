@@ -28,7 +28,7 @@ macro are local to their view.
 Command characters
 *  ESC	function keys and query responses, ALT
   ^@	(^Space)
-* ^^	literal, control [; unicode]
+  ^^	literal, control [; unicode]
 * ^[	(ESC)
   ^]	set mark and move to corresponding or nearest bracket
 *  TAB	tab / tab completion [align; set tab stop]
@@ -41,22 +41,22 @@ Command characters
   ^L	forward screen [end of view]
   ^/	(^_) incremental search mode [regexp]
 * ^?	(BCK) delete character before cursor
-* ^+	larger font
+* ^+	-- larger font
   ^\	[quit without saving]
-  ^A	macro end, execute [macro start]
-  ^O
+* ^A	-- reserved for screen(1)
+  ^O	macro end, execute [macro start]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
-  ^I	(TAB)
+* ^I	(TAB)
   ^D	cut char [select whitespace] / cut [pre/append]
   ^H	backward char(s)
   ^T	forward char(s)
   ^N	backward word(s) [sentence]
   ^S	forward word(s) [sentence]
-* ^-	smaller font
-  ^_	(^/)
+* ^-	-- smaller font
+* ^_	(^/)
 *  ENT	(^M) newline [open line]
-* ^ENT	(^J) newline and alignment / [justify TODO]
+  ^ENT	(^J) newline and alignment
   ^Q	suspend editor [quit]
 * ^J	(^ENT)
   ^K	save all [single]
@@ -78,10 +78,14 @@ Non-control characters -- commands must be [variants]
   0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
   x 0-9 a-f A-F		hexadecimal argument
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
+  F-keys:
+	F1 is help, F11 is full-screen on/off
+	F2 OQ  F3 OR  F4 OS
+	F5 [15~  F6 [17~  F7 [18~  F8 [19~
+	F9 [20~  F10 [21~  F12 [24~
 
 Missing features:
 	color cue for clean/dirty text
-	color cue for bracket pairing
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

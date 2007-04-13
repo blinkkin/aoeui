@@ -122,6 +122,8 @@ static void text_close(struct text *text)
 	text_forget_undo(text);
 	if (text->fd >= 0)
 		close(text->fd);
+	if (text->flags & TEXT_SCRATCH)
+		unlink(text->path);
 	allocate(text->path, 0);
 	allocate(text, 0);
 }
@@ -134,7 +136,7 @@ void view_close(struct view *view)
 	if (!view)
 		return;
 
-	window_unmap(view);
+	window_destroy(view->window);
 	demultiplex_view(view);
 	bookmark_unset_view(view);
 

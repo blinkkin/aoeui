@@ -15,6 +15,8 @@ unsigned find_sentence_start(struct view *, unsigned offset);
 unsigned find_sentence_end(struct view *, unsigned offset);
 int find_corresponding_bracket(struct view *, unsigned offset);
 unsigned find_line_number(struct view *, unsigned line);
+unsigned find_row_bytes(struct view *, unsigned offset, unsigned columns);
+unsigned find_column(unsigned *row, struct view *, unsigned offset);
 
 void find_tag(struct view *);	/* tags.c */
 
