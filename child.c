@@ -3,7 +3,7 @@
 
 /*
  *	Handle the ^E command, which runs the shell command pipeline
- *	in the selection using the current clip buffer content as
+ *	in the selection using the current  buffer content as
  *	the standard input, replacing the selection with the
  *	standard output of the child process.
  *
@@ -298,7 +298,7 @@ void mode_child(struct view *view)
 		return;
 	}
 	cursor = locus_get(view, CURSOR);
-	to_write = clip_paste(view, cursor);
+	to_write = clip_paste(view, cursor, 0);
 	if (to_write) {
 		locus_set(view, MARK, cursor);
 		wrbuff = view_extract_selection(view);

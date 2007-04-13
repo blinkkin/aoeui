@@ -141,7 +141,6 @@ static unsigned color_mean(unsigned rgba1, unsigned rgba2)
 
 static unsigned colormap(struct display *display, unsigned rgba)
 {
-	unsigned idx, best, bestdelta, delta;
 	static unsigned basic[] = {
 		0, 0x7f000000, 0x007f0000, 0x7f7f0000,
 		0x00007f00, 0x7f007f00, 0x007f7f00, 0x7f7f7f00,
@@ -150,6 +149,8 @@ static unsigned colormap(struct display *display, unsigned rgba)
 		0, 0xff000000, 0x00ff0000, 0xffff0000,
 		0x0000ff00, 0xff00ff00, 0x00ffff00, 0xffffff00,
 	};
+
+	unsigned idx, best, bestdelta, delta;
 
 	if (rgba & 0xff)
 		return 9; /* any alpha? use default */
@@ -268,7 +269,6 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 		return;
 
 	background_color(display, bgrgba);
-
 
 	if (column + columns == display->columns)
 		if (!column && rows == display->rows - row) {

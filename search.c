@@ -1,4 +1,5 @@
 #include "all.h"
+#include <regex.h>
 
 /*
  *	Incremental search mode
@@ -11,9 +12,11 @@ struct mode_search {
 	unsigned bytes, alloc, last_bytes;
 	int backward;
 	unsigned start_locus;
+	regex_t *regex;
+	int regex_ready;
 };
 
-static int match(int x, int y)
+static int match_char(int x, int y)
 {
 	if (x < 0 || y < 0)
 		return 0;
@@ -24,48 +27,98 @@ static int match(int x, int y)
 	return x == y;
 }
 
-static int scan_forward(struct view *view, unsigned offset, unsigned max_offset)
+static int match_pattern(struct view *view, unsigned offset)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
 	unsigned j;
+	for (j = 0; j < mode->bytes; j++)
+		if (!match_char(mode->pattern[j],
+				view_byte(view, offset++)))
+			return 0;
+	return mode->bytes;
+}
+
+static int match_regex(struct view *view, unsigned *offset)
+{
+	struct mode_search *mode = (struct mode_search *) view->mode;
+	unsigned bytes;
+	char *raw;
+
+	for (bytes = view_raw(view, &raw, *offset, ~0);
+	     bytes;
+	     bytes--, ++*offset) {
+		unsigned flags = 0, len, j;
+		int err;
+		regmatch_t match[10];
+		if (view_char_prior(view, *offset, NULL) != '\n')
+			flags |= REG_NOTBOL;
+		err = regexec(mode->regex, raw, 10, match, flags);
+		if (err != REG_NOMATCH)
+			window_beep(view);
+		if (err)
+			break;
+		len = match[0].rm_eo - match[0].rm_so;
+		if (len > bytes)
+			len = bytes;
+		if (len) {
+			for (j = 1; j < 10; j++) {
+				if (match[j].rm_so < 0)
+					continue;
+				clip_init(j);
+				clip(j, view, *offset + match[j].rm_so,
+				     match[j].rm_eo - match[j].rm_so, 0);
+			}
+			*offset += match[0].rm_so;
+			return len;
+		}
+	}
+	return 0;
+}
+
+static int scan_forward(struct view *view, unsigned *length,
+			unsigned offset, unsigned max_offset)
+{
+	struct mode_search *mode = (struct mode_search *) view->mode;
 
 	if (offset + mode->bytes > view->bytes)
 		return -1;
 	if (max_offset + mode->bytes > view->bytes)
 		max_offset = view->bytes - mode->bytes;
-	for (; offset < max_offset; offset++) {
-		for (j = 0; j < mode->bytes; j++)
-			if (!match(mode->pattern[j], view_byte(view, offset+j)))
-				break;
-		if (j == mode->bytes)
+	if (mode->regex) {
+		if ((*length = match_regex(view, &offset)) &&
+		    offset < max_offset)
 			return offset;
-	}
+	} else
+		for (; offset < max_offset; offset++)
+			if ((*length = match_pattern(view, offset)))
+				return offset;
 	return -1;
 }
 
-static int scan_backward(struct view *view, unsigned offset, unsigned min_offset)
+static int scan_backward(struct view *view, unsigned *length,
+			 unsigned offset, unsigned min_offset)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
-	unsigned j;
 
 	if (min_offset + mode->bytes > view->bytes)
 		return -1;
 	if (offset + mode->bytes > view->bytes)
 		offset = view->bytes - mode->bytes;
-	for (; offset+1 > min_offset; offset--) {
-		for (j = 0; j < mode->bytes; j++)
-			if (!match(mode->pattern[j], view_byte(view, offset+j)))
-				break;
-		if (j == mode->bytes)
-			return offset;
-	}
+	if (mode->regex) {
+		for (; offset+1 > min_offset; offset--)
+			if ((*length = match_regex(view, &offset)))
+				return offset;
+	} else
+		for (; offset+1 > min_offset; offset--)
+			if ((*length = match_pattern(view, offset)))
+				return offset;
 	return -1;
 }
 
 static int search(struct view *view, int backward, int new)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
-	unsigned mark;
+	unsigned cursor, length;
 	int at;
 
 	if (!mode->bytes) {
@@ -74,24 +127,43 @@ static int search(struct view *view, int backward, int new)
 		return 1;
 	}
 
-	mark = locus_get(view, MARK);
-	if (mark == UNSET)
-		mark = locus_get(view, CURSOR);
+	if (mode->regex) {
+		int err;
+		if (new && mode->regex_ready) {
+			regfree(mode->regex);
+			mode->regex_ready = 0;
+		}
+		if (!mode->regex_ready) {
+			mode->pattern[mode->bytes] = '\0';
+			err = regcomp(mode->regex, (char *) mode->pattern,
+				      REG_EXTENDED | REG_ICASE);
+			if (err)
+				return 0;
+			mode->regex_ready = 1;
+		}
+	}
+
+	cursor = locus_get(view, CURSOR);
+
 	if (backward) {
-		at = scan_backward(view, mark - !new, 0);
+		at = scan_backward(view, &length, cursor - !new, 0);
 		if (at < 0)
-			at = scan_backward(view, view->bytes, mark+1);
+			at = scan_backward(view, &length,
+					   view->bytes, cursor+1);
 	} else {
-		at = scan_forward(view, mark + !new, view->bytes);
+		at = scan_forward(view, &length,
+				  cursor + !new, view->bytes);
 		if (at < 0)
-			at = scan_forward(view, 0, mark-1);
+			at = scan_forward(view, &length, 0, cursor-1);
 	}
 	if (at < 0) {
 		window_beep(view);
 		return 0;
 	}
-	locus_set(view, MARK, at);
-	locus_set(view, CURSOR, at + mode->bytes);
+
+	/* A hit! */
+	locus_set(view, CURSOR, at);
+	locus_set(view, MARK, at + length);
 	mode->last_bytes = mode->bytes;
 	return 1;
 }
@@ -125,7 +197,8 @@ static void command_handler(struct view *view, unsigned ch)
 		}
 		mode->bytes += new = utf8_out((char *) mode->pattern +
 					      mode->bytes, ch);
-		if (!search(view, mode->backward, new))
+		if (!search(view, mode->backward, new) &&
+		    !mode->regex)
 			mode->bytes -= new;
 		return;
 	}
@@ -159,17 +232,23 @@ done:	if (mode->bytes) {
 		memcpy(view->last_search, mode->pattern, mode->bytes);
 		view->last_search[mode->bytes] = '\0';
 	}
+
+	/* Release search mode resources */
 	view->mode = mode->previous;
 	locus_destroy(view, mode->start_locus);
 	allocate(mode->pattern, 0);
+	if (mode->regex_ready)
+		regfree(mode->regex);
+	allocate(mode->regex, 0);
 	allocate(mode, 0);
+
 	if (ch == '\r' || ch == '_'-'@')
-		locus_set(view, MARK, UNSET);
+		;
 	else if (ch != 0x7f /*BCK*/)
 		view->mode->command(view, ch);
 }
 
-void mode_search(struct view *view)
+void mode_search(struct view *view, int regex)
 {
 	struct mode_search *mode = allocate(NULL, sizeof *mode);
 
@@ -177,5 +256,9 @@ void mode_search(struct view *view)
 	mode->previous = view->mode;
 	mode->command = command_handler;
 	mode->start_locus = locus_create(view, locus_get(view, CURSOR));
+	if (regex) {
+		mode->regex = allocate(NULL, sizeof *mode->regex);
+		memset(mode->regex, 0, sizeof *mode->regex);
+	}
 	view->mode = (struct mode *) mode;
 }

@@ -92,8 +92,8 @@ static unsigned cut(struct view *view, int delete)
 	int bytes = view_get_selection(view, &offset, &append);
 
 	if (!mode->variant)
-		clip_init();
-	clip(view, offset, bytes, append);
+		clip_init(0);
+	clip(0, view, offset, bytes, append);
 	if (delete)
 		view_delete(view, offset, bytes);
 	locus_set(view, MARK, UNSET);
@@ -263,17 +263,18 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		else
 			window_beep(view);
 		break;
-	case 'B': /* exchange clipbuffer and selection, if any, else paste */
+	case 'B': /* exchange clip buffer and selection, if any, else paste */
 		if (mark != UNSET) {
 			int outbytes = view_get_selection(view, &offset, NULL);
-			int inbytes = clip_paste(view, offset + outbytes);
-			clip_init();
-			clip(view, offset, outbytes, 0);
+			unsigned reg = mode->value;
+			int inbytes = clip_paste(view, offset + outbytes, reg);
+			clip_init(reg);
+			clip(reg, view, offset, outbytes, 0);
 			view_delete(view, offset, outbytes);
 			locus_set(view, CURSOR, offset);
 			locus_set(view, MARK, offset + inbytes);
 		} else {
-			clip_paste(view, cursor);
+			clip_paste(view, cursor, mode->value);
 			locus_set(view, MARK, /*old*/ cursor);
 		}
 		break;
@@ -526,7 +527,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		ok = 0;
 		break;
 	case '_': /* ^/: search */
-		mode_search(view);
+		mode_search(view, mode->variant);
 		break;
 	default:
 		ok = 0;

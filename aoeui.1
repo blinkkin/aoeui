@@ -215,8 +215,9 @@ that they can be easily replaced by retyping.
 has infinite undo capabilities.
 .TP
 .B ^U
-reverses the effects of the last command that modified the current
-text in any of its views.
+reverses the effects of the last command, apart from
+.B ^U
+itself, that modified the current text in any of its views.
 .TP
 .B ^Space^U
 reverses the effects of the most recent undo.
@@ -224,7 +225,7 @@ After
 .BR ^U ,
 any
 .I other
-command that modifies the text will permanently commit the undo.
+command that modifies the text will permanently commit the undo(s).
 .SH MODIFICATION
 In the default mode, characters typed without a command indicator
 are inserted at the current cursor position.
@@ -317,6 +318,16 @@ It copies the selection to the clip buffer, putting it at the beginning or the e
 with no selection will paste the current clip buffer's contents.
 But in the presence of a selection it performs a more general function:
 the contents of the selection and the clip buffer are exchanged.
+With a numeric argument,
+.B ^B
+pastes or exchanges with a numbered
+.IR register ,
+which is an alternate clip buffer.
+(The main clip buffer is the same as register 0.)
+Besides being a means for preserving some text for longer periods
+of editing, the registers also serve as a means for extracting
+the text that matches a parenthesized subpattern in a regular expression
+search.
 .SH SEARCHING
 .TP
 .B ^/
@@ -352,7 +363,13 @@ cause motion to the previous and next occurrences of the search
 target string, not single-character motion.
 .TP
 .B Enter
-simply leaves search mode and unsets the selection.
+(and
+.BR ^/ )
+simply leave search mode leave the last hit as the selection.
+.P
+The variant command
+.B ^Space^/
+searches for occurrences of POSIX regular expressions.
 .SH TEXTS, VIEWS, and WINDOWS
 .TP
 .B ^K
@@ -453,10 +470,10 @@ This allows many helpful UNIX text processing commands to be
 used directly.
 Some handy commands to know:
 .TP
-.BI cat (1)
+.BR cat (1)
 to include another entire file, or to receive writes to a named pipe
 .TP
-.BI mkfifo (1)
+.BR mkfifo (1)
 to create a named pipe so that commands in other windows may direct
 their output into a text running
 .B cat
@@ -466,42 +483,42 @@ in the background.
 to change the editor's current working directory (a special case command
 that is not actually passed to a shell)
 .TP
-.BI grep (1)
+.BR grep (1)
 to search for lines containing a pattern
 .TP
-.BI sort (1)
+.BR sort (1)
 to rearrange lines alphabetically or numerically, possibly reversed
 .TP
-.BI uniq (1)
+.BR uniq (1)
 to discard duplicated lines
 .TP
-.BI sed (1)
+.BR sed (1)
 as in
 .B "sed 's/FROM/TO/g'"
 to perform unconditional search-and-replace with regular expressions
 .TP
-.BI tr (1)
+.BR tr (1)
 to convert lower to upper case with
 .B "a-z A-Z"
 and to remove DOS carriage returns with
 .BR "-d '[\er]'"
 .TP
-.BI fmt (1)
+.BR fmt (1)
 to reformat paragraphs of natural language text
 .TP
 .BI "indent -st -kr -i8 -nbbo"
 to reformat C language source code sensibly
 .TP
-.BI column (1)
+.BR column (1)
 to align data into columns
 .TP
 .B "man | colcrt"
 to read a man page
 .TP
-.BI tailf (1)
+.BR tailf (1)
 to monitor additions to a file such as a log
 .TP
-.BI make (1)
+.BR make (1)
 to compile your code
 .B ^Space^E
 with no selection will terminate the output of any asynchronous
@@ -531,9 +548,8 @@ replaced, using
 to exchange the hit with the replacement text, copy it back to the
 clip buffer, and proceed to the next occurrence of the search pattern.
 But when the replacement text is short, it's sometimes easiest to just
-overwrite the selection with
-.B ^Space^V
-to move to its beginning and then retyping it.
+overwrite the selection by immediately retyping it, since the cursor
+will be placed at its beginning.
 .TP
 .B *
 Reconfigure your keyboards so that the key to the left of A, which is
@@ -543,7 +559,7 @@ is interpreted as a Control modifier instead.
 .TP
 .B *
 The
-.BI gnome-terminal (1)
+.BR gnome-terminal (1)
 terminal emulator works well with
 .B aoeui
 if you configure the terminal's scrollback limit to a relatively
@@ -579,6 +595,24 @@ scanned.  It should contain the output of
 .TP
 .B $HOME/.aoeui
 holds any new "anonymous" texts created during editing sessions.
+.SH "SEE ALSO"
+.BR ctags (1),
+.BR regex (7)
+.P
+Helpful commands to use with
+.BR ^E :
+.BR cat (1),
+.BR mkfifo (1),
+.BR grep (1),
+.BR sort (1),
+.BR uniq (1),
+.BR sed (1),
+.BR tr (1),
+.BR fmt (1),
+.BR indent (1),
+.BR column (1),
+.BR colcrt (1),
+.BR tailf (1)
 .SH AUTHOR
 Peter Klausler <peter@klausler.com> wrote
 .BR "aoeui" .

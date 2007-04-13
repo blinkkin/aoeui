@@ -39,7 +39,7 @@ Command characters
   ^C	forward to line end
   ^R	backward screen [beginning of view]
   ^L	forward screen [end of view]
-  ^/	(^_) search mode [regexp TODO]
+  ^/	(^_) incremental search mode [regexp]
 * ^?	(BCK) delete character before cursor
 * ^+	larger font
   ^\	[quit without saving]
@@ -61,7 +61,7 @@ Command characters
 * ^J	(^ENT)
   ^K	save all [single]
   ^X	get path / visit file [set path]
-  ^B	paste / exchange with clipbuffer
+  ^B	paste / exchange with clip buffer [; register]
 * ^M	(ENT)
   ^W	select other view [closing current]
   ^V	set/unset mark [select line / exchange mark with cursor]
@@ -80,7 +80,6 @@ Non-control characters -- commands must be [variants]
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
 
 Missing features:
-	registers
 	color cue for clean/dirty text
 	color cue for bracket pairing
 
