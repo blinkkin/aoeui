@@ -94,7 +94,10 @@ int bookmark_get(struct view **, unsigned *cursor, unsigned *mark,
 void bookmark_unset(unsigned);
 void bookmark_unset_view(struct view *);
 
-void demultiplex_view(struct view *);	/* child.c */
-struct view *view_help(void);		/* help.c */
+void demultiplex_view(struct view *);		/* child.c */
+struct view *view_help(void);			/* help.c */
+char *tab_complete(const char *, int path);	/* tab.c */
+int tab_completion_command(struct view *);
+void align(struct view *);
 
 /* see also util.h */

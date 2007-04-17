@@ -1,9 +1,12 @@
 2007
-04-?? 1.0_alpha6
+04-?? 1.0_alpha5
+04-17 pmk: rewrote alignment
+04-15 pmk: generalized tab completion
+04-15 pmk: don't set mark automatically with ^]
 04-13 pmk: color-cue paired brackets
 04-13 pmk: clean up scratch files better
 04-13 pmk: ^A (macros) is now ^O, so that ^A is available to screen(1)
-04-13 pmk: registers
+04-13 pmk: registers for ^B and regexs
 04-12 pmk: regex searches begun
 04-11 pmk: somewhat less ugly colors in xterms
 04-09 1.0_alpha4

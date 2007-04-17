@@ -30,7 +30,7 @@ Command characters
   ^@	(^Space)
   ^^	literal, control [; unicode]
 * ^[	(ESC)
-  ^]	set mark and move to corresponding or nearest bracket
+  ^]	move to corresponding or nearest bracket
 *  TAB	tab / tab completion [align; set tab stop]
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection

@@ -148,41 +148,6 @@ static int escape(struct view *view)
 	return 1;
 }
 
-static void align(struct view *view)
-{
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned lnstart0 = find_line_start(view, cursor);
-	unsigned nonspace0, lnstart, nonspace, lnend, next;
-	int ch;
-	char *indentation;
-	unsigned indent_bytes;
-
-	if (!lnstart0)
-		return;
-	for (nonspace0 = lnstart0;
-	     (ch = view_char(view, nonspace0, &next)) >= 0;
-	     nonspace0 = next)
-		if (ch == '\n' || (ch != ' ' && ch != '\t'))
-			break;
-	lnstart = find_line_start(view, lnstart0-1);
-	while (lnstart && view_char(view, lnstart, NULL) == '\n')
-		lnstart = find_line_start(view, lnstart-1);
-	nonspace = lnstart;
-	while ((ch = view_char(view, nonspace, &next)) != '\n' &&
-	       (ch == ' ' || ch == '\t'))
-		nonspace = next;
-	indent_bytes = nonspace - lnstart;
-	lnend = find_line_end(view, lnstart);
-	indentation = allocate(NULL, lnend - lnstart);
-	view_get(view, indentation, lnstart, indent_bytes);
-	if ((ch = view_char_prior(view, lnend, NULL)) != ';' &&
-	    ch != '}')
-		indentation[indent_bytes++] = '\t';
-	view_delete(view, lnstart0, nonspace0 - lnstart0);
-	view_insert(view, indentation, lnstart0, indent_bytes);
-	allocate(indentation, 0);
-}
-
 static void command_handler(struct view *view, unsigned ch)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
@@ -192,7 +157,7 @@ static void command_handler(struct view *view, unsigned ch)
 	char buf[8];
 	int ok = 1, literal_unicode = 0;
 	struct view *new_view;
-	char *path;
+	char *select;
 
 	/* Backspace always deletes the character before cursor. */
 	if (ch == 0x7f /*BCK*/) {
@@ -351,18 +316,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'I': /* (TAB) tab / tab completion [align; set tab stop] */
 		if (!mode->variant) {
-			char *completed;
-			path = NULL;
-			if (mark < cursor &&
-			    (path = view_extract_selection(view)) &&
-			    (completed = tab_complete(path))) {
-				view_delete_selection(view);
-				view_insert(view, completed, mark, -1);
-				locus_set(view, MARK, mark);
-				allocate(path, 0);
-				allocate(completed, 0);
-			} else {
-				allocate(path, 0);
+			if (!tab_completion_command(view)) {
 				ch = '\t';
 				goto self_insert;
 			}
@@ -490,14 +444,14 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		if (mark == UNSET) {
 			view_insert(view, view->text->path, cursor, -1);
 			locus_set(view, MARK, /*old*/ cursor);
-		} else if ((path = view_extract_selection(view))) {
+		} else if ((select = view_extract_selection(view))) {
 			if (mode->variant) {
-				if ((ok = text_rename(view->text, path)))
+				if ((ok = text_rename(view->text, select)))
 					window_activate(view);
 				new_view = NULL;
 			} else
-				ok = !!(new_view = view_open(path));
-			allocate(path, 0);
+				ok = !!(new_view = view_open(select));
+			allocate(select, 0);
 			if (ok)
 				view_delete_selection(view);
 			if (new_view)
@@ -535,16 +489,12 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			exit(EXIT_SUCCESS);
 		}
 		break;
-	case ']': /* set mark and move to corresponding bracket */
-		mark = find_corresponding_bracket(view, cursor);
-		if ((signed) mark < 0)
+	case ']': /* move to corresponding bracket */
+		cursor = find_corresponding_bracket(view, cursor);
+		if ((signed) cursor < 0)
 			window_beep(view);
-		else {
-			locus_set(view, CURSOR, mark);
-			if (mark < cursor)
-				view_char(view, cursor, &cursor);
-			locus_set(view, MARK, cursor);
-		}
+		else
+			locus_set(view, CURSOR, cursor);
 		break;
 	case '^': /* literal [; unicode] */
 		if (mode->value) {

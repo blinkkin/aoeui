@@ -1,8 +1,4 @@
 #include "all.h"
-#include <dirent.h>
-#ifndef NAME_MAX
-# define NAME_MAX 256
-#endif
 
 int view_vprintf(struct view *view, const char *msg, va_list ap)
 {
@@ -80,42 +76,6 @@ struct view *view_next(struct view *view)
 			new = text_list->views;
 	} while (new != view && new->window);
 	return new == view ? text_new() : new;
-}
-
-char *tab_complete(const char *path)
-{
-	unsigned len = strlen(path);
-	char *new = allocate(NULL, len + NAME_MAX);
-	char *p;
-	DIR *dir;
-	struct dirent *dent, *best_dent = NULL;
-
-	memcpy(new, path, len+1);
-	p = strrchr(new, '/');
-	if (p) {
-		*p = '\0';
-		dir = opendir(new);
-		*p++ = '/';
-	} else {
-		dir = opendir(".");
-		p = new;
-	}
-	if (dir) {
-		while ((dent = readdir(dir)))
-			if (!strncmp(p, dent->d_name, new + len - p) &&
-			    (!best_dent ||
-			     strcmp(dent->d_name, best_dent->d_name) < 0))
-				best_dent = dent;
-		if (best_dent)
-			strcpy(p, best_dent->d_name);
-		closedir(dir);
-	}
-
-	if (!strcmp(new, path)) {
-		allocate(new, 0);
-		new = NULL;
-	}
-	return new;
 }
 
 static int unicode(struct view *view, unsigned offset, unsigned *next)

@@ -17,6 +17,7 @@ int find_corresponding_bracket(struct view *, unsigned offset);
 unsigned find_line_number(struct view *, unsigned line);
 unsigned find_row_bytes(struct view *, unsigned offset, unsigned columns);
 unsigned find_column(unsigned *row, struct view *, unsigned offset);
+int find_string(struct view *, const char *, unsigned offset);
 
 void find_tag(struct view *);	/* tags.c */
 
@@ -27,8 +28,6 @@ char *view_extract(struct view *, unsigned offset, unsigned bytes);
 char *view_extract_selection(struct view *);
 unsigned view_delete_selection(struct view *);
 struct view *view_next(struct view *);
-
-char *tab_complete(const char *);
 
 int view_char(struct view *view, unsigned offset, unsigned *length);
 int view_char_prior(struct view *view, unsigned offset, unsigned *prev);

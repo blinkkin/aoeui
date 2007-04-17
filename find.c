@@ -183,7 +183,8 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 				return -1;
 			stack[stackptr++] = ch;
 		} else if (updown[ch] == -dir)
-			if (ch != peer[stack[--stackptr]])
+			if (ch != peer[stack[--stackptr]] ||
+			    !stackptr && dir > 0)
 				break;
 		offset = next;
 	}
@@ -258,4 +259,21 @@ unsigned find_column(unsigned *row, struct view *view, unsigned offset)
 			column += char_columns(ch, column, tabstop);
 	}
 	return column;
+}
+
+int find_string(struct view *view, const char *string, unsigned offset)
+{
+	const unsigned char *ustring = (const unsigned char *) string;
+	unsigned first = *ustring, j;
+	int ch;
+	for (; (ch = view_byte(view, offset)) >= 0; offset++) {
+		if (ch != first)
+			continue;
+		for (j = 1; (ch = ustring[j]); j++)
+			if (ch != view_byte(view, offset+j))
+				break;
+		if (!ch)
+			return offset;
+	}
+	return -1;
 }
