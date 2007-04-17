@@ -19,6 +19,8 @@ $(TARGET): $(RELS)
 $(RELS): $(HDRS)
 $(TARGET).1.gz: $(TARGET).1
 	gzip -c $(TARGET).1 >$@
+$(TARGET).1.html: $(TARGET).1
+	man2html $(TARGET).1 >$@
 
 optimized: clean
 	$(MAKE) CFLAGS="-O3"
@@ -40,7 +42,7 @@ install: $(TARGET) $(TARGET).1.gz
 clean:
 	rm -f *.o core gmon.out
 clobber: clean
-	rm -f $(TARGET) $(TARGET).1.gz TAGS
+	rm -f $(TARGET) $(TARGET).1.gz TAGS $(TARGET).1.html
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless
