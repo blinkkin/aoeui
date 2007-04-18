@@ -1,4 +1,6 @@
 2007
+04-?? 1.0_alpha6
+04-18 pmk: fix path name tab completion (shortest common continuation)
 04-18 1.0_alpha5
 04-17 pmk: rewrote alignment
 04-15 pmk: generalized tab completion

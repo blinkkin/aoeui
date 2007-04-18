@@ -18,14 +18,44 @@ aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
 is an interactive display text editor optimized for users of the
 Dvorak keyboard layout, although QWERTY users are welcome to
 use it as well.
+When run with no file name arguments,
 .B aoeui
-run with no file name arguments displays a short command
-introduction and summary.
+displays a short command introduction and summary.
 .P
 .B aoeui
 can browse very large read-only files with quick start-up,
 since original texts are memory-mapped from files and not
 duplicated in memory until they are about to be modified.
+.SH "INTENTIONALLY MISSING FEATURES"
+.B aoeui
+has no embedded extension language, since it is trivial to
+pass regions of text from the editor to any program or script
+that can read standard input and write standard output.
+The shell,
+.BI sed (1),
+.BI awk (1),
+.BI python (1),
+and
+.BI perl (1)
+are all usable for such scripting.
+Further, since
+.B aoeui
+ships will full sources and the rights to modify it,
+users can customize it directly.
+.P
+The editor has no syntax highlighting modes, apart from
+subtle color cues that help match up parentheses, brackets,
+and braces.
+.P
+.B aoeui
+has no mail or news reader, IRC client, or artificial intelligence
+psychologist mode.
+.P
+There is no X window system interface; that's what
+.BI xterm (1)
+and
+.BI gnome-terminal (1)
+are for.
 .SH BASICS
 A
 .I text
@@ -582,8 +612,16 @@ terminal emulator works well with
 .B aoeui
 if you configure the terminal's scrollback limit to a relatively
 small value.
+.TP
+.B *
+To move backward or forward by half a screenful, use
+.B ^R
+or
+.B ^L
+and then
+.BR ^Z .
 .SH BUGS
-Probably lots; please tell me about them.
+Inevitable; please tell me about any that you find.
 .SH ENVIRONMENT
 .TP
 .B SHELL

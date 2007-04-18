@@ -35,10 +35,10 @@ Command characters
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection
   ^F	/ copy [pre/append]
-  ^G	backward to line start
-  ^C	forward to line end
-  ^R	backward screen [beginning of view]
-  ^L	forward screen [end of view]
+  ^G	backward to line start(s)
+  ^C	forward to line end(s)
+  ^R	backward screen(s) [beginning of view]
+  ^L	forward screen(s) [end of view]
   ^/	(^_) incremental search mode [regexp]
 * ^?	(BCK) delete character before cursor
 * ^+	-- larger font
@@ -80,9 +80,9 @@ Non-control characters -- commands must be [variants]
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
   F-keys:
 	F1 is help, F11 is full-screen on/off
-	F2 OQ  F3 OR  F4 OS
-	F5 [15~  F6 [17~  F7 [18~  F8 [19~
-	F9 [20~  F10 [21~  F12 [24~
+	F2 ^[OQ  F3 ^[OR  F4 ^[OS
+	F5 ^[[15~  F6 ^[[17~  F7 ^[[18~  F8 ^[[19~
+	F9 ^[[20~  F10 ^[[21~  F12 ^[[24~
 
 Missing features:
 	color cue for clean/dirty text
@@ -95,3 +95,4 @@ Idioms
 - also, can use a macro
 - exchanging cursor and mark and then retyping with automatic cut
   is often faster than an explicit cut.
+- going forward or back a half screenful: use ^R/^L, then ^Z

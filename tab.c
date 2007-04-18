@@ -7,10 +7,8 @@
 static char *path_complete(const char *string)
 {
 	unsigned length = strlen(string);
-	char *new = allocate(NULL, length + NAME_MAX);
-	char *p;
+	char *new = allocate(NULL, length + NAME_MAX), *p;
 	DIR *dir;
-	struct dirent *dent, *best_dent = NULL;
 
 	memcpy(new, string, length+1);
 	p = strrchr(new, '/');
@@ -23,15 +21,33 @@ static char *path_complete(const char *string)
 		p = new;
 	}
 	if (dir) {
-		while ((dent = readdir(dir)))
-			if (!strncmp(p, dent->d_name, new + length - p) &&
-			    (!best_dent ||
-			     strcmp(dent->d_name, best_dent->d_name) < 0))
-				best_dent = dent;
-		if (best_dent)
-			strcpy(p, best_dent->d_name);
+		struct dirent *dent;
+		unsigned prefix_len = new + length - p;
+		unsigned best_len = 0;
+		while ((dent = readdir(dir))) {
+			unsigned dent_len = strlen(dent->d_name);
+			if (dent_len <= prefix_len)
+				continue;
+			if (strncmp(p, dent->d_name, prefix_len))
+				continue;
+			if (!best_len) {
+				strcpy(new + length, dent->d_name + prefix_len);
+				best_len = dent_len - prefix_len;
+			} else {
+				unsigned old_best_len = best_len;
+				for (best_len = 0;
+				     best_len < old_best_len;
+				     best_len++)
+					if (new[length+best_len] !=
+					    dent->d_name[prefix_len+best_len])
+						break;
+				if (!best_len)
+					break;
+			}
+		}
+		new[length+best_len] = '\0';
 		closedir(dir);
-		if (best_dent)
+		if (best_len)
 			return new;
 	}
 	allocate(new, 0);
