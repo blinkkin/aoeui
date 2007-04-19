@@ -78,7 +78,7 @@ struct view *view_next(struct view *view)
 	return new == view ? text_new() : new;
 }
 
-static int unicode(struct view *view, unsigned offset, unsigned *next)
+int view_unicode(struct view *view, unsigned offset, unsigned *next)
 {
 	int ch = view_byte(view, offset);
 	char *raw;
@@ -97,7 +97,7 @@ static int unicode(struct view *view, unsigned offset, unsigned *next)
 	return utf8_unicode(raw, length);
 }
 
-static int unicode_prior(struct view *view, unsigned offset, unsigned *prev)
+int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev)
 {
 	int ch = -1;
 	char *raw;
@@ -109,7 +109,7 @@ static int unicode_prior(struct view *view, unsigned offset, unsigned *prev)
 			view_raw(view, &raw, at, offset-at+1);
 			offset -= utf8_length_backwards(raw+offset-at,
 					offset-at+1) - 1;
-			ch = unicode(view, offset, NULL);
+			ch = view_unicode(view, offset, NULL);
 		}
 	}
 	if (prev)
@@ -120,13 +120,13 @@ static int unicode_prior(struct view *view, unsigned offset, unsigned *prev)
 int view_char(struct view *view, unsigned offset, unsigned *next)
 {
 	unsigned next0;
-	int ch = unicode(view, offset, &next0);
+	int ch = view_unicode(view, offset, &next0);
 	if (!next)
 		return ch;
 	*next = next0;
 	if (ch >= FOLD_START && ch < FOLD_END) {
 		unsigned fbytes = FOLDED_BYTES(ch), next2;
-		if (unicode(view, next0 + fbytes, &next2) ==
+		if (view_unicode(view, next0 + fbytes, &next2) ==
 		    FOLD_END + fbytes)
 			*next = next2;
 	}
@@ -135,13 +135,13 @@ int view_char(struct view *view, unsigned offset, unsigned *next)
 
 int view_char_prior(struct view *view, unsigned offset, unsigned *prev)
 {
-	int ch = unicode_prior(view, offset, &offset), ch0;
+	int ch = view_unicode_prior(view, offset, &offset), ch0;
 	unsigned fbytes, offset0;
 
 	if (ch >= FOLD_END &&
 	    (fbytes = FOLDED_BYTES(ch)) <= offset &&
-	    (ch0 = unicode_prior(view, offset - fbytes,
-				 &offset0)) >= FOLD_START &&
+	    (ch0 = view_unicode_prior(view, offset - fbytes,
+				      &offset0)) >= FOLD_START &&
 	    ch0 < FOLD_END &&
 	    FOLDED_BYTES(ch0) == fbytes) {
 		ch = ch0;
@@ -150,94 +150,4 @@ int view_char_prior(struct view *view, unsigned offset, unsigned *prev)
 	if (prev)
 		*prev = offset;
 	return ch;
-}
-
-void view_fold(struct view *view, unsigned cursor, unsigned mark)
-{
-	unsigned bytes = mark - cursor;
-	char buf[8];
-	if (mark < cursor)
-		bytes = -bytes, cursor = mark;
-	if (cursor > view->bytes)
-		return;
-	if (cursor + bytes > view->bytes)
-		bytes = view->bytes - cursor;
-	if (!bytes)
-		return;
-	view_insert(view, buf, cursor + bytes, utf8_out(buf, FOLD_END+bytes));
-	view_insert(view, buf, cursor, utf8_out(buf, FOLD_START+bytes));
-}
-
-int view_unfold(struct view *view, unsigned offset)
-{
-	unsigned next, fbytes, next2;
-	int ch = unicode(view, offset, &next);
-	if (ch < FOLD_START || ch >= FOLD_END)
-		return -1;
-	fbytes = FOLDED_BYTES(ch);
-	if (unicode(view, next + fbytes, &next2) !=
-	    FOLD_END + fbytes)
-		return -1;
-	view_delete(view, next + fbytes, next2 - (next + fbytes));
-	view_delete(view, offset, next - offset);
-	return offset + fbytes;
-}
-
-static unsigned indentation(struct view *view, unsigned offset)
-{
-	unsigned indent = 0, tabstop = view->text->tabstop;
-	int ch;
-	tabstop |= !tabstop;
-	for (;;)
-		if ((ch = view_char(view, offset, &offset)) == ' ')
-			indent++;
-		else if (ch == '\t')
-			indent = (indent / tabstop + 1) * tabstop;
-		else if (ch == '\n')
-			return -1;
-		else
-			break;
-	return indent;
-}
-
-static unsigned max_indentation(struct view *view)
-{
-	unsigned offset, maxindent = 0, next;
-	for (offset = 0; offset < view->bytes; offset = next) {
-		unsigned indent = indentation(view, offset);
-		if ((signed) indent > 0 && indent > maxindent)
-			maxindent = indent;
-		next = find_line_end(view, offset) + 1;
-	}
-	return maxindent;
-}
-
-void view_fold_indented(struct view *view, unsigned minindent)
-{
-	unsigned maxindent;
-	minindent |= !minindent;
-	while ((maxindent = max_indentation(view)) >= minindent) {
-		unsigned offset, next;
-		int start = -1;
-		for (offset = 0; offset < view->bytes; offset = next) {
-			next = find_line_end(view, offset) + 1;
-			if (indentation(view, offset) < maxindent) {
-				if (start >= 0) {
-					view_fold(view, next = start, offset-1);
-					start = -1;
-				}
-			} else if (start < 0)
-				start = offset - !!offset;
-		}
-		if (start >= 0)
-			view_fold(view, start, offset-1);
-	}
-}
-
-void view_unfold_all(struct view *view)
-{
-	unsigned offset, next;
-	for (offset = 0; unicode(view, offset, &next) >= 0; offset = next)
-		if (view_unfold(view, offset) >= 0)
-			next = offset;
 }

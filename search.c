@@ -53,7 +53,7 @@ static int match_regex(struct view *view, unsigned *offset)
 		if (view_char_prior(view, *offset, NULL) != '\n')
 			flags |= REG_NOTBOL;
 		err = regexec(mode->regex, raw, 10, match, flags);
-		if (err != REG_NOMATCH)
+		if (err && err != REG_NOMATCH)
 			window_beep(view);
 		if (err)
 			break;

@@ -313,6 +313,8 @@ void text_preserve(struct text *text)
 
 	text->preserved = text->dirties;
 
+	text_unfold_all(text);
+
 	if (text->clean) {
 		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 		if (bytes == text->clean_bytes &&
