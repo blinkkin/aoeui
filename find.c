@@ -1,279 +1,279 @@
-#include "all.h"ý€€€€
-ý €€€
-/* Routines that scan characters in views */ý€€€€
-ý €€€
+#include "all.h"
+
+/* Routines that scan characters in views */
+
 unsigned find_line_start(struct view *view, unsigned offset)
-{ý€€€‚¢
+{
 	int ch;
 	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0 &&ý€€€€±
-	       ch != '\n')ý€€€€‘
-		offset = prev;ý €€€‘ý €€€±
-	return offset;ý €€‚¢
-}ý€€€€
-ý €€€
+	while ((ch = view_char_prior(view, offset, &prev)) >= 0 &&
+	       ch != '\n')
+		offset = prev;
+	return offset;
+}
+
 unsigned find_line_end(struct view *view, unsigned offset)
-{ý€€€‚œ
+{
 	int ch;
 	unsigned next;
-	while ((ch = view_char(view, offset, &next)) >= 0 &&ý€€€€±
-	       ch != '\n')ý€€€€‘
-		offset = next;ý €€€‘ý €€€±
-	return offset;ý €€‚œ
-}ý€€€€
-ý €€€
+	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	       ch != '\n')
+		offset = next;
+	return offset;
+}
+
 unsigned find_space(struct view *view, unsigned offset)
-{ý€€€‚ž
+{
 	int ch;
 	unsigned next;
-	while ((ch = view_char(view, offset, &next)) >= 0 &&ý€€€€³
-	       !isspace(ch))ý€€€€‘
-		offset = next;ý €€€‘ý €€€³
-	return offset;ý €€‚ž
-}ý€€€€
-ý €€€
+	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	       !isspace(ch))
+		offset = next;
+	return offset;
+}
+
 unsigned find_nonspace(struct view *view, unsigned offset)
-{ý€€€®
+{
 	unsigned next;
-	while (isspace(view_char(view, offset, &next)))ý€€€€‘
-		offset = next;ý €€€‘
-	return offset;ý €€®
-}ý€€€€
-ý €€€
+	while (isspace(view_char(view, offset, &next)))
+		offset = next;
+	return offset;
+}
+
 unsigned find_word_start(struct view *view, unsigned offset)
-{ý€€€„…
+{
 	int ch;
 	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {ý€€€€»
+	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
 		offset = prev;
-		if (!isspace(ch))ý€€€€Š
-			break;ý €€€Šý €€€»
+		if (!isspace(ch))
+			break;
 	}
-	while (is_wordch(view_char_prior(view, offset, &prev)))ý€€€€‘
-		offset = prev;ý €€€‘
-	return offset;ý €€„…
-}ý€€€€
-ý €€€
+	while (is_wordch(view_char_prior(view, offset, &prev)))
+		offset = prev;
+	return offset;
+}
+
 unsigned find_word_end(struct view *view, unsigned offset)
-{ý€€€ƒ
+{
 	int ch;
 	unsigned next;
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)ý€€€€¬
-		if (!is_wordch(ch))ý€€€€Š
-			break;ý €€€Šý €€€¬
-	return offset;ý €€ƒ
-}ý€€€€
-ý €€€
+	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)
+		if (!is_wordch(ch))
+			break;
+	return offset;
+}
+
 unsigned find_id_start(struct view *view, unsigned offset)
-{ý€€€„ƒ
+{
 	int ch;
 	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {ý€€€€»
+	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
 		offset = prev;
-		if (!isspace(ch))ý€€€€Š
-			break;ý €€€Šý €€€»
+		if (!isspace(ch))
+			break;
 	}
-	while (is_idch(view_char_prior(view, offset, &prev)))ý€€€€‘
-		offset = prev;ý €€€‘
-	return offset;ý €€„ƒ
-}ý€€€€
-ý €€€
+	while (is_idch(view_char_prior(view, offset, &prev)))
+		offset = prev;
+	return offset;
+}
+
 unsigned find_id_end(struct view *view, unsigned offset)
-{ý€€€ƒ‹
+{
 	int ch;
 	unsigned next;
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)ý€€€€ª
-		if (!is_idch(ch))ý€€€€Š
-			break;ý €€€Šý €€€ª
-	return offset;ý €€ƒ‹
-}ý€€€€
-ý €€€
+	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)
+		if (!is_idch(ch))
+			break;
+	return offset;
+}
+
 unsigned find_sentence_start(struct view *view, unsigned offset)
-{ý€€€†›
+{
 	unsigned prev;
 	int ch, next = view_char_prior(view, offset, &prev);
-	if (next < 0)ý€€€€‘
-		return offset;ý €€€‘
-	while ((ch = view_char_prior(view, offset = prev, &prev)) >= 0 &&ý€€€ƒŠ
+	if (next < 0)
+		return offset;
+	while ((ch = view_char_prior(view, offset = prev, &prev)) >= 0 &&
 	       ch != '.' && ch != ',' && ch != ';' && ch != ':' &&
 	       ch != '!' && ch != '?' &&
 	       ch != '(' && ch != '[' && ch != '{' &&
-	       (ch != '\n' || ch != next))ý€€€€
-		next = ch;ý €€€ý €€ƒŠ
-	return offset;ý €€†›
-}ý€€€€
-ý €€€
+	       (ch != '\n' || ch != next))
+		next = ch;
+	return offset;
+}
+
 unsigned find_sentence_end(struct view *view, unsigned offset)
-{ý€€€†
+{
 	unsigned next;
 	int ch, last = view_char(view, offset, &next);
-	if (last < 0)ý€€€€‘
-		return offset;ý €€€‘
-	while ((ch = view_char(view, offset = next, &next)) >= 0 &&ý€€€ƒŠ
+	if (last < 0)
+		return offset;
+	while ((ch = view_char(view, offset = next, &next)) >= 0 &&
 	       ch != '.' && ch != ',' && ch != ';' && ch != ':' &&
 	       ch != '!' && ch != '?' &&
 	       ch != ')' && ch != ']' && ch != '}' &&
-	       (ch != '\n' || ch != last))ý€€€€
-		last = ch;ý €€€ý €€ƒŠ
-	return offset;ý €€†
-}ý€€€€
-ý €€€
+	       (ch != '\n' || ch != last))
+		last = ch;
+	return offset;
+}
+
 int find_corresponding_bracket(struct view *view, unsigned offset)
-{ý€€€ ƒ
+{
 	static signed char peer[0x100], updown[0x100];
 	unsigned next;
 	int ch = view_char(view, offset, &next);
 	unsigned char stack[32];
-	int stackptr = 0, dir;ý€€€€
-ý €€€
-	if (!peer['(']) {ý€€€ƒ‹
+	int stackptr = 0, dir;
+
+	if (!peer['(']) {
 		peer['('] = ')', peer[')'] = '(';
 		peer['['] = ']', peer[']'] = '[';
 		peer['{'] = '}', peer['}'] = '{';
 		updown['('] = updown['['] = updown['{'] = 1;
-		updown[')'] = updown[']'] = updown['}'] = -1;ý €€ƒ‹
-	}ý€€€€
-ý €€€
-	if ((unsigned) ch >= 0x100 || !(dir = updown[ch])) {ý€€€©
+		updown[')'] = updown[']'] = updown['}'] = -1;
+	}
+
+	if ((unsigned) ch >= 0x100 || !(dir = updown[ch])) {
 		unsigned back = offset, ahead, next = offset;
-		while ((ch = view_char_prior(view, back, &back)) >= 0) {ý€€€„±
-			if (ch >= 0x100)ý€€€€Ž
-				continue;ý €€€Ž
-			if (updown[ch] < 0)ý€€€¬
-				if (stackptr == sizeof stack)ý€€€€Œ
-					break;ý €€€Œ
-				elseý€€€€
-					stack[stackptr++] = ch;ý €€€ý €€¬
-			else if (updown[ch] > 0 &&ý€€€€³
-				 (!stackptr || ch != peer[stack[--stackptr]]))ý €€€³ý€€€€‹
-				break;ý €€€‹ý €€„±
+		while ((ch = view_char_prior(view, back, &back)) >= 0) {
+			if (ch >= 0x100)
+				continue;
+			if (updown[ch] < 0)
+				if (stackptr == sizeof stack)
+					break;
+				else
+					stack[stackptr++] = ch;
+			else if (updown[ch] > 0 &&
+				 (!stackptr || ch != peer[stack[--stackptr]]))
+				break;
 		}
-		if (ch < 0)ý€€€€”
-			back = offset+1;ý €€€”
-		while ((ch = view_char(view, ahead = next, &next)) >= 0) {ý€€€„±
-			if (ch >= 0x100)ý€€€€Ž
-				continue;ý €€€Ž
-			if (updown[ch] > 0)ý€€€¬
-				if (stackptr == sizeof stack)ý€€€€Œ
-					break;ý €€€Œ
-				elseý€€€€
-					stack[stackptr++] = ch;ý €€€ý €€¬
-			else if (updown[ch] < 0 &&ý€€€€³
-				 (!stackptr || ch != peer[stack[--stackptr]]))ý €€€³ý€€€€‹
-				break;ý €€€‹ý €€„±
+		if (ch < 0)
+			back = offset+1;
+		while ((ch = view_char(view, ahead = next, &next)) >= 0) {
+			if (ch >= 0x100)
+				continue;
+			if (updown[ch] > 0)
+				if (stackptr == sizeof stack)
+					break;
+				else
+					stack[stackptr++] = ch;
+			else if (updown[ch] < 0 &&
+				 (!stackptr || ch != peer[stack[--stackptr]]))
+				break;
 		}
-		if (back < offset &&ý€€€
-		    (offset - back <= ahead - offset || ch < 0))ý€€€€
-			return back;ý €€€ý €€
-		return ch >= 0 ? ahead : -1;ý €€©
-	}ý€€€€
-ý €€€
+		if (back < offset &&
+		    (offset - back <= ahead - offset || ch < 0))
+			return back;
+		return ch >= 0 ? ahead : -1;
+	}
+
 	stack[stackptr++] = ch;
-	if (dir > 0)ý€€€€‘
-		offset = next;ý €€€‘
-	while (stackptr) {ý€€€†¡
-		ch = (dir > 0 ? view_char : view_char_prior)ý€€€€š
-			(view, offset, &next);ý €€€š
-		if (ch < 0)ý€€€€Ž
-			return -1;ý €€€Ž
-		if (updown[ch] == dir) {ý€€€—
-			if (stackptr == sizeof stack)ý€€€€
-				return -1;ý €€€
-			stack[stackptr++] = ch;ý €€—
-		} else if (updown[ch] == -dir)ý€€€¨
-			if (ch != peer[stack[--stackptr]] ||ý€€€€´
-			    !stackptr && dir > 0)ý€€€€‹
-				break;ý €€€‹ý €€€´ý €€¨
-		offset = next;ý €€†¡
-	}ý€€€€
-ý €€€
-	return offset;ý €€ ƒ
-}ý€€€€
-ý €€€
+	if (dir > 0)
+		offset = next;
+	while (stackptr) {
+		ch = (dir > 0 ? view_char : view_char_prior)
+			(view, offset, &next);
+		if (ch < 0)
+			return -1;
+		if (updown[ch] == dir) {
+			if (stackptr == sizeof stack)
+				return -1;
+			stack[stackptr++] = ch;
+		} else if (updown[ch] == -dir)
+			if (ch != peer[stack[--stackptr]] ||
+			    !stackptr && dir > 0)
+				break;
+		offset = next;
+	}
+
+	return offset;
+}
+
 unsigned find_line_number(struct view *view, unsigned line)
-{ý€€€‚½
+{
 	unsigned offset;
-	for (offset = 0;ý€€€½
+	for (offset = 0;
 	     offset < view->bytes;
-	     offset = find_line_end(view, offset) + 1)ý€€€€¥
-		if (!--line)ý€€€€Š
-			break;ý €€€Šý €€€¥ý €€½
-	return offset;ý €€‚½
-}ý€€€€
-ý €€€
+	     offset = find_line_end(view, offset) + 1)
+		if (!--line)
+			break;
+	return offset;
+}
+
 INLINE unsigned char_columns(unsigned ch, unsigned column,
 				unsigned tabstop)
-{ý€€€‚¬
-	if (ch == '\t')ý€€€€¥
-		return tabstop - column % tabstop;ý €€€¥
-	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)ý€€€€¢
-		return 2; /* ^X or folded <> */ý €€€¢
-	return 1;ý €€‚¬
-}ý€€€€
-ý €€€
+{
+	if (ch == '\t')
+		return tabstop - column % tabstop;
+	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
+		return 2; /* ^X or folded <> */
+	return 1;
+}
+
 unsigned find_row_bytes(struct view *view, unsigned offset0, unsigned columns)
-{ý€€€‰°
+{
 	unsigned offset = offset0, next;
 	unsigned tabstop = view->text->tabstop;
-	int ch = 0, column = 0, charcols;ý€€€€
-ý €€€
-	while (column < columns) {ý€€€„•
-		if ((ch = view_char(view, offset, &next)) < 0)ý€€€€Š
-			break;ý €€€Š
-		if (ch == '\n') {ý€€€€œ
+	int ch = 0, column = 0, charcols;
+
+	while (column < columns) {
+		if ((ch = view_char(view, offset, &next)) < 0)
+			break;
+		if (ch == '\n') {
 			offset = next;
-			break;ý €€€œ
+			break;
 		}
 		charcols = char_columns(ch, column, tabstop);
-		if (column+charcols > columns)ý€€€€Š
-			break;ý €€€Š
+		if (column+charcols > columns)
+			break;
 		column += charcols;
-		offset = next;ý €€„•
-	}ý€€€€
-ý €€€
-	if (column == columns &&ý€€€¨
+		offset = next;
+	}
+
+	if (column == columns &&
 	    offset != locus_get(view, CURSOR) &&
-	    view_byte(view, offset) == '\n')ý€€€€Œ
-		offset++;ý €€€Œý €€¨
-	return offset - offset0;ý €€‰°
-}ý€€€€
-ý €€€
+	    view_byte(view, offset) == '\n')
+		offset++;
+	return offset - offset0;
+}
+
 unsigned find_column(unsigned *row, struct view *view, unsigned offset)
-{ý€€€†¹
+{
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned tabstop = view->text->tabstop;
 	unsigned next, column;
-	int ch;ý€€€€
-ý €€€
-	for (column = 0; offset < cursor; offset = next) {ý€€€ƒ£
+	int ch;
+
+	for (column = 0; offset < cursor; offset = next) {
 		ch = view_char(view, offset, &next);
-		if (ch < 0)ý€€€€Š
-			break;ý €€€Š
-		if (ch == '\n') {ý€€€€³
-			if (row)ý€€€€Œ
-				++*row;ý €€€Œ
-			column = 0;ý €€€³
-		} elseý€€€€°
-			column += char_columns(ch, column, tabstop);ý €€€°ý €€ƒ£
+		if (ch < 0)
+			break;
+		if (ch == '\n') {
+			if (row)
+				++*row;
+			column = 0;
+		} else
+			column += char_columns(ch, column, tabstop);
 	}
-	return column;ý €€†¹
-}ý€€€€
-ý €€€
+	return column;
+}
+
 int find_string(struct view *view, const char *string, unsigned offset)
-{ý€€€†‚
+{
 	const unsigned char *ustring = (const unsigned char *) string;
 	unsigned first = *ustring, j;
 	int ch;
-	for (; (ch = view_byte(view, offset)) >= 0; offset++) {ý€€€ƒ†
-		if (ch != first)ý€€€€
-			continue;ý €€€
-		for (j = 1; (ch = ustring[j]); j++)ý€€€€¿
-			if (ch != view_byte(view, offset+j))ý€€€€‹
-				break;ý €€€‹ý €€€¿
-		if (!ch)ý€€€€’
-			return offset;ý €€€’ý €€ƒ†
+	for (; (ch = view_byte(view, offset)) >= 0; offset++) {
+		if (ch != first)
+			continue;
+		for (j = 1; (ch = ustring[j]); j++)
+			if (ch != view_byte(view, offset+j))
+				break;
+		if (!ch)
+			return offset;
 	}
-	return -1;ý €€†‚
+	return -1;
 }

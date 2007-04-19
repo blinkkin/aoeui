@@ -1,243 +1,243 @@
-#include "all.h"ý€€€€
-ý €€€
+#include "all.h"
+
 int view_vprintf(struct view *view, const char *msg, va_list ap)
-{ý€€€¬
+{
 	char buff[1024];
 	vsnprintf(buff, sizeof buff, msg, ap);
-	return view_insert(view, buff, view->bytes, -1);ý €€¬
-}ý€€€€
-ý €€€
+	return view_insert(view, buff, view->bytes, -1);
+}
+
 int view_printf(struct view *view, const char *msg, ...)
-{ý€€€¿
+{
 	va_list ap;
-	int result;ý€€€€
-ý €€€
+	int result;
+
 	va_start(ap, msg);
 	result = view_vprintf(view, msg, ap);
 	va_end(ap);
-	return result;ý €€¿
-}ý€€€€
-ý €€€
+	return result;
+}
+
 unsigned view_get_selection(struct view *view, unsigned *offset, int *append)
-{ý€€€„»
+{
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned mark = locus_get(view, MARK);
-	if (mark == UNSET)ý€€€€ª
-		mark = cursor + (cursor < view->bytes);ý €€€ª
-	if (append)ý€€€€œ
-		*append = cursor >= mark;ý €€€œ
-	if (mark <= cursor)ý€€€€¤
-		return cursor - (*offset = mark);ý €€€¤
-	return mark - (*offset = cursor);ý €€„»
-}ý€€€€
-ý €€€
+	if (mark == UNSET)
+		mark = cursor + (cursor < view->bytes);
+	if (append)
+		*append = cursor >= mark;
+	if (mark <= cursor)
+		return cursor - (*offset = mark);
+	return mark - (*offset = cursor);
+}
+
 char *view_extract(struct view *view, unsigned offset, unsigned bytes)
-{ý€€€…‹
-	char *str;ý€€€€
-ý €€€
-	if (!view)ý€€€€
-		return NULL;ý €€€
-	if (offset > view->bytes)ý€€€€
-		return NULL;ý €€€
-	if (offset + bytes > view->bytes)ý€€€€ 
-		bytes = view->bytes - offset;ý €€€ 
-	if (!bytes)ý€€€€
-		return NULL;ý €€€
+{
+	char *str;
+
+	if (!view)
+		return NULL;
+	if (offset > view->bytes)
+		return NULL;
+	if (offset + bytes > view->bytes)
+		bytes = view->bytes - offset;
+	if (!bytes)
+		return NULL;
 	str = allocate(NULL, bytes+1);
 	str[view_get(view, str, offset, bytes)] = '\0';
-	return str;ý €€…‹
-}ý€€€€
-ý €€€
+	return str;
+}
+
 char *view_extract_selection(struct view *view)
-{ý€€€¸
+{
 	unsigned offset;
 	unsigned bytes = view_get_selection(view, &offset, NULL);
-	return view_extract(view, offset, bytes);ý €€¸
-}ý€€€€
-ý €€€
+	return view_extract(view, offset, bytes);
+}
+
 unsigned view_delete_selection(struct view *view)
-{ý€€€‚ž
+{
 	unsigned offset;
 	unsigned bytes = view_get_selection(view, &offset, NULL);
 	view_delete(view, offset, bytes);
 	locus_set(view, MARK, UNSET);
-	return bytes;ý €€‚ž
-}ý€€€€
-ý €€€
+	return bytes;
+}
+
 struct view *view_next(struct view *view)
-{ý€€€„£
+{
 	struct view *new = view;
-	do {ý€€€‚¨
-		if (new->next)ý€€€€”
-			new = new->next;ý €€€”
-		else if (new->text->next)ý€€€€¡
-			new = new->text->next->views;ý €€€¡
-		elseý€€€€›
-			new = text_list->views;ý €€€›ý €€‚¨
+	do {
+		if (new->next)
+			new = new->next;
+		else if (new->text->next)
+			new = new->text->next->views;
+		else
+			new = text_list->views;
 	} while (new != view && new->window);
-	return new == view ? text_new() : new;ý €€„£
-}ý€€€€
-ý €€€
+	return new == view ? text_new() : new;
+}
+
 static int unicode(struct view *view, unsigned offset, unsigned *next)
-{ý€€€…¤
+{
 	int ch = view_byte(view, offset);
 	char *raw;
-	unsigned length;ý€€€€
-ý €€€
-	if (ch < 0x80) {ý€€€„
-		if (next)ý€€€€Ÿ
-			*next = offset + (ch >= 0);ý €€€Ÿ
-		return ch;ý €€„
-	}ý€€€€
-ý €€€
+	unsigned length;
+
+	if (ch < 0x80) {
+		if (next)
+			*next = offset + (ch >= 0);
+		return ch;
+	}
+
 	length = view_raw(view, &raw, offset, 8);
 	length = utf8_length(raw, length);
-	if (next)ý€€€€›
-		*next = offset + length;ý €€€›
-	return utf8_unicode(raw, length);ý €€…¤
-}ý€€€€
-ý €€€
+	if (next)
+		*next = offset + length;
+	return utf8_unicode(raw, length);
+}
+
 static int unicode_prior(struct view *view, unsigned offset, unsigned *prev)
-{ý€€€†‘
+{
 	int ch = -1;
-	char *raw;ý€€€€
-ý €€€
-	if (offset) {ý€€€„—
+	char *raw;
+
+	if (offset) {
 		ch = view_byte(view, --offset);
-		if (ch >= 0x80) {ý€€€ƒ‘
+		if (ch >= 0x80) {
 			unsigned at = offset >= 7 ? offset-7 : 0;
 			view_raw(view, &raw, at, offset-at+1);
-			offset -= utf8_length_backwards(raw+offset-at,ý€€€€—
-					offset-at+1) - 1;ý €€€—
-			ch = unicode(view, offset, NULL);ý €€ƒ‘
-		}ý €€„—
+			offset -= utf8_length_backwards(raw+offset-at,
+					offset-at+1) - 1;
+			ch = unicode(view, offset, NULL);
+		}
 	}
-	if (prev)ý€€€€’
-		*prev = offset;ý €€€’
-	return ch;ý €€†‘
-}ý€€€€
-ý €€€
+	if (prev)
+		*prev = offset;
+	return ch;
+}
+
 int view_char(struct view *view, unsigned offset, unsigned *next)
-{ý€€€…“
+{
 	unsigned next0;
 	int ch = unicode(view, offset, &next0);
-	if (!next)ý€€€€
-		return ch;ý €€€
+	if (!next)
+		return ch;
 	*next = next0;
-	if (ch >= FOLD_START && ch < FOLD_END) {ý€€€‚Ÿ
+	if (ch >= FOLD_START && ch < FOLD_END) {
 		unsigned fbytes = FOLDED_BYTES(ch), next2;
-		if (unicode(view, next0 + fbytes, &next2) ==ý€€€€·
-		    FOLD_END + fbytes)ý€€€€’
-			*next = next2;ý €€€’ý €€€·ý €€‚Ÿ
+		if (unicode(view, next0 + fbytes, &next2) ==
+		    FOLD_END + fbytes)
+			*next = next2;
 	}
-	return ch;ý €€…“
-}ý€€€€
-ý €€€
+	return ch;
+}
+
 int view_char_prior(struct view *view, unsigned offset, unsigned *prev)
-{ý€€€†«
+{
 	int ch = unicode_prior(view, offset, &offset), ch0;
-	unsigned fbytes, offset0;ý€€€€
-ý €€€
-	if (ch >= FOLD_END &&ý€€€ƒ³
+	unsigned fbytes, offset0;
+
+	if (ch >= FOLD_END &&
 	    (fbytes = FOLDED_BYTES(ch)) <= offset &&
-	    (ch0 = unicode_prior(view, offset - fbytes,ý€€€€¡
-				 &offset0)) >= FOLD_START &&ý €€€¡
+	    (ch0 = unicode_prior(view, offset - fbytes,
+				 &offset0)) >= FOLD_START &&
 	    ch0 < FOLD_END &&
-	    FOLDED_BYTES(ch0) == fbytes) {ý€€€€ 
+	    FOLDED_BYTES(ch0) == fbytes) {
 		ch = ch0;
-		offset = offset0;ý €€€ ý €€ƒ³
+		offset = offset0;
 	}
-	if (prev)ý€€€€’
-		*prev = offset;ý €€€’
-	return ch;ý €€†«
-}ý€€€€
-ý €€€
+	if (prev)
+		*prev = offset;
+	return ch;
+}
+
 void view_fold(struct view *view, unsigned cursor, unsigned mark)
-{ý€€€†
+{
 	unsigned bytes = mark - cursor;
 	char buf[8];
-	if (mark < cursor)ý€€€€¡
-		bytes = -bytes, cursor = mark;ý €€€¡
-	if (cursor > view->bytes)ý€€€€Š
-		return;ý €€€Š
-	if (cursor + bytes > view->bytes)ý€€€€ 
-		bytes = view->bytes - cursor;ý €€€ 
-	if (!bytes)ý€€€€Š
-		return;ý €€€Š
+	if (mark < cursor)
+		bytes = -bytes, cursor = mark;
+	if (cursor > view->bytes)
+		return;
+	if (cursor + bytes > view->bytes)
+		bytes = view->bytes - cursor;
+	if (!bytes)
+		return;
 	view_insert(view, buf, cursor + bytes, utf8_out(buf, FOLD_END+bytes));
-	view_insert(view, buf, cursor, utf8_out(buf, FOLD_START+bytes));ý €€†
-}ý€€€€
-ý €€€
+	view_insert(view, buf, cursor, utf8_out(buf, FOLD_START+bytes));
+}
+
 int view_unfold(struct view *view, unsigned offset)
-{ý€€€†Ž
+{
 	unsigned next, fbytes, next2;
 	int ch = unicode(view, offset, &next);
-	if (ch < FOLD_START || ch >= FOLD_END)ý€€€€
-		return -1;ý €€€
+	if (ch < FOLD_START || ch >= FOLD_END)
+		return -1;
 	fbytes = FOLDED_BYTES(ch);
-	if (unicode(view, next + fbytes, &next2) !=ý€€€€±
-	    FOLD_END + fbytes)ý€€€€
-		return -1;ý €€€ý €€€±
+	if (unicode(view, next + fbytes, &next2) !=
+	    FOLD_END + fbytes)
+		return -1;
 	view_delete(view, next + fbytes, next2 - (next + fbytes));
 	view_delete(view, offset, next - offset);
-	return offset + fbytes;ý €€†Ž
-}ý€€€€
-ý €€€
+	return offset + fbytes;
+}
+
 static unsigned indentation(struct view *view, unsigned offset)
-{ý€€€…¨
+{
 	unsigned indent = 0, tabstop = view->text->tabstop;
 	int ch;
 	tabstop |= !tabstop;
-	for (;;)ý€€€ƒ®
-		if ((ch = view_char(view, offset, &offset)) == ' ')ý€€€€
-			indent++;ý €€€
-		else if (ch == '\t')ý€€€€®
-			indent = (indent / tabstop + 1) * tabstop;ý €€€®
-		else if (ch == '\n')ý€€€€Ž
-			return -1;ý €€€Ž
-		elseý€€€€Š
-			break;ý €€€Šý €€ƒ®
-	return indent;ý €€…¨
-}ý€€€€
-ý €€€
+	for (;;)
+		if ((ch = view_char(view, offset, &offset)) == ' ')
+			indent++;
+		else if (ch == '\t')
+			indent = (indent / tabstop + 1) * tabstop;
+		else if (ch == '\n')
+			return -1;
+		else
+			break;
+	return indent;
+}
+
 static unsigned max_indentation(struct view *view)
-{ý€€€„¯
+{
 	unsigned offset, maxindent = 0, next;
-	for (offset = 0; offset < view->bytes; offset = next) {ý€€€‚­
+	for (offset = 0; offset < view->bytes; offset = next) {
 		unsigned indent = indentation(view, offset);
-		if ((signed) indent > 0 && indent > maxindent)ý€€€€—
-			maxindent = indent;ý €€€—
-		next = find_line_end(view, offset) + 1;ý €€‚­
+		if ((signed) indent > 0 && indent > maxindent)
+			maxindent = indent;
+		next = find_line_end(view, offset) + 1;
 	}
-	return maxindent;ý €€„¯
-}ý€€€€
-ý €€€
+	return maxindent;
+}
+
 void view_fold_indented(struct view *view, unsigned minindent)
-{ý€€€‰„
+{
 	unsigned maxindent;
 	minindent |= !minindent;
-	while ((maxindent = max_indentation(view)) >= minindent) {ý€€€‡Š
+	while ((maxindent = max_indentation(view)) >= minindent) {
 		unsigned offset, next;
 		int start = -1;
-		for (offset = 0; offset < view->bytes; offset = next) {ý€€€„’
+		for (offset = 0; offset < view->bytes; offset = next) {
 			next = find_line_end(view, offset) + 1;
-			if (indentation(view, offset) < maxindent) {ý€€€§
-				if (start >= 0) {ý€€€€¿
+			if (indentation(view, offset) < maxindent) {
+				if (start >= 0) {
 					view_fold(view, next = start, offset-1);
-					start = -1;ý €€€¿
-				}ý €€§
-			} else if (start < 0)ý€€€€Ÿ
-				start = offset - !!offset;ý €€€Ÿý €€„’
+					start = -1;
+				}
+			} else if (start < 0)
+				start = offset - !!offset;
 		}
-		if (start >= 0)ý€€€€¥
-			view_fold(view, start, offset-1);ý €€€¥ý €€‡Š
-	}ý €€‰„
-}ý€€€€
-ý €€€
+		if (start >= 0)
+			view_fold(view, start, offset-1);
+	}
+}
+
 void view_unfold_all(struct view *view)
-{ý€€€‚¬
+{
 	unsigned offset, next;
-	for (offset = 0; unicode(view, offset, &next) >= 0; offset = next)ý€€€„
-		if (view_unfold(view, offset) >= 0)ý€€€€’
-			next = offset;ý €€€’ý €€„ý €€‚¬
+	for (offset = 0; unicode(view, offset, &next) >= 0; offset = next)
+		if (view_unfold(view, offset) >= 0)
+			next = offset;
 }
