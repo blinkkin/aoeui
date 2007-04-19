@@ -168,12 +168,15 @@ static void command_handler(struct view *view, unsigned ch)
 		goto done;
 	}
 
-	/* Non-control characters are self-inserted, with a prior
-	 * automatic cut of the selection if one exists and the cursor
-	 * is at its beginning.  But if we're in a variant, some
-	 * characters may contribute to the value, or be non-Control
-	 * commands.
+
+	/*
+	 *	Non-control characters are self-inserted, with a prior
+	 *	automatic cut of the selection if one exists and the
+	 *	cursor is at its beginning.  But if we're in a variant,
+	 *	some characters may contribute to the value, or be
+	 *	non-Control commands.
 	 */
+
 	if (ch >= ' ' /*0x20*/) {
 
 		if (mode->variant) {
@@ -255,7 +258,11 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		goto done;
 	}
 
-	/* Control character commands */
+
+	/*
+	 *	Control character commands
+	 */
+
 	switch ((ch += '@')) {
 	case '@': /* (^Space) */
 		if (mode->variant)
@@ -329,7 +336,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		else
 			align(view);
 		break;
-	case 'J':
+	case 'J': /* line feed: new line with alignment */
 		view_insert(view, "\n", cursor++, 1);
 		align(view);
 		break;
@@ -349,10 +356,11 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		if (mode->variant) {
 			view_insert(view, "\n", cursor, 1);
 			locus_set(view, CURSOR, cursor);
-			break;
+		} else {
+			ch = '\n';
+			goto self_insert;
 		}
-		ch = '\n';
-		goto self_insert;
+		break;
 	case 'N': /* backward word(s) [sentence] */
 		if (mode->value)
 			while (mode->value--)

@@ -1,7 +1,7 @@
 #include "all.h"
-#include <sys/time.h>
-
-/*
+#include <sys/time.h>ý€€€€
+ý €€€
+/*ý€€€‡ˆ
  *	Handle the ^E command, which runs the shell command pipeline
  *	in the selection using the current  buffer content as
  *	the standard input, replacing the selection with the
@@ -11,354 +11,354 @@
  *	error streams of the child are monitored with select()
  *	and whenever new child output is available, it's captured
  *	and inserted into the original view.
- */
-
-static struct stream *streams;
-
-typedef int (*activity)(struct stream *, char *received, int bytes);
-
-struct stream {
+ */ý€€€€
+ý €€€ý €€‡ˆ
+static struct stream *streams;ý€€€€
+ý €€€
+typedef int (*activity)(struct stream *, char *received, int bytes);ý€€€€
+ý €€€
+struct stream {ý€€€‚…
 	struct stream *next;
 	int fd, retain;
 	activity activity;
 	struct view *view;
 	int locus;
 	const char *data;
-	unsigned bytes, writ;
-};
-
+	unsigned bytes, writ;ý €€‚…
+};ý€€€€
+ý €€€
 static int insertion_activity(struct stream *stream, char *received, int bytes)
-{
+{ý€€€„”
 	unsigned offset;
-	if (bytes <= 0)
-		return 0;
+	if (bytes <= 0)ý€€€€Œ
+		return 0;ý €€€Œ
 	offset = locus_get(stream->view, stream->locus);
-	if (offset == UNSET)
-		return 0;
+	if (offset == UNSET)ý€€€€Œ
+		return 0;ý €€€Œ
 	view_insert(stream->view, received, offset, bytes);
 	locus_set(stream->view, stream->locus, offset + bytes);
-	return 1;
-}
-
-static int shell_output_activity(struct stream *stream, char *received,
-				 int bytes)
-{
+	return 1;ý €€„”
+}ý€€€€
+ý €€€
+static int shell_output_activity(struct stream *stream, char *received,ý€€€€
+				 int bytes)ý €€€
+{ý€€€…ˆ
 	unsigned offset;
-	if (bytes <= 0)
-		return 0;
+	if (bytes <= 0)ý€€€€Œ
+		return 0;ý €€€Œ
 	offset = locus_get(stream->view, stream->view->shell_out_locus);
-	if (offset == UNSET)
-		offset = stream->view->bytes;
+	if (offset == UNSET)ý€€€€ 
+		offset = stream->view->bytes;ý €€€ 
 	view_insert(stream->view, received, offset, bytes);
 	locus_set(stream->view, stream->view->shell_out_locus, offset + bytes);
-	return 1;
-}
-
+	return 1;ý €€…ˆ
+}ý€€€€
+ý €€€
 static int error_activity(struct stream *stream, char *received, int bytes)
-{
-	if (bytes <= 0)
-		return 0;
+{ý€€€§
+	if (bytes <= 0)ý€€€€Œ
+		return 0;ý €€€Œ
 	received[bytes] = '\0';
 	message("%s", received);
-	return 1;
-}
-
+	return 1;ý €€§
+}ý€€€€
+ý €€€
 static int out_activity(struct stream *stream, char *x, int bytes)
-{
+{ý€€€†…
 	int chunk = stream->bytes - stream->writ;
-	if (chunk <= 0)
-		return 0;
-	do {
+	if (chunk <= 0)ý€€€€Œ
+		return 0;ý €€€Œ
+	do {ý€€€£
 		errno = 0;
-		bytes = write(stream->fd, stream->data + stream->writ,
-			      chunk);
-	} while (bytes < 0 && (errno == EAGAIN || errno == EINTR));
-
-	if (bytes <= 0)
-		die("write of %d bytes failed", chunk);
+		bytes = write(stream->fd, stream->data + stream->writ,ý€€€€‘
+			      chunk);ý €€€‘ý €€£
+	} while (bytes < 0 && (errno == EAGAIN || errno == EINTR));ý€€€€
+ý €€€
+	if (bytes <= 0)ý€€€€ª
+		die("write of %d bytes failed", chunk);ý €€€ª
 	stream->writ += bytes;
-	return bytes > 0;
-}
-
+	return bytes > 0;ý €€†…
+}ý€€€€
+ý €€€
 static struct stream *stream_create(int fd)
-{
+{ý€€€„´
 	struct stream *stream = allocate(NULL, sizeof *stream);
 	memset(stream, 0, sizeof *stream);
 	stream->fd = fd;
-	if (!streams)
-		streams = stream;
-	else {
+	if (!streams)ý€€€€”
+		streams = stream;ý €€€”
+	else {ý€€€¯
 		struct stream *prev = streams;
-		while (prev->next)
-			prev = prev->next;
-		prev->next = stream;
+		while (prev->next)ý€€€€–
+			prev = prev->next;ý €€€–
+		prev->next = stream;ý €€¯
 	}
-	return stream;
-}
-
+	return stream;ý €€„´
+}ý€€€€
+ý €€€
 static void stream_destroy(struct stream *stream, struct stream *prev)
-{
-	if (!stream->retain)
-		close(stream->fd);
-	if (stream->view && stream->locus >= 0)
-		locus_destroy(stream->view, stream->locus);
-	if (prev)
-		prev->next = stream->next;
-	else
-		streams = stream->next;
+{ý€€€„¬
+	if (!stream->retain)ý€€€€•
+		close(stream->fd);ý €€€•
+	if (stream->view && stream->locus >= 0)ý€€€€®
+		locus_destroy(stream->view, stream->locus);ý €€€®
+	if (prev)ý€€€€
+		prev->next = stream->next;ý €€€
+	elseý€€€€š
+		streams = stream->next;ý €€€š
 	allocate(stream->data, 0);
-	allocate(stream, 0);
-}
-
+	allocate(stream, 0);ý €€„¬
+}ý€€€€
+ý €€€
 int multiplexor(int block)
-{
+{ý€€€•™
 	struct timeval tv, *tvp = NULL;
 	int j, maxfd, bytes;
 	struct stream *stream, *prev, *next;
 	fd_set fds[3];
-	char *rdbuff = NULL;
-
-	for (j = 0; j < 3; j++)
-		FD_ZERO(&fds[j]);
+	char *rdbuff = NULL;ý€€€€
+ý €€€
+	for (j = 0; j < 3; j++)ý€€€€”
+		FD_ZERO(&fds[j]);ý €€€”
 	FD_SET(0, &fds[0]);
 	FD_SET(0, &fds[2]);
 	maxfd = 0;
-	for (stream = streams; stream; stream = stream->next) {
+	for (stream = streams; stream; stream = stream->next) {ý€€€‚ˆ
 		FD_SET(stream->fd, &fds[!!stream->data]);
 		FD_SET(stream->fd, &fds[2]);
-		if (stream->fd > maxfd)
-			maxfd = stream->fd;
+		if (stream->fd > maxfd)ý€€€€—
+			maxfd = stream->fd;ý €€€—ý €€‚ˆ
 	}
-	if (block)
-		tvp = NULL;
-	else
-		memset(tvp = &tv, 0, sizeof tv);
-
+	if (block)ý€€€€Ž
+		tvp = NULL;ý €€€Ž
+	elseý€€€€°
+		memset(tvp = &tv, 0, sizeof tv);ý€€€€
+ý €€€ý €€€°
 	errno = 0;
-	if (select(maxfd + 1, &fds[0], &fds[1], &fds[2], tvp) < 0)
-		return errno != EAGAIN && errno != EINTR;
-
-	for (prev = NULL, stream = streams; stream; stream = next) {
+	if (select(maxfd + 1, &fds[0], &fds[1], &fds[2], tvp) < 0)ý€€€€¹
+		return errno != EAGAIN && errno != EINTR;ý€€€€
+ý €€€ý €€€¹
+	for (prev = NULL, stream = streams; stream; stream = next) {ý€€€‡¯
 		next = stream->next;
-		if (!FD_ISSET(stream->fd, &fds[!!stream->data]) &&
-		    !FD_ISSET(stream->fd, &fds[2])) {
+		if (!FD_ISSET(stream->fd, &fds[!!stream->data]) &&ý€€€“
+		    !FD_ISSET(stream->fd, &fds[2])) {ý€€€€Ÿ
 			prev = stream;
-			continue;
+			continue;ý €€€Ÿý €€“
 		}
-		if (stream->data)
-			bytes = 0;
-		else {
-			if (!rdbuff)
-				rdbuff = allocate(NULL, 1024);
+		if (stream->data)ý€€€€Ž
+			bytes = 0;ý €€€Ž
+		else {ý€€€¸
+			if (!rdbuff)ý€€€€£
+				rdbuff = allocate(NULL, 1024);ý €€€£
 			errno = 0;
-			bytes = read(stream->fd, rdbuff, 1023);
+			bytes = read(stream->fd, rdbuff, 1023);ý €€¸
 		}
-		if (stream->activity(stream, rdbuff, bytes))
-			prev = stream;
-		else
-			stream_destroy(stream, prev);
-	}
-
+		if (stream->activity(stream, rdbuff, bytes))ý€€€€’
+			prev = stream;ý €€€’
+		elseý€€€€¡
+			stream_destroy(stream, prev);ý €€€¡ý €€‡¯
+	}ý€€€€
+ý €€€
 	allocate(rdbuff, 0);
-	return FD_ISSET(0, &fds[0]) || FD_ISSET(0, &fds[2]);
-};
-
+	return FD_ISSET(0, &fds[0]) || FD_ISSET(0, &fds[2]);ý €€•™
+};ý€€€€
+ý €€€
 static void child_close(struct view *view)
-{
-	if (!view)
-		return;
-	if (view->shell_std_in >= 0) {
+{ý€€€„‡
+	if (!view)ý€€€€Š
+		return;ý €€€Š
+	if (view->shell_std_in >= 0) {ý€€€€¸
 		close(view->shell_std_in);
-		view->shell_std_in = -1;
+		view->shell_std_in = -1;ý €€€¸
 	}
-	if (view->shell_out_locus >= 0) {
+	if (view->shell_out_locus >= 0) {ý€€€Œ
 		locus_destroy(view, view->shell_out_locus);
-		view->shell_out_locus = -1;
-	}
-}
-
+		view->shell_out_locus = -1;ý €€Œ
+	}ý €€„‡
+}ý€€€€
+ý €€€
 void demultiplex_view(struct view *view)
-{
+{ý€€€„†
 	struct stream *stream, *prev = NULL, *next;
-	for (stream = streams; stream; stream = next) {
+	for (stream = streams; stream; stream = next) {ý€€€‚…
 		next = stream->next;
-		if (stream->view == view)
-			stream_destroy(stream, prev);
-		else
-			prev = stream;
+		if (stream->view == view)ý€€€€¡
+			stream_destroy(stream, prev);ý €€€¡
+		elseý€€€€’
+			prev = stream;ý €€€’ý €€‚…
 	}
-	child_close(view);
-}
-
+	child_close(view);ý €€„†
+}ý€€€€
+ý €€€
 void multiplex_write(int fd, const char *data, int bytes, int retain)
-{
-	struct stream *stream;
-
-	if (bytes < 0)
-		bytes = data ? strlen(data) : 0;
-	if (!bytes) {
-		if (!retain)
-			close(fd);
-		return;
+{ý€€€„¼
+	struct stream *stream;ý€€€€
+ý €€€
+	if (bytes < 0)ý€€€€£
+		bytes = data ? strlen(data) : 0;ý €€€£
+	if (!bytes) {ý€€€€³
+		if (!retain)ý€€€€Ž
+			close(fd);ý €€€Ž
+		return;ý €€€³
 	}
 	stream = stream_create(fd);
 	stream->retain = retain;
 	stream->activity = out_activity;
 	stream->data = data;
-	stream->bytes = bytes;
-}
-
+	stream->bytes = bytes;ý €€„¼
+}ý€€€€
+ý €€€
 static void newline(int fd)
-{
+{ý€€€ 
 	char *str = allocate(NULL, 2);
 	strcpy(str, "\n");
-	multiplex_write(fd, str, 1, 1 /*retain*/);
-}
-
+	multiplex_write(fd, str, 1, 1 /*retain*/);ý €€ 
+}ý€€€€
+ý €€€
 int child(int *stdfd, unsigned stdfds, const char *argv[])
-{
+{ý€€€Ž¸
 	int pipefd[3][2];
-	int j, k, pid;
-
+	int j, k, pid;ý€€€€
+ý €€€
 	errno = 0;
-	for (j = 0; j < stdfds; j++)
-		if (pipe(pipefd[j])) {
+	for (j = 0; j < stdfds; j++)ý€€€œ
+		if (pipe(pipefd[j])) {ý€€€€³
 			message("could not create pipes");
-			return 0;
-		}
-	for (; j < 3; j++)
-		for (k = 0; k < 2; k++)
-			pipefd[j][k] = dup(pipefd[j-1][k]);
+			return 0;ý €€€³
+		}ý €€œ
+	for (; j < 3; j++)ý€€€
+		for (k = 0; k < 2; k++)ý€€€€§
+			pipefd[j][k] = dup(pipefd[j-1][k]);ý €€€§ý €€
 	fflush(NULL);
 	errno = 0;
-	if ((pid = fork()) < 0) {
+	if ((pid = fork()) < 0) {ý€€€€©
 		message("could not fork");
-		return 0;
+		return 0;ý €€€©
 	}
-	if (!pid) {
-		for (j = 0; j < 3; j++) {
+	if (!pid) {ý€€€†ˆ
+		for (j = 0; j < 3; j++) {ý€€€œ
 			dup2(pipefd[j][!!j], j);
-			for (k = 0; k < 2; k++)
-				close(pipefd[j][k]);
+			for (k = 0; k < 2; k++)ý€€€€™
+				close(pipefd[j][k]);ý €€€™ý €€œ
 		}
 		setenv("PS1", geteuid() ? "# " : "$ ", 1);
 		unsetenv("LS_COLORS");
 		unsetenv("TERM");
 		errno = 0;
 		execvp(argv[0], (char *const *) argv);
-		fprintf(stderr, "could not execute %s: %s\n",
-			argv[0], strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	for (j = 0; j < 3; j++) {
+		fprintf(stderr, "could not execute %s: %s\n",ý€€€€ž
+			argv[0], strerror(errno));ý €€€ž
+		exit(EXIT_FAILURE);ý €€†ˆ
+	}ý€€€€
+ý €€€
+	for (j = 0; j < 3; j++) {ý€€€€µ
 		stdfd[j] = pipefd[j][!j];
-		close(pipefd[j][!!j]);
+		close(pipefd[j][!!j]);ý €€€µ
 	}
-	return 1;
-}
-
+	return 1;ý €€Ž¸
+}ý€€€€
+ý €€€
 void mode_child(struct view *view)
-{
+{ý€€€™‹
 	char *command = view_extract_selection(view);
 	char *wrbuff = NULL;
 	unsigned cursor, to_write;
 	int stdfd[3];
 	const char *argv[4];
 	struct stream *std_out, *std_err;
-	const char *shell = getenv("SHELL");
-
-	if (!command) {
+	const char *shell = getenv("SHELL");ý€€€€
+ý €€€
+	if (!command) {ý€€€€Ÿ
 		window_beep(view);
-		return;
-	}
-
-	if (view->shell_std_in >= 0) {
+		return;ý €€€Ÿ
+	}ý€€€€
+ý €€€
+	if (view->shell_std_in >= 0) {ý€€€‚¨
 		locus_set(view, MARK, UNSET);
-		multiplex_write(view->shell_std_in, command, strlen(command),
-				1 /*retain*/);
+		multiplex_write(view->shell_std_in, command, strlen(command),ý€€€€“
+				1 /*retain*/);ý €€€“
 		newline(view->shell_std_in);
-		return;
-	}
-
-	view_delete_selection(view);
-
-	if (command[0] == 'c' && command[1] == 'd' &&
-	    (!command[2] || command[2] == ' ')) {
+		return;ý €€‚¨
+	}ý€€€€
+ý €€€
+	view_delete_selection(view);ý€€€€
+ý €€€
+	if (command[0] == 'c' && command[1] == 'd' &&ý€€€…
+	    (!command[2] || command[2] == ' ')) {ý€€€„Š
 		const char *dir = command + 2;
-		while (*dir == ' ')
-			dir++;
-		if (!*dir && !(dir = getenv("HOME")))
-			window_beep(view);
-		else {
+		while (*dir == ' ')ý€€€€Š
+			dir++;ý €€€Š
+		if (!*dir && !(dir = getenv("HOME")))ý€€€€–
+			window_beep(view);ý €€€–
+		else {ý€€€
 			errno = 0;
-			if (chdir(dir))
-				message("%s failed", command);
+			if (chdir(dir))ý€€€€£
+				message("%s failed", command);ý €€€£ý €€
 		}
-		return;
+		return;ý €€„Šý €€…
 	}
 	cursor = locus_get(view, CURSOR);
 	to_write = clip_paste(view, cursor, 0);
-	if (to_write) {
+	if (to_write) {ý€€€©
 		locus_set(view, MARK, cursor);
 		wrbuff = view_extract_selection(view);
-		view_delete_selection(view);
-	}
-
+		view_delete_selection(view);ý €€©
+	}ý€€€€
+ý €€€
 	argv[0] = shell ? shell : "/bin/sh";
 	argv[1] = "-c";
 	argv[2] = command;
 	argv[3] = NULL;
-	if (!child(stdfd, 3, argv))
-		return;
-
+	if (!child(stdfd, 3, argv))ý€€€€—
+		return;ý€€€€
+ý €€€ý €€€—
 	multiplex_write(stdfd[0], wrbuff, to_write, 0 /*retain*/);
 	std_out = stream_create(stdfd[1]);
 	std_out->activity = insertion_activity;
 	std_out->view = view;
 	std_out->locus = locus_create(view, cursor);
 	std_err = stream_create(stdfd[2]);
-	std_err->activity = error_activity;
-}
-
+	std_err->activity = error_activity;ý €€™‹
+}ý€€€€
+ý €€€
 void mode_shell_pipe(struct view *view)
-{
+{ý€€€‡¶
 	int stdfd[3];
 	const char *argv[4];
 	struct stream *output;
-	const char *shell = getenv("SHELL");
-
+	const char *shell = getenv("SHELL");ý€€€€
+ý €€€
 	argv[0] = shell ? shell : "/bin/sh";
 	argv[1] = "--noediting";
 	argv[2] = "-il";
 	argv[3] = NULL;
-	if (!child(stdfd, 2, argv))
-		return;
+	if (!child(stdfd, 2, argv))ý€€€€Š
+		return;ý €€€Š
 	child_close(view);
 	view->shell_std_in = stdfd[0];
 	view->shell_out_locus = locus_create(view, locus_get(view, CURSOR));
 	output = stream_create(stdfd[1]);
 	output->activity = shell_output_activity;
 	output->view = view;
-	close(stdfd[2]);
-}
-
+	close(stdfd[2]);ý €€‡¶
+}ý€€€€
+ý €€€
 void shell_command(struct view *view)
-{
+{ý€€€‰•
 	unsigned offset, cursor, linestart;
-	char *command;
-
-	if (view->shell_std_in < 0)
-		return;
+	char *command;ý€€€€
+ý €€€
+	if (view->shell_std_in < 0)ý€€€€Š
+		return;ý €€€Š
 	cursor = locus_get(view, CURSOR);
 	linestart = cursor ? find_line_start(view, cursor-1) : 0;
 	offset = locus_get(view, view->shell_out_locus);
-	if (offset < linestart || offset >= cursor)
-		offset = linestart;
+	if (offset < linestart || offset >= cursor)ý€€€€–
+		offset = linestart;ý €€€–
 	command = view_extract(view, offset, cursor - offset);
-	if (command)
-		multiplex_write(view->shell_std_in, command,
-				-1, 1 /*retain*/);
+	if (command)ý€€€’
+		multiplex_write(view->shell_std_in, command,ý€€€€—
+				-1, 1 /*retain*/);ý €€€—ý €€’
 	locus_set(view, view->shell_out_locus, view->bytes);
-	locus_set(view, CURSOR, view->bytes);
+	locus_set(view, CURSOR, view->bytes);ý €€‰•
 }

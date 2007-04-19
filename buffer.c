@@ -1,8 +1,8 @@
 #include "all.h"
 #include <sys/mman.h>
-#include <fcntl.h>
-
-/*
+#include <fcntl.h>ý€€€€
+ý €€€
+/*ý€€€‰€
  *	Buffers contain payload bytes and a "gap" of unused space.
  *	The gap is contiguous, and may appear in the midst of the
  *	payload.  Editing operations shift the gap around in order
@@ -16,234 +16,234 @@
  *	Besides being used to hold the content of files, buffers
  *	are used for cut/copied text (the "clip buffer") and for
  *	undo histories.
- */
-
+ */ý€€€€
+ý €€€ý €€‰€
 struct buffer *buffer_create(char *path)
-{
-	struct buffer *buffer = allocate(NULL, sizeof *buffer);
-
+{ý€€€‡¹
+	struct buffer *buffer = allocate(NULL, sizeof *buffer);ý€€€€
+ý €€€
 	memset(buffer, 0, sizeof *buffer);
-	if (path && *path) {
+	if (path && *path) {ý€€€„¶
 		buffer->path = allocate(NULL, strlen(path) + 2);
 		sprintf(buffer->path, "%s#", path);
 		errno = 0;
-		buffer->fd = open(buffer->path, O_CREAT|O_TRUNC|O_RDWR,
-				  S_IRUSR|S_IWUSR);
-		if (buffer->fd < 0)
-			message("could not create temporary file %s",
-				buffer->path);
-	} else
-		buffer->fd = -1;
-	return buffer;
-}
-
+		buffer->fd = open(buffer->path, O_CREAT|O_TRUNC|O_RDWR,ý€€€€˜
+				  S_IRUSR|S_IWUSR);ý €€€˜
+		if (buffer->fd < 0)ý€€€
+			message("could not create temporary file %s",ý€€€€“
+				buffer->path);ý €€€“ý €€ý €€„¶
+	} elseý€€€€“
+		buffer->fd = -1;ý €€€“
+	return buffer;ý €€‡¹
+}ý€€€€
+ý €€€
 void buffer_destroy(struct buffer *buffer)
-{
-	if (!buffer)
-		return;
+{ý€€€ƒ”
+	if (!buffer)ý€€€€Š
+		return;ý €€€Š
 	munmap(buffer->data, buffer->allocated);
-	if (buffer->fd >= 0) {
+	if (buffer->fd >= 0) {ý€€€€­
 		close(buffer->fd);
-		unlink(buffer->path);
+		unlink(buffer->path);ý €€€­
 	}
 	allocate(buffer->path, 0);
-	allocate(buffer, 0);
-}
-
+	allocate(buffer, 0);ý €€ƒ”
+}ý€€€€
+ý €€€
 static void place_gap(struct buffer *buffer, unsigned offset)
-{
-	unsigned gapsize = buffer_gap_bytes(buffer);
-
-	if (offset > buffer->payload)
-		offset = buffer->payload;
-	if (offset <= buffer->gap)
-		memmove(buffer->data + offset + gapsize, buffer->data + offset,
-			buffer->gap - offset);
-	else
-		memmove(buffer->data + buffer->gap,
+{ý€€€ˆ‘
+	unsigned gapsize = buffer_gap_bytes(buffer);ý€€€€
+ý €€€
+	if (offset > buffer->payload)ý€€€€œ
+		offset = buffer->payload;ý €€€œ
+	if (offset <= buffer->gap)ý€€€¨
+		memmove(buffer->data + offset + gapsize, buffer->data + offset,ý€€€€š
+			buffer->gap - offset);ý €€€šý €€¨
+	elseý€€€µ
+		memmove(buffer->data + buffer->gap,ý€€€ƒ
 			buffer->data + buffer->gap + gapsize,
-			offset - buffer->gap);
+			offset - buffer->gap);ý €€ƒý €€µ
 	buffer->gap = offset;
-	if (buffer->fd >= 0 && gapsize)
-		memset(buffer->data + buffer->gap, ' ', gapsize);
-}
-
+	if (buffer->fd >= 0 && gapsize)ý€€€€´
+		memset(buffer->data + buffer->gap, ' ', gapsize);ý €€€´ý €€ˆ‘
+}ý€€€€
+ý €€€
 static void resize(struct buffer *buffer, unsigned bytes)
-{
+{ý€€€‹­
 	void *p;
 	char *old = buffer->data;
 	int fd, mapflags = 0;
-	static unsigned pagesize;
-
+	static unsigned pagesize;ý€€€€
+ý €€€
 	/* Whole pages, with extras as size increases */
-	if (!pagesize)
-		pagesize = getpagesize();
+	if (!pagesize)ý€€€€œ
+		pagesize = getpagesize();ý €€€œ
 	bytes += pagesize-1;
 	bytes /= pagesize;
 	bytes *= 11;
 	bytes /= 10;
-	bytes *= pagesize;
-
-	if (bytes < buffer->allocated)
-		munmap(old + bytes, buffer->allocated - bytes);
-	if (buffer->fd >= 0 && bytes != buffer->allocated) {
+	bytes *= pagesize;ý€€€€
+ý €€€
+	if (bytes < buffer->allocated)ý€€€€²
+		munmap(old + bytes, buffer->allocated - bytes);ý €€€²
+	if (buffer->fd >= 0 && bytes != buffer->allocated) {ý€€€‚¯
 		errno = 0;
-		if (ftruncate(buffer->fd, bytes))
-			die("could not adjust %s from 0x%x to 0x%x bytes",
-			    buffer->path, buffer->allocated, bytes);
+		if (ftruncate(buffer->fd, bytes))ý€€€²
+			die("could not adjust %s from 0x%x to 0x%x bytes",ý€€€€°
+			    buffer->path, buffer->allocated, bytes);ý €€€°ý €€²ý €€‚¯
 	}
-	if (bytes <= buffer->allocated) {
+	if (bytes <= buffer->allocated) {ý€€€€§
 		buffer->allocated = bytes;
-		return;
-	}
-
-#ifdef MREMAP_MAYMOVE
-	if (old) {
+		return;ý €€€§
+	}ý€€€€
+ý €€€ý €€‹­
+#ifdef MREMAP_MAYMOVEý€€€‚°
+	if (old) {ý€€€‚•
 		/* attempt extension */
 		errno = 0;
 		p = mremap(old, buffer->allocated, bytes, MREMAP_MAYMOVE);
-		if (p != MAP_FAILED)
-			goto done;
-	}
-#endif
-
+		if (p != MAP_FAILED)ý€€€€Ž
+			goto done;ý €€€Žý €€‚•
+	}ý €€‚°
+#endifý€€€€
+ý €€€ý€€€ƒ€
 	/* new/replacement allocation */
-	if ((fd = buffer->fd) >= 0) {
+	if ((fd = buffer->fd) >= 0) {ý€€€©
 		mapflags |= MAP_SHARED;
-		if (old) {
+		if (old) {ý€€€€²
 			munmap(old, buffer->allocated);
-			old = NULL;
-		}
-	} else {
-#ifdef MAP_ANONYMOUS
-		mapflags |= MAP_ANONYMOUS;
-#else
+			old = NULL;ý €€€²
+		}ý €€©
+	} else {ý €€ƒ€
+#ifdef MAP_ANONYMOUSý€€€€
+		mapflags |= MAP_ANONYMOUS;ý €€€
+#elseý€€€„’
 		static int anonymous_fd = -1;
-		if (anonymous_fd < 0) {
+		if (anonymous_fd < 0) {ý€€€‚³
 			errno = 0;
 			anonymous_fd = open("/dev/zero", O_RDWR);
-			if (anonymous_fd < 0)
-				die("could not open /dev/zero for "
-				    "anonymous mappings");
+			if (anonymous_fd < 0)ý€€€“
+				die("could not open /dev/zero for "ý€€€€Ÿ
+				    "anonymous mappings");ý €€€Ÿý €€“ý €€‚³
 		}
-		fd = anonymous_fd;
-#endif
-		mapflags |= MAP_PRIVATE;
-	}
-
+		fd = anonymous_fd;ý €€„’
+#endifý€€€€›
+		mapflags |= MAP_PRIVATE;ý €€€›ý€€€„ª
+	}ý€€€€
+ý €€€
 	errno = 0;
 	p = mmap(0, bytes, PROT_READ|PROT_WRITE, mapflags, fd, 0);
-	if (p == MAP_FAILED)
-		die("mmap(0x%x bytes, fd %d) failed", bytes, fd);
-
-	if (old) {
+	if (p == MAP_FAILED)ý€€€
+		die("mmap(0x%x bytes, fd %d) failed", bytes, fd);ý€€€€
+ý €€€ý €€
+	if (old) {ý€€€‡
 		memcpy(p, old, buffer->allocated);
-		munmap(old, buffer->allocated);
-	}
-
-done:	buffer->data = p;
-	buffer->allocated = bytes;
-}
-
-unsigned buffer_raw(struct buffer *buffer, char **out,
-		    unsigned offset, unsigned bytes)
-{
-	if (!buffer)
-		return 0;
-	if (offset >= buffer->payload)
-		offset = buffer->payload;
-	if (offset + bytes > buffer->payload)
-		bytes = buffer->payload - offset;
-	if (!bytes)
-		return 0;
-
-	if (offset < buffer->gap && offset + bytes > buffer->gap)
-		place_gap(buffer, offset + bytes);
+		munmap(old, buffer->allocated);ý €€‡
+	}ý€€€€
+ý €€€ý €€„ª
+done:	buffer->data = p;ý€€€€œ
+	buffer->allocated = bytes;ý €€€œ
+}ý€€€€
+ý €€€
+unsigned buffer_raw(struct buffer *buffer, char **out,ý€€€€§
+		    unsigned offset, unsigned bytes)ý €€€§
+{ý€€€‡
+	if (!buffer)ý€€€€Œ
+		return 0;ý €€€Œ
+	if (offset >= buffer->payload)ý€€€€œ
+		offset = buffer->payload;ý €€€œ
+	if (offset + bytes > buffer->payload)ý€€€€¤
+		bytes = buffer->payload - offset;ý €€€¤
+	if (!bytes)ý€€€€™
+		return 0;ý€€€€
+ý €€€ý €€€™
+	if (offset < buffer->gap && offset + bytes > buffer->gap)ý€€€€¥
+		place_gap(buffer, offset + bytes);ý €€€¥
 	*out = buffer->data + offset;
-	if (offset >= buffer->gap)
-		*out += buffer_gap_bytes(buffer);
-	return bytes;
-}
-
-unsigned buffer_get(struct buffer *buffer, void *out,
-		    unsigned offset, unsigned bytes)
-{
-	unsigned left;
-
-	if (!buffer)
-		return 0;
-	if (offset >= buffer->payload)
-		offset = buffer->payload;
-	if (offset + bytes > buffer->payload)
-		bytes = buffer->payload - offset;
-	if (!bytes)
-		return 0;
+	if (offset >= buffer->gap)ý€€€€¤
+		*out += buffer_gap_bytes(buffer);ý €€€¤
+	return bytes;ý €€‡
+}ý€€€€
+ý €€€
+unsigned buffer_get(struct buffer *buffer, void *out,ý€€€€§
+		    unsigned offset, unsigned bytes)ý €€€§
+{ý€€€Š
+	unsigned left;ý€€€€
+ý €€€
+	if (!buffer)ý€€€€Œ
+		return 0;ý €€€Œ
+	if (offset >= buffer->payload)ý€€€€œ
+		offset = buffer->payload;ý €€€œ
+	if (offset + bytes > buffer->payload)ý€€€€¤
+		bytes = buffer->payload - offset;ý €€€¤
+	if (!bytes)ý€€€€Œ
+		return 0;ý €€€Œ
 	left = bytes;
-	if (offset < buffer->gap) {
+	if (offset < buffer->gap) {ý€€€ƒ¼
 		unsigned before = buffer->gap - offset;
-		if (before > bytes)
-			before = bytes;
+		if (before > bytes)ý€€€€“
+			before = bytes;ý €€€“
 		memcpy(out, buffer->data + offset, before);
 		out = (char *) out + before;
 		offset += before;
 		left -= before;
-		if (!left)
-			return bytes;
+		if (!left)ý€€€€‘
+			return bytes;ý €€€‘ý €€ƒ¼
 	}
 	offset += buffer_gap_bytes(buffer);
 	memcpy(out, buffer->data + offset, left);
-	return bytes;
-}
-
-unsigned buffer_delete(struct buffer *buffer,
-		       unsigned offset, unsigned bytes)
-{
-	if (!buffer)
-		return 0;
-	if (offset > buffer->payload)
-		offset = buffer->payload;
-	if (offset + bytes > buffer->payload)
-		bytes = buffer->payload - offset;
+	return bytes;ý €€Š
+}ý€€€€
+ý €€€
+unsigned buffer_delete(struct buffer *buffer,ý€€€€ª
+		       unsigned offset, unsigned bytes)ý €€€ª
+{ý€€€„Š
+	if (!buffer)ý€€€€Œ
+		return 0;ý €€€Œ
+	if (offset > buffer->payload)ý€€€€œ
+		offset = buffer->payload;ý €€€œ
+	if (offset + bytes > buffer->payload)ý€€€€¤
+		bytes = buffer->payload - offset;ý €€€¤
 	place_gap(buffer, offset);
 	buffer->payload -= bytes;
-	return bytes;
-}
-
-unsigned buffer_insert(struct buffer *buffer, const void *in,
-		       unsigned offset, unsigned bytes)
-{
-	if (!buffer)
-		return 0;
-	if (offset > buffer->payload)
-		offset = buffer->payload;
-	if (bytes > buffer_gap_bytes(buffer)) {
+	return bytes;ý €€„Š
+}ý€€€€
+ý €€€
+unsigned buffer_insert(struct buffer *buffer, const void *in,ý€€€€ª
+		       unsigned offset, unsigned bytes)ý €€€ª
+{ý€€€‡‘
+	if (!buffer)ý€€€€Œ
+		return 0;ý €€€Œ
+	if (offset > buffer->payload)ý€€€€œ
+		offset = buffer->payload;ý €€€œ
+	if (bytes > buffer_gap_bytes(buffer)) {ý€€€‘
 		place_gap(buffer, buffer->payload);
-		resize(buffer, buffer->payload + bytes);
+		resize(buffer, buffer->payload + bytes);ý €€‘
 	}
 	place_gap(buffer, offset);
-	if (in)
-		memcpy(buffer->data + offset, in, bytes);
-	else
-		memset(buffer->data + offset, 0, bytes);
+	if (in)ý€€€€¬
+		memcpy(buffer->data + offset, in, bytes);ý €€€¬
+	elseý€€€€«
+		memset(buffer->data + offset, 0, bytes);ý €€€«
 	buffer->gap += bytes;
 	buffer->payload += bytes;
-	return bytes;
-}
-
-unsigned buffer_move(struct buffer *to, unsigned to_offset,
+	return bytes;ý €€‡‘
+}ý€€€€
+ý €€€
+unsigned buffer_move(struct buffer *to, unsigned to_offset,ý€€€‰
 		     struct buffer *from, unsigned from_offset,
-		     unsigned bytes)
-{
+		     unsigned bytes)ý €€‰
+{ý€€€‚¤
 	char *raw = NULL;
 	bytes = buffer_raw(from, &raw, from_offset, bytes);
 	buffer_insert(to, raw, to_offset, bytes);
-	return buffer_delete(from, from_offset, bytes);
-}
-
+	return buffer_delete(from, from_offset, bytes);ý €€‚¤
+}ý€€€€
+ý €€€
 void buffer_snap(struct buffer *buffer)
-{
-	if (buffer && buffer->fd >= 0) {
+{ý€€€‚
+	if (buffer && buffer->fd >= 0) {ý€€€
 		place_gap(buffer, buffer->payload);
-		ftruncate(buffer->fd, buffer->payload);
-	}
+		ftruncate(buffer->fd, buffer->payload);ý €€
+	}ý €€‚
 }

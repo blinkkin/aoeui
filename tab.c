@@ -193,11 +193,8 @@ void align(struct view *view)
 	}
 	indent = stack[stackptr -= !!stackptr];
 
-	if (!stackptr)
-		if (last == '}')
-			indent = indent >= tabstop ? indent - tabstop : 0;
-		else if (last != ';')
-			indent += tabstop;
+	if (!stackptr && last != ';')
+		indent += tabstop;
 
 	indent_bytes = indent / tabstop + indent % tabstop;
 	indentation = allocate(NULL, indent_bytes);

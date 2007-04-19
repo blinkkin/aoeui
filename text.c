@@ -122,7 +122,7 @@ static void text_close(struct text *text)
 	text_forget_undo(text);
 	if (text->fd >= 0)
 		close(text->fd);
-	if (text->flags & TEXT_SCRATCH)
+	if (text->flags & (TEXT_SCRATCH | TEXT_CREATED))
 		unlink(text->path);
 	allocate(text->path, 0);
 	allocate(text, 0);
