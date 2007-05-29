@@ -12,6 +12,7 @@ CFLAGS += -Wall -Werror -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
 LIBS = -lutil
+# BSD users may need -lcompat as well
 
 default: $(TARGET) TAGS
 $(TARGET): $(RELS)

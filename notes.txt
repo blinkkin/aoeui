@@ -96,3 +96,18 @@ Idioms
 - exchanging cursor and mark and then retyping with automatic cut
   is often faster than an explicit cut.
 - going forward or back a half screenful: use ^R/^L, then ^Z
+
+
+Experimental QWERTY mapping (unusable control keys capitalized):
+
+	qwert yuIop
+	Asdfg hJkl;
+	zxcvb nM,./
+
+navigation:	HT:	NS:	GC:	RL:	Z:
+selection:	V:	F:	D:	B:
+windows:	P:	Y:	W:
+files:		Q:	K:	X:
+others:		O:	E:	U:
+
+

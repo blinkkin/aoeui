@@ -3,19 +3,13 @@
 # $Header: $
 
 DESCRIPTION="a lightweight, unobtrusive, Dvorak-optimized editor"
-SRC_URI="http://downloads.sourceforge.net/aoeui/${P}.tgz"
-# ? use_mirror=internap
 HOMEPAGE="http://aoeui.sourceforge.net"
+SRC_URI="mirror://sourceforge/aoeui/${P}.tgz"
 LICENSE="GPL-2"
-KEYWORDS="x86 amd64"
 SLOT="0"
+KEYWORDS="~x86 ~amd64"
 IUSE=""
 
-src_compile() {
-	cd ${S}
-	emake OPTI="${CFLAGS}" || die
-}
-
 src_install() {
-	make DESTDIR=${D} MANDIR=/share/man install || die
+	emake DESTDIR="${D}" install || die
 }

@@ -153,7 +153,7 @@ void align(struct view *view)
 	unsigned nonspace0, lnstart, offset, next;
 	int ch, last = -1;
 	char *indentation;
-	unsigned indent = 0, indent_bytes, tabstop = view->text->tabstop;
+	unsigned indent = 0, spaces = 0, indent_bytes, tabstop = view->text->tabstop;
 	unsigned stack[16], stackptr = 0;
 
 	if (!lnstart0)
@@ -171,12 +171,15 @@ void align(struct view *view)
 
 	for (offset = lnstart; (ch = view_char(view, offset, &offset)) >= 0; )
 		if (ch == ' ')
-			indent++;
-		else if (ch == '\t')
-			indent = (indent / tabstop + 1) * tabstop;
-		else
+			spaces++;
+		else if (ch == '\t') {
+			indent = ((indent + spaces) / tabstop + 1) * tabstop;
+			spaces = 0;
+		} else
 			break;
 	stack[stackptr++] = indent;
+	stack[stackptr++] = indent += spaces;
+
 	for (; ch >= 0; ch = view_char(view, offset, &offset)) {
 		if (ch == '\n')
 			break;
@@ -184,17 +187,22 @@ void align(struct view *view)
 		if (!isspace(ch))
 			last = ch;
 		if (ch == '(' || ch == '[') {
-			if (stackptr < 16)
-				stack[stackptr++] = indent;
+			if ((unsigned) stackptr < 16)
+				stack[stackptr] = indent;
+			stackptr++;
 		} else if (ch == ')' || ch == ']')
-			stackptr -= !!stackptr;
+			stackptr--;
 		else if (ch == '\t')
 			indent = ((indent-1) / tabstop + 1) * tabstop;
 	}
-	indent = stack[stackptr -= !!stackptr];
 
-	if (!stackptr && last != ';')
-		indent += tabstop;
+	if (stackptr <= 0 || stackptr > 16)
+		indent = stack[0];
+	else {
+		indent = stack[stackptr-1];
+		if (stackptr <= 2 && (last == '{' || last == ')'))
+			indent += tabstop;
+	}
 
 	indent_bytes = indent / tabstop + indent % tabstop;
 	indentation = allocate(NULL, indent_bytes);

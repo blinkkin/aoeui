@@ -1,5 +1,8 @@
 2007
-04-?? 1.0_alpha6
+05-?? 1.0_alpha6
+05-24 pmk: tweak automatic alignment
+05-22 pmk: some minor BSD porting issues in buffer.c and file.c
+05-16 pmk: tweak ebuild according to gentoo developer's comments
 04-18 pmk: fix path name tab completion (shortest common continuation)
 04-18 1.0_alpha5
 04-17 pmk: rewrote alignment

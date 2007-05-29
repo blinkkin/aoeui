@@ -55,12 +55,13 @@ static char *fix_path(const char *path)
 		freepath = 1;
 	}
 	if (*path != '/') {
-		char cwdbuf[256];
-		char *cwd = getcwd(cwdbuf, sizeof cwdbuf);
+		char *cwdbuf = allocate(NULL, 1024);
+		char *cwd = getcwd(cwdbuf, 1024);
 		char *apath = allocate(NULL, strlen(cwd) + pathlen + 2);
 		sprintf(apath, "%s/%s", cwd, path);
 		if (freepath)
 			allocate(path, 0);
+		allocate(cwdbuf, 0);
 		path = apath;
 		freepath = 1;
 	}

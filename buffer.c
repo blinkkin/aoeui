@@ -2,6 +2,13 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+#ifndef S_IRUSR
+#define S_IRUSR 0400
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR 0200
+#endif
+
 /*
  *	Buffers contain payload bytes and a "gap" of unused space.
  *	The gap is contiguous, and may appear in the midst of the
