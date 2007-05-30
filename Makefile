@@ -1,5 +1,5 @@
 TARGET = aoeui
-VERSION = 1.0_alpha6
+VERSION = 1.0.0
 PACKAGE = $(TARGET)-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
