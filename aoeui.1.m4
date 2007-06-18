@@ -3,7 +3,7 @@ ifdef(`ASDFG',`define(`aoeui',`asdfg')define(`cmd',`$2')',`define(`cmd',`$1')')d
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH aoeui 1 "June 7, 2007"
+.TH aoeui 1 "June 18, 2007"
 .LO 1
 .SH NAME
 aoeui \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
@@ -273,7 +273,7 @@ if it is a control character, or converted to a control character
 if it is not, and inserted.
 (For example, you can press
 .B ^^
-and then hit ether Control-A or just a plain A, to get the
+and then hit either Control-A or just a plain A, to get the
 character code 0x01 inserted.)
 .TP
 .B ^Space^^
