@@ -1,34 +1,34 @@
-ifdef(`ASDFG',`define(`aoeui',`asdfg')define(`cmd',`$2')',`define(`cmd',`$1')')dnl
-.\" Man page for aoeui
+ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui')define(`cmd',`$1')')dnl
+.\" Man page for AOEUI
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH aoeui 1 "June 18, 2007"
+.TH AOEUI 1 "June 18, 2007"
 .LO 1
 .SH NAME
-aoeui \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
+AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
 .SH SYNOPSIS
-.B aoeui
+.B AOEUI
 [
 .B -t
 .I "tab stop"
 ]
 .RI [ file... ]
 .SH DESCRIPTION
-.B aoeui
+.B AOEUI
 is an interactive display text editor optimized for users of the
 cmd(Dvorak,QWERTY) keyboard layout.
 .P
 When run with no file name arguments,
-.B aoeui
+.B AOEUI
 displays a short command introduction and summary.
 .P
-.B aoeui
+.B AOEUI
 can browse very large read-only files with quick start-up,
 since original texts are memory-mapped from files and not
 duplicated in memory until they are about to be modified.
 .SH "INTENTIONALLY MISSING FEATURES"
-.B aoeui
+.B AOEUI
 has no embedded extension language, since it is trivial to
 pass regions of text from the editor to any program or script
 that can read standard input and write standard output.
@@ -40,7 +40,7 @@ and
 .BI perl (1)
 are all usable for such scripting.
 Further, since
-.B aoeui
+.B AOEUI
 ships will full sources and the rights to modify it,
 users can customize it directly.
 .P
@@ -48,7 +48,7 @@ The editor has no syntax highlighting modes, apart from
 subtle color cues that help match up parentheses, brackets,
 and braces.
 .P
-.B aoeui
+.B AOEUI
 has no mail or news reader, IRC client, or artificial intelligence
 psychologist mode.
 .P
@@ -243,7 +243,7 @@ with no selection causes all of the contiguous white space characters
 surrounding the cursor to be selected, with the cursor at the beginning so
 that they can be easily replaced by retyping.
 .SH UNDO
-.B aoeui
+.B AOEUI
 has infinite undo capabilities.
 .TP
 .B ^cmd(U,Z)
@@ -484,12 +484,12 @@ Afterwards,
 .B ^cmd(O,B)
 replays the view's macro.
 .SH FOLDING
-.B aoeui
+.B AOEUI
 supports the "folding" of portions of text into what appear to be
 single characters, and the reverse "unfolding" operation.
 Further, to provide outline views of texts such as source code
 that are heavily indented,
-.B aoeui
+.B AOEUI
 has an automatic nested folding capability.
 .TP
 .B ^Space,
@@ -610,7 +610,7 @@ is interpreted as a Control modifier instead.
 The
 .BR gnome-terminal (1)
 terminal emulator works well with
-.B aoeui
+.B AOEUI
 if you configure the terminal's scrollback limit to a relatively
 small value.
 .TP
@@ -638,7 +638,7 @@ is overwritten with the original contents of
 .IB file #
 contains the temporary image of the edited file
 while
-.B aoeui
+.B AOEUI
 is running, and may be useful in recovery if the editor
 is killed.
 .TP
@@ -653,7 +653,7 @@ scanned.  It should contain the output of
 .B $HOME/.aoeui
 holds any new "anonymous" texts created during editing sessions.
 .SH "SEE ALSO"
-.BR cmd(`asdfg',`aoeui') (1)
+.BR cmd(`asdfg',`aoeui') (1),
 .BR ctags (1),
 .BR regex (7)
 .P
@@ -673,4 +673,4 @@ Helpful commands to use with
 .BR tailf (1)
 .SH AUTHOR
 Peter Klausler <peter@klausler.com> wrote
-.BR "aoeui" .
+.BR AOEUI .

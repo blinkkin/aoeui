@@ -71,6 +71,20 @@ static int beside(struct window *left, struct window *right)
 		left->column + left->columns == right->column;
 }
 
+static int adjacent(struct window *x, struct window *y)
+{
+	if (y->column > x->column + x->columns ||
+	    y->column + y->columns < x->column ||
+	    y->row > x->row + x->rows ||
+	    y->row + y->rows < x->row)
+		return 0;
+	if (y->column != x->column + x->columns &&
+	    x->column != y->column + y->columns)
+		return 1;
+	return y->row < x->row + x->rows &&
+	       x->row < y->row + y->rows;
+}
+
 static int window_expand_next(struct window *window)
 {
 	struct window *next = window->next;
@@ -508,20 +522,6 @@ void window_beep(struct view *view)
 		display_beep(display);
 	else
 		fputc('\a', stderr);
-}
-
-static int adjacent(struct window *x, struct window *y)
-{
-	if (y->column > x->column + x->columns ||
-	    y->column + y->columns < x->column ||
-	    y->row > x->row + x->rows ||
-	    y->row + y->rows < x->row)
-		return 0;
-	if (y->column != x->column + x->columns &&
-	    x->column != y->column + y->columns)
-		return 1;
-	return y->row < x->row + x->rows &&
-	       x->row < y->row + y->rows;
 }
 
 static void window_bgrgbas(void)
