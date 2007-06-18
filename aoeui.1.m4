@@ -1,11 +1,12 @@
+ifdef(`ASDFG',`define(`aoeui',`asdfg')define(`cmd',`$2')',`define(`cmd',`$1')')dnl
 .\" Man page for aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH aoeui 1 "April 18, 2007"
+.TH aoeui 1 "June 7, 2007"
 .LO 1
 .SH NAME
-aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
+aoeui \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
 .SH SYNOPSIS
 .B aoeui
 [
@@ -16,8 +17,7 @@ aoeui \- a lightweight visual editor optimized for the Dvorak keyboard
 .SH DESCRIPTION
 .B aoeui
 is an interactive display text editor optimized for users of the
-Dvorak keyboard layout, although QWERTY users (hi, honey!)
-are welcome to use it as well.
+cmd(Dvorak,QWERTY) keyboard layout.
 .P
 When run with no file name arguments,
 .B aoeui
@@ -89,7 +89,7 @@ It receives snippets of data that have been cut or copied out of
 texts, so that they may be moved or copied elsewhere.
 It also supplies the standard input to a background command
 launched with
-.B ^E
+.B ^cmd(E,R)
 (below).
 There is one clip buffer shared by all views.
 .SH COMMANDS
@@ -116,58 +116,58 @@ Many commands are sensitive to the presence or absence of a
 .B ^Space^\e
 aborts the editor, leaving no original file modified since the
 last time
-.B ^K
+.B ^cmd(K,W)
 was used.
 .TP
-.B ^Q
+.B ^cmd(Q,Q)
 suspends the editor and returns the terminal to the shell that
 invoked it.
 Use the shell's foreground command, probably
 .BR fg ,
 to resume editing.
 .TP
-.B ^Space^Q
+.B ^Space^cmd(Q,Q)
 saves all modified texts and terminates the editor.
 .SH NAVIGATION
 The "backward and forward by unit" commands treat a numeric argument,
 if any, as a repeat count.
 .TP
-.B ^H
+.B ^cmd(H,G)
 moves the cursor backward by characters.
 .TP
-.B ^T
+.B ^cmd(T,H)
 moves the cursor forward by characters.
 .TP
-.B ^N
+.B ^cmd(N,K)
 moves the cursor backward by words.
 .TP
-.B ^S
+.B ^cmd(S,L)
 moves the cursor forward by words.
 .TP
-.B ^Space^N
+.B ^Space^cmd(N,K)
 moves the cursor backward one sentence.
 .TP
-.B ^Space^S
+.B ^Space^cmd(S,L)
 moves the cursor forward one sentence.
 .TP
-.B ^G
+.B ^cmd(G,T)
 moves the cursor back to the beginning of the line.
 If already there, it moves back to the beginniong of the previous line.
 .TP
-.B ^C
+.B ^cmd(C,Y)
 moves the cursor forward to the end of the line.
 If already there, it moves forward to the end of the next line.
 .TP
-.B ^R
+.B ^cmd(R,O)
 moves the window backward by screenfuls.
 .TP
-.B ^L
+.B ^cmd(L,P)
 moves the window forward by screenfuls.
 .TP
-.B ^Space^R
+.B ^Space^cmd(R,O)
 moves to the very beginning of the view.
 .TP
-.B ^Space^L
+.B ^Space^cmd(L,P)
 moves to the very end of the view.
 .TP
 .B ^]
@@ -175,11 +175,11 @@ moves to the corresponding parenthesis, bracket, or brace, respecting
 nesting, if the cursor sits atop such a character.
 Otherwise, it moves to the nearest enclosing bracketing character.
 .TP
-.B ^Z
+.B ^cmd(Z,N)
 recenters the window so that the line containing the cursor lies in
 the middle of its portion of the display.
 .TP
-.B ^Space^Z
+.B ^Space^cmd(Z,N)
 causes the current window to occupy the entire display and recenters
 the window.
 With a numeric argument, however, it simply
@@ -222,23 +222,23 @@ that is immediately before or around the cursor is sought.
 .SH SELECTION
 These commands are sensitive to the presence or absence of a current selection.
 .TP
-.B ^V
+.B ^cmd(V,U)
 begins a new selection if non exists, setting its mark at the current cursor,
 which is then typically navigated to its intended other end.
-.B ^V
+.B ^cmd(V,U)
 in the presence of selection simply removes the mark.
 .TP
-.B ^Space^V
+.B ^Space^cmd(V,U)
 without a selection causes the entire current line to be
 selected by placing the mark at the end of the line and the cursor at
 its beginning.  It is the same as the command sequence
-.B ^C^V^G
+.B ^cmd(C,Y)^cmd(V,U)^cmd(G,T)
 with no selection.
 With a selection present,
-.B ^Space^V
+.B ^Space^cmd(V,U)
 exchanges its cursor with its mark.
 .TP
-.B ^Space^D
+.B ^Space^cmd(D,X)
 with no selection causes all of the contiguous white space characters
 surrounding the cursor to be selected, with the cursor at the beginning so
 that they can be easily replaced by retyping.
@@ -246,15 +246,15 @@ that they can be easily replaced by retyping.
 .B aoeui
 has infinite undo capabilities.
 .TP
-.B ^U
+.B ^cmd(U,Z)
 reverses the effects of the last command, apart from
-.B ^U
+.B ^cmd(U,Z)
 itself, that modified the current text in any of its views.
 .TP
-.B ^Space^U
+.B ^Space^cmd(U,Z)
 reverses the effects of the most recent undo.
 After
-.BR ^U ,
+.BR ^cmd(U,Z) ,
 any
 .I other
 command that modifies the text will permanently commit the undo(s).
@@ -290,7 +290,7 @@ tries to find an unambiguous continuation based on path names
 and words in all the views.
 A continuation, if found, is appended to the selection, to
 facilitate opening a file with
-.BR ^X .
+.BR ^cmd(X,E) .
 With no selection, but the cursor immediately after one or more
 identifier characters, the editor searches for an unambiguous
 continuation using the words in the views.
@@ -322,46 +322,46 @@ opens up a new line after the current one.
 .BR ^? ),
 deletes the character immediately before the cursor.
 .TP
-.B ^D
+.B ^cmd(D,X)
 with no selection deletes the character "under" the cursor.
 When a selection exists,
-.B ^D
+.B ^cmd(D,X)
 moves it into the clip buffer, discarding any previously clipped text.
 .TP
-.B ^Space^D
+.B ^Space^cmd(D,X)
 with no selection will select surrounding white space, as described
 earlier.
 When a selection exists,
-.B ^Space^D
+.B ^Space^cmd(D,X)
 moves it into the clip buffer, putting it before any old text if the cursor
 was at its beginning and appending it to the clip buffer if the cursor
 was at its end.
 The intent is for multiple
-.B ^Space^D
+.B ^Space^cmd(D,X)
 commands to collect data together in the same order in which
 they are most likely to have been visited.
 .TP
-.B ^F
+.B ^cmd(F,C)
 requires a selection, which is copied into the clip buffer and
 then unmarked.
 .TP
-.B ^Space^F
+.B ^Space^cmd(F,C)
 is to
-.B ^F
+.B ^cmd(F,C)
 what
-.B ^Space^D
+.B ^Space^cmd(D,X)
 is to
-.BR ^D .
+.BR ^cmd(D,X) .
 It copies the selection to the clip buffer, putting it at the beginning or the end in the same way as
-.B ^Space^D
+.B ^Space^cmd(D,X)
 (above).
 .TP
-.B ^B
+.B ^cmd(B,V)
 with no selection will paste the current clip buffer's contents.
 But in the presence of a selection it performs a more general function:
 the contents of the selection and the clip buffer are exchanged.
 With a numeric argument,
-.B ^B
+.B ^cmd(B,V)
 pastes or exchanges with a numbered
 .IR register ,
 which is an alternate clip buffer.
@@ -397,16 +397,16 @@ A few commands have different meanings in search mode:
 will remove the last character from the search target and
 move the selection back to its previous position.
 .TP
-.B ^V
+.B ^cmd(V,U)
 is typically used to leave search mode and abandon the selection.
 .TP
 .B ^/
 with no characters in the search target string will cause the
 last search's target string to be reused.
 .TP
-.B ^H
+.B ^cmd(H,G)
 and
-.B ^T
+.B ^cmd(T,H)
 cause motion to the previous and next occurrences of the search
 target string, not single-character motion.
 .TP
@@ -416,53 +416,53 @@ target string, not single-character motion.
 simply leaves search mode with the last hit as the selection.
 .SH TEXTS, VIEWS, and WINDOWS
 .TP
-.B ^K
+.B ^cmd(K,W)
 saves
 .I all
 modified texts back to their files.
 .TP
-.B ^Space^K
+.B ^Space^cmd(K,W)
 saves just the current text.
 .TP
-.B ^X
+.B ^cmd(X,E)
 with no selection inserts, as the new selection, the path name of the
 current text.  With a selection containing a path name,
 possibly constructed with the assistance of tab completion (above),
-.B ^X
+.B ^cmd(X,E)
 will raise up a window containing a view into the indicated file,
 creating a new text to hold it if one does not already exist.
 .TP
-.B ^Space^X
+.B ^Space^cmd(X,E)
 with a selection will rename the current text, so that it will be
 saved in another file.
 .TP
-.B ^W
+.B ^cmd(W,F)
 finds an invisible view and associates it with the current window,
 making its currint view invisible.  Hitting
-.B ^W
+.B ^cmd(W,F)
 repeatedly will cycle through all of the views.
 If there was no invisible view,
-.B ^W
+.B ^cmd(W,F)
 creates a new scratch text, as does
 .B ^Space;
 below.
 .TP
-.B ^Space^W
+.B ^Space^cmd(W,F)
 does the same thing. but will close the window's current view,
 and also its text if it was the last view thereof.
 .TP
-.B ^Y
+.B ^cmd(Y,D)
 splits the current window horizontally, raising up an invisible
 or new view in the lower half of the original window.
 .TP
-.B ^Space^Y
+.B ^Space^cmd(Y,D)
 splits the current window vertically, raising up an invisible or new
 view in the right half of the original window.
 .TP
-.B ^P
+.B ^cmd(P,S)
 moves to another window.
 .TP
-.B ^Space^P
+.B ^Space^cmd(P,S)
 moves to another window, closing the old one.
 .TP
 .B ^Space;
@@ -472,16 +472,16 @@ is not a control character)
 creates a new anonymous text.
 .SH MACROS
 .TP
-.B ^Space^O
+.B ^Space^cmd(O,B)
 commences the recording of your keystrokes in the current view
 as its
 .IR macro,
 which may contain anything but another macro or macro invocation.
 .TP
-.B ^O
+.B ^cmd(O,B)
 ends the recording of a macro, if one is in progress.
 Afterwards,
-.B ^O
+.B ^cmd(O,B)
 replays the view's macro.
 .SH FOLDING
 .B aoeui
@@ -505,11 +505,11 @@ cursor.
 With a numeric value, which is ignored, it will unfold the entire view.
 .SH SHELLS
 .TP
-.B ^E
+.B ^cmd(E,R)
 with no selection will launch an interactive shell in a new scratch
 text.
 With a selection, however,
-.B ^E
+.B ^cmd(E,R)
 will execute the shell command in the selection with the contents
 of the clip buffer, if any, as its standard input, and collect its
 output asynchronously in the background to replace the selection.
@@ -567,23 +567,23 @@ to monitor additions to a file such as a log
 .TP
 .BR make (1)
 to compile your code
-.B ^Space^E
+.B ^Space^cmd(E,R)
 with no selection will terminate the output of any asynchronous
 child process that's still running.
 .SH TIPS
 .TP
 .B *
 To select the rest of the line after the cursor, use
-.B ^V^C
+.B ^cmd(V,U)^cmd(C,Y)
 .TP
 .B *
 It is often faster to retype a bungled word than to fix it, using
-.B ^V^N
+.B ^cmd(V,U)^cmd(N,K)
 and then retyping.
 .TP
 .B *
 Transposing multiple blocks of text is easy with
-.BR ^B ,
+.BR ^cmd(B,V) ,
 which generalized the usual paste operation into an exchange of the clip buffer
 with the selection.
 .TP
@@ -591,7 +591,7 @@ with the selection.
 Incremental search and replacement can be done with a macro or by
 clipping the replacement text, and on search hits that are to be
 replaced, using
-.B ^B^F^/^/
+.B ^cmd(B,V)^cmd(F,C)^/^/
 to exchange the hit with the replacement text, copy it back to the
 clip buffer, and proceed to the next occurrence of the search pattern.
 But when the replacement text is short, it's sometimes easiest to just
@@ -616,18 +616,18 @@ small value.
 .TP
 .B *
 To move backward or forward by half a screenful, use
-.B ^R
+.B ^cmd(R,O)
 or
-.B ^L
+.B ^cmd(L,P)
 and then
-.BR ^Z .
+.BR ^cmd(Z,N) .
 .SH BUGS
 Inevitable; please tell me about any that you find.
 .SH ENVIRONMENT
 .TP
 .B SHELL
 is used to name the program run by the
-.B ^E
+.B ^cmd(E,R)
 command.
 .SH FILES
 .TP
@@ -653,11 +653,12 @@ scanned.  It should contain the output of
 .B $HOME/.aoeui
 holds any new "anonymous" texts created during editing sessions.
 .SH "SEE ALSO"
+.BR cmd(`asdfg',`aoeui') (1)
 .BR ctags (1),
 .BR regex (7)
 .P
 Helpful commands to use with
-.BR ^E :
+.BR ^cmd(E,R) :
 .BR cat (1),
 .BR mkfifo (1),
 .BR grep (1),

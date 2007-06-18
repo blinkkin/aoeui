@@ -14,6 +14,7 @@ struct window {
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
 	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
+	unsigned bgrgba;
 	struct window *next;
 };
 
@@ -509,24 +510,59 @@ void window_beep(struct view *view)
 		fputc('\a', stderr);
 }
 
+static int adjacent(struct window *x, struct window *y)
+{
+	if (y->column > x->column + x->columns ||
+	    y->column + y->columns < x->column ||
+	    y->row > x->row + x->rows ||
+	    y->row + y->rows < x->row)
+		return 0;
+	if (y->column != x->column + x->columns &&
+	    x->column != y->column + y->columns)
+		return 1;
+	return y->row < x->row + x->rows &&
+	       x->row < y->row + y->rows;
+}
+
+static void window_bgrgbas(void)
+{
+	int j;
+	struct window *window, *w;
+
+	static unsigned bgs[] = {
+		~0, 0xffff0000, 0x7f7f7f00, 0x7f7f0000, 0xffffff00,
+		0x007f0000, 0x00ff0000, 0
+	};
+
+	for (window = window_list; window; window = window->next)
+		window->bgrgba = 0;
+	active_window->bgrgba = ~0;
+	for (window = window_list; window; window = window->next) {
+		if (window->bgrgba)
+			continue;
+		for (j = 0; bgs[j]; j++) {
+			for (w = window_list; w; w = w->next)
+				if (w != window &&
+				    w->bgrgba == bgs[j] &&
+				    adjacent(window, w))
+					break;
+			if (!w)
+				break;
+		}
+		window->bgrgba = bgs[j];
+	}
+}
+
 static void repaint(void)
 {
 	struct window *window;
-	unsigned odd = 0;
 
-	for (window = window_list; window; window = window->next) {
-		unsigned bgrgba;
-		if (window == active_window)
-			bgrgba = ~0;
-		else
-			bgrgba = odd ? 0xffff0000 : 0xffffff00;
-		odd ^= window->next &&
-		       (window->next->row == window->row ||
-			window->next->column == window->column);
-		paint(window, bgrgba);
-	}
+	window_bgrgbas();
+	for (window = window_list; window; window = window->next)
+		paint(window, window->bgrgba);
 
-	display_cursor(display, active_window->row +  active_window->cursor_row,
+	display_cursor(display,
+		       active_window->row + active_window->cursor_row,
 		       active_window->column + active_window->cursor_column);
 }
 

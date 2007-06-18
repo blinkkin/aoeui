@@ -4,6 +4,8 @@
  *	This is the default command mode.
  */
 
+int is_asdfg;
+
 struct mode_default {
 	command command;
 	int variant, value, is_hex;
@@ -263,7 +265,18 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	 *	Control character commands
 	 */
 
-	switch ((ch += '@')) {
+	ch += '@';
+	if (is_asdfg && ch >= 'A' && ch <= 'Z') {
+		static char asdfg_to_aoeui[26] = {
+			'A', 'V', 'F', 'Y', 'X', 'W', 'H', 'T',
+			'I', 'J', 'N', 'S', 'M', 'Z', 'R', 'L',
+			'Q', 'E', 'P', 'G', 'V', 'B', 'K', 'D',
+			'C', 'U'
+		};
+		ch = asdfg_to_aoeui[ch-'A'];
+	}
+
+	switch (ch) {
 	case '@': /* (^Space) */
 		if (mode->variant)
 			break; /* unset variant */

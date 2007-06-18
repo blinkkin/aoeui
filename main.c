@@ -38,8 +38,16 @@ int main(int argc, char *const *argv)
 		die("not running in a terminal");
 	signals();
 
-	while ((ch = getopt(argc, argv, "t:")) >= 0)
+	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
+
+	while ((ch = getopt(argc, argv, "dqt:")) >= 0)
 		switch (ch) {
+		case 'd':
+			is_asdfg = 0;
+			break;
+		case 'q':
+			is_asdfg = 1;
+			break;
 		case 't':
 			value = atoi(optarg);
 			if (value >= 1 && value <= 20)

@@ -104,10 +104,12 @@ Experimental QWERTY mapping (unusable control keys capitalized):
 	Asdfg hJkl;
 	zxcvb nM,./
 
-navigation:	HT:	NS:	GC:	RL:	Z:
-selection:	V:	F:	D:	B:
-windows:	P:	Y:	W:
-files:		Q:	K:	X:
-others:		O:	E:	U:
+navigation:	G:t	C:y	R:o	L:p
+		H:g	T:h	N:k	S:l
+		Z:n
+selection:	V:u	F:c	D:x	B:v
+windows:	P:s	Y:d	W:f
+files:		Q:q	K:w	X:e
+others:		O:b	E:r	U:z
 
 

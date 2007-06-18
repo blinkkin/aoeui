@@ -1,4 +1,8 @@
 2007
+06-18 pmk: nicer background colors
+06-07 pmk: "asdfg" QWERTY variant
+06-06 pmk: fix spurious "file may have changed" warning after renaming
+06-01 pmk: some code cleaning
 05-30 1.0.0 release! yay
 05-24 pmk: tweak automatic alignment
 05-22 pmk: some minor BSD porting issues in buffer.c and file.c

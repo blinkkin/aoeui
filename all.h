@@ -31,7 +31,7 @@
 #include "util.h"
 #include "clip.h"
 
-/* Miscellaneous declarations and prototypes */
+/* Miscellaneous declarations and prototypes that didn't fit elsewhere */
 extern struct termios original_termios;
 void *allocate(const void *, unsigned bytes);	/* mem.c */
 void die(const char *, ...);			/* die.c */

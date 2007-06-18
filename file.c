@@ -88,6 +88,16 @@ static void clean_mmap(struct text *text, unsigned bytes, int flags)
 		text->clean = p;
 }
 
+static void grab_mtime(struct text *text)
+{
+	struct stat statbuf;
+
+	if (text->fd >= 0 && !fstat(text->fd, &statbuf))
+		text->mtime = statbuf.st_mtime;
+	else
+		text->mtime = 0;
+}
+
 struct view *view_open(const char *path0)
 {
 	struct view *view;
@@ -146,7 +156,7 @@ struct view *view_open(const char *path0)
 			text->buffer = buffer_create(path);
 			if (old_fashioned_read(text) < 0)
 				goto fail;
-			text->mtime = statbuf.st_mtime;
+			grab_mtime(text);
 		}
 		view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 					     text->clean_bytes;
@@ -253,6 +263,7 @@ int text_rename(struct text *text, const char *path0)
 		text->clean = NULL;
 	}
 	text->fd = fd;
+	grab_mtime(text);
 	allocate(text->path, 0);
 	text->path = path;
 	for (view = text->views; view; view = view->next)
@@ -262,7 +273,6 @@ int text_rename(struct text *text, const char *path0)
 
 void text_dirty(struct text *text)
 {
-	struct stat statbuf;
 	if (text->path && !text->dirties && text->flags & TEXT_RDONLY)
 		message("%s is a read-only file, changes will not be saved.",
 			text->path);
@@ -271,8 +281,7 @@ void text_dirty(struct text *text)
 		text->buffer = buffer_create(text->fd >= 0 ? text->path : NULL);
 		if (text->clean)
 			buffer_insert(text->buffer, text->clean, 0, text->clean_bytes);
-		if (text->fd >= 0 && !fstat(text->fd, &statbuf))
-			text->mtime = statbuf.st_mtime;
+		grab_mtime(text);
 	}
 }
 
@@ -348,8 +357,7 @@ void text_preserve(struct text *text)
 
 	text->preserved = text->dirties;
 	text->flags &= ~TEXT_CREATED;
-	if (!fstat(text->fd, &statbuf))
-		text->mtime = statbuf.st_mtime;
+	grab_mtime(text);
 }
 
 void texts_preserve(void)

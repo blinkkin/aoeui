@@ -6,6 +6,7 @@ struct mode {
 	command command;
 };
 
+extern int is_asdfg;
 struct mode *mode_default(void);
 void mode_search(struct view *, int regex);
 void mode_child(struct view *);

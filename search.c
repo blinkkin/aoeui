@@ -171,6 +171,10 @@ static int search(struct view *view, int backward, int new)
 static void command_handler(struct view *view, unsigned ch)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
+	static char backfwd[2][2] = {
+		{ 'H'-'@', 'T'-'@' } /* aoeui */,
+		{ 'G'-'@', 'H'-'@' } /* asdfg */
+	};
 
 	/* Backspace removes the last character from the search target and
 	 * returns to the previous hit
@@ -207,16 +211,16 @@ static void command_handler(struct view *view, unsigned ch)
 	 * ^T, ^/, and ^_ proceed to a later hit.
 	 */
 	if (mode->last_bytes &&
-	    (ch == 'H'-'@' || ch == 'T'-'@' || ch == '_'-'@')) {
+	    (ch == backfwd[is_asdfg][0] || ch == backfwd[is_asdfg][1] || ch == '_'-'@')) {
 		mode->bytes = mode->last_bytes;
-		search(view, mode->backward = (ch == 'H'-'@'), 0);
+		search(view, mode->backward = (ch == backfwd[is_asdfg][0]), 0);
 		return;
 	}
 
 	/* Hitting ^T, ^/, or ^_ with an empty search pattern causes
 	 * the last successful search target to be reused.
 	 */
-	if ((ch == 'T'-'@' || ch == '_'-'@') &&
+	if ((ch == backfwd[is_asdfg][1] || ch == '_'-'@') &&
 	    !mode->bytes && view->last_search) {
 		mode->bytes = strlen(view->last_search);
 		mode->alloc = mode->bytes + 8;
