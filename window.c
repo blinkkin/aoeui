@@ -13,8 +13,8 @@ struct window {
 	unsigned row, column;
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
-	unsigned last_dirties, last_bgrgba, last_cursor, last_mark;
-	unsigned bgrgba;
+	unsigned last_dirties, last_fgrgba, last_bgrgba, last_cursor, last_mark;
+	unsigned fgrgba, bgrgba;
 	struct window *next;
 };
 
@@ -329,7 +329,7 @@ static unsigned focus(struct window *window)
 		start += find_row_bytes(view, start, 0, window->columns);
 
 done:	window->cursor_column = find_column(&above, view, cursorrow,
-					    cursor, 0);
+					    cursor, 0, window->columns);
 	window->cursor_row = above;
 	new_start(view, start);
 	return start;
@@ -363,7 +363,7 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 			unsigned at, unsigned cursor, unsigned mark,
 			unsigned *brackets)
 {
-	unsigned fgrgba, bgrgba = window->bgrgba;
+	unsigned fgrgba = window->fgrgba, bgrgba = window->bgrgba;
 	unsigned tabstop = window->view->text->tabstop;
 
 	if (ch == '\n')
@@ -371,12 +371,10 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 
 	if (window->view->text->flags & TEXT_RDONLY)
 		fgrgba = 0xff000000;
-	else
-		fgrgba = bgrgba ^ 0xffffff00;
 	if (at >= cursor && at < mark ||
 	    at >= mark && at < cursor) {
 		bgrgba = 0x00ffff00;
-		fgrgba = bgrgba ^ 0xffffff00;
+		fgrgba = 0xff000000;
 	}
 
 	if (ch == '\t') {
@@ -427,6 +425,7 @@ static int needs_repainting(struct window *window)
 	if (mark == UNSET)
 		mark = cursor;
 	return	view->text->dirties != window->last_dirties ||
+		window->last_fgrgba != window->fgrgba ||
 		window->last_bgrgba != window->bgrgba ||
 		window->last_cursor != cursor ||
 		window->last_mark != mark;
@@ -435,6 +434,7 @@ static int needs_repainting(struct window *window)
 static void repainted(struct window *window, unsigned cursor, unsigned mark)
 {
 	window->last_dirties = window->view->text->dirties;
+	window->last_fgrgba = window->fgrgba;
 	window->last_bgrgba = window->bgrgba;
 	window->last_cursor = cursor;
 	window->last_mark = mark;
@@ -476,11 +476,11 @@ void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes
 		bytes -= at - offset;
 		offset = at;
 	}
-	column = find_column(&row, view, at, offset, 0);
+	column = find_column(&row, view, at, offset, 0, window->columns);
 	if (row >= window->rows)
 		return;
 	end_column = find_column(&lines, view, offset,
-				 offset + bytes, column);
+				 offset + bytes, column, window->columns);
 	if (!lines) {
 		unsigned old = find_row_bytes(view, offset,
 					      column, window->columns);
@@ -517,11 +517,11 @@ void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes
 		bytes -= at - offset;
 		offset = at;
 	}
-	column = find_column(&row, view, at, offset, 0);
+	column = find_column(&row, view, at, offset, 0, window->columns);
 	if (row >= window->rows)
 		return;
 	end_column = find_column(&lines, view, offset,
-				 offset + bytes, column);
+				 offset + bytes, column, window->columns);
 	if (!lines) {
 		unsigned old = find_row_bytes(view, offset + bytes,
 					      end_column, window->columns);
@@ -613,32 +613,40 @@ void window_beep(struct view *view)
 		fputc('\a', stderr);
 }
 
-static void window_bgrgbas(void)
+static void window_colors(void)
 {
 	int j;
 	struct window *window, *w;
 
-	static unsigned bgs[] = {
-		~0, 0xffff0000, 0x7f7f7f00, 0x7f7f0000, 0xffffff00,
-		0x007f0000, 0x00ff0000, 0
+	static unsigned colors[][2] = {
+		{ 0xff, ~0 },
+		{ 0xff00, 0xffff0000 },
+		{ 0x0, 0x7f7f7f00 },
+		{ 0xff00, 0x7f7f0000 },
+		{ 0x0, 0xffffff00 },
+		{ 0xff00ff00, 0x007f0000 },
+		{ 0xff00ff00, 0x00ff0000 },
+		{ }
 	};
 
 	for (window = window_list; window; window = window->next)
 		window->bgrgba = 0;
+	active_window->fgrgba = 0xff;
 	active_window->bgrgba = ~0;
 	for (window = window_list; window; window = window->next) {
 		if (window->bgrgba)
 			continue;
-		for (j = 0; bgs[j]; j++) {
+		for (j = 0; colors[j][0]; j++) {
 			for (w = window_list; w; w = w->next)
 				if (w != window &&
-				    w->bgrgba == bgs[j] &&
+				    w->bgrgba == colors[j][1] &&
 				    adjacent(window, w))
 					break;
 			if (!w)
 				break;
 		}
-		window->bgrgba = bgs[j];
+		window->fgrgba = colors[j][0];
+		window->bgrgba = colors[j][1];
 	}
 }
 
@@ -646,7 +654,7 @@ static void repaint(void)
 {
 	struct window *window;
 
-	window_bgrgbas();
+	window_colors();
 	for (window = window_list; window; window = window->next)
 		if (needs_repainting(window))
 			paint(window);

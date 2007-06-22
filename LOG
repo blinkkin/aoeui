@@ -1,4 +1,5 @@
 2007
+06-22 pmk: fix fg/bg colors so everything works on console
 06-22 pmk: use insert/delete of spaces and lines in display
 06-21 pmk: improve folding/unfolding commands
 06-21 pmk: remove needless erasures and cursor motion from display

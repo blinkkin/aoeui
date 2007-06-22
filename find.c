@@ -232,7 +232,7 @@ unsigned find_row_bytes(struct view *view, unsigned offset0,
 }
 
 unsigned find_column(unsigned *row, struct view *view, unsigned linestart,
-		     unsigned offset, unsigned column)
+		     unsigned offset, unsigned column, unsigned columns)
 {
 	unsigned tabstop = view->text->tabstop;
 	unsigned at, next;
@@ -245,8 +245,14 @@ unsigned find_column(unsigned *row, struct view *view, unsigned linestart,
 			if (row)
 				++*row;
 			column = 0;
-		} else
+		} else {
 			column += char_columns(ch, column, tabstop);
+			if (column >= columns) {
+				if (row)
+					++*row;
+				column = char_columns(ch, 0, tabstop);
+			}
+		}
 	}
 	return column;
 }
