@@ -37,16 +37,49 @@ static void resume_editing(struct text *text)
 		      buffer_bytes(text->undo->deleted) - text->undo->saved);
 }
 
+static int in_view(struct view *view, unsigned *offset, unsigned *bytes)
+{
+	if (*offset < view->start) {
+		if (*offset + *bytes <= view->start)
+			return 0;
+		*bytes -= view->start - *offset;
+		*offset = 0;
+	} else {
+		*offset -= view->start;
+		if (*offset >= view->bytes)
+			return 0;
+		if (*offset + *bytes > view->bytes)
+			*bytes = view->bytes - *offset;
+	}
+	return 1;
+}
+
+static void view_hint_deleting(struct view *view, unsigned offset, unsigned bytes)
+{
+	if (!view->window || !in_view(view, &offset, &bytes))
+		return;
+	window_hint_deleting(view->window, offset, bytes);
+}
+
+static void view_hint_inserted(struct view *view, unsigned offset, unsigned bytes)
+{
+	if (!view->window || !in_view(view, &offset, &bytes))
+		return;
+	window_hint_inserted(view->window, offset, bytes);
+}
+
 unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 {
 	char *old;
 	struct edit edit, *last;
+	struct view *view;
 
 	if (!bytes)
 		return 0;
 	text_dirty(text);
 	edit.offset = offset;
 	edit.bytes = buffer_raw(text->buffer, &old, offset, bytes);
+	bytes = edit.bytes;
 
 	if ((last = last_edit(text)) &&
 	    last->bytes >= 0 &&
@@ -58,17 +91,20 @@ unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 			      text->undo->redo, sizeof edit);
 		text->undo->redo += sizeof edit;
 	}
+	for (view = text->views; view; view = view->next)
+		view_hint_deleting(view, offset, bytes);
 	buffer_move(text->undo->deleted, text->undo->saved,
-		    text->buffer, offset, edit.bytes);
-	text->undo->saved += edit.bytes;
-	text_adjust_loci(text, offset, -edit.bytes);
-	return edit.bytes;
+		    text->buffer, offset, bytes);
+	text->undo->saved += bytes;
+	text_adjust_loci(text, offset, -bytes);
+	return bytes;
 }
 
 unsigned text_insert(struct text *text, const void *in,
 		     unsigned offset, unsigned bytes)
 {
 	struct edit edit, *last;
+	struct view *view;
 
 	if (!bytes)
 		return 0;
@@ -87,6 +123,8 @@ unsigned text_insert(struct text *text, const void *in,
 		text->undo->redo += sizeof edit;
 	}
 	text_adjust_loci(text, offset, bytes);
+	for (view = text->views; view; view = view->next)
+		view_hint_inserted(view, offset, bytes);
 	return bytes;
 }
 

@@ -203,11 +203,12 @@ unsigned find_line_number(struct view *view, unsigned line)
 	return offset;
 }
 
-unsigned find_row_bytes(struct view *view, unsigned offset0, unsigned columns)
+unsigned find_row_bytes(struct view *view, unsigned offset0,
+			unsigned column, unsigned columns)
 {
 	unsigned offset = offset0, next;
 	unsigned tabstop = view->text->tabstop;
-	int ch = 0, column = 0, charcols;
+	int ch = 0, charcols;
 
 	while (column < columns) {
 		if ((ch = view_char(view, offset, &next)) < 0)
@@ -230,15 +231,14 @@ unsigned find_row_bytes(struct view *view, unsigned offset0, unsigned columns)
 	return offset - offset0;
 }
 
-unsigned find_column(unsigned *row, struct view *view, unsigned offset)
+unsigned find_column(unsigned *row, struct view *view, unsigned linestart,
+		     unsigned offset, unsigned column)
 {
-	unsigned cursor = locus_get(view, CURSOR);
 	unsigned tabstop = view->text->tabstop;
-	unsigned next, column;
-	int ch;
+	unsigned at, next;
 
-	for (column = 0; offset < cursor; offset = next) {
-		ch = view_char(view, offset, &next);
+	for (at = linestart; at < offset; at = next) {
+		int ch = view_char(view, at, &next);
 		if (ch < 0)
 			break;
 		if (ch == '\n') {

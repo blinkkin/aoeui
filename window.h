@@ -7,6 +7,8 @@ struct window *window_below(struct view *, struct view *, unsigned rows);
 struct window *window_replace(struct view *, struct view *);
 void window_destroy(struct window *);
 void window_next(struct view *);
+void window_hint_deleting(struct window *, unsigned offset, unsigned bytes);
+void window_hint_inserted(struct window *, unsigned offset, unsigned bytes);
 struct window *window_recenter(struct view *);
 void window_page_up(struct view *);
 void window_page_down(struct view *);

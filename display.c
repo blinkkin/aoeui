@@ -92,9 +92,23 @@ static void outf(struct display *display, const char *msg, ...)
 
 static void moveto(struct display *display, unsigned row, unsigned column)
 {
-	if (row != display->at_row || column != display->at_column)
-		outf(display, CSI "%d;%df", (display->at_row = row) + 1,
-		       (display->at_column = column) + 1);
+	if (row == display->at_row && column == display->at_column)
+		return;
+	if (row == display->at_row + 1) {
+		if (column == display->at_column) {
+			outs(display, "\n");
+			display->at_row++;
+			return;
+		}
+		if (!column) {
+			outs(display, "\n\r");
+			display->at_row++;
+			display->at_column = 0;
+			return;
+		}
+	}
+	outf(display, CSI "%d;%df", (display->at_row = row) + 1,
+	     (display->at_column = column) + 1);
 }
 
 void display_sync(struct display *display)
@@ -283,6 +297,166 @@ doit:	background_color(display, bgrgba);
 			cell++->bgrgba = bgrgba;
 		}
 	}
+}
+
+void display_insert_spaces(struct display *display, unsigned row,
+			   unsigned column, unsigned spaces, unsigned columns,
+			   unsigned bgrgba)
+{
+	struct cell *cell;
+
+	if (row >= display->rows || column >= display->columns)
+		return;
+	if (column + columns > display->columns)
+		columns = display->columns - column;
+	if (spaces > columns)
+		spaces = columns;
+	if (!spaces)
+		return;
+
+	if (column + columns != display->columns) {
+		moveto(display, row, column + columns - spaces);
+		outf(display, CSI "%uP", spaces);
+	}
+	moveto(display, row, column);
+	background_color(display, bgrgba);
+	outf(display, CSI "%u@", spaces);
+	cell = &display->image[row*display->columns + column];
+	memmove(cell + spaces, cell, (columns - spaces) * sizeof *cell);
+	while (spaces--) {
+		cell->unicode = ' ';
+		cell++->bgrgba = bgrgba;
+	}
+}
+
+void display_delete_chars(struct display *display, unsigned row, unsigned column,
+			  unsigned chars, unsigned columns, unsigned bgrgba)
+{
+	unsigned c;
+	struct cell *cell;
+
+	if (row >= display->rows || column >= display->columns)
+		return;
+	if (column + columns > display->columns)
+		columns = display->columns - column;
+	if (chars > columns)
+		chars = columns;
+	if (!chars)
+		return;
+
+	moveto(display, row, column);
+	background_color(display, bgrgba);
+	outf(display, CSI "%uP", chars);
+	if (column + columns != display->columns) {
+		moveto(display, row, column + columns - chars);
+		outf(display, CSI "%u@", chars);
+	}
+	cell = &display->image[row*display->columns + column];
+	memmove(cell, cell + chars, (columns - chars) * sizeof *cell);
+	cell += columns - chars;
+	for (c = chars; c--; ) {
+		cell->unicode = ' ';
+		cell++->bgrgba = bgrgba;
+	}
+}
+
+void display_insert_lines(struct display *display, unsigned row,
+			  unsigned column, unsigned lines,
+			  unsigned rows, unsigned columns, unsigned bgrgba)
+{
+	int j, k;
+
+	if (row >= display->rows || column >= display->columns)
+		return;
+	if (row + rows > display->rows)
+		rows = display->rows - row;
+	if (lines > rows)
+		lines = rows;
+	if (column + columns > display->columns)
+		columns = display->columns - column;
+	if (!lines || !columns)
+		return;
+
+	if (!column && columns == display->columns) {
+		unsigned c = lines * columns;
+		struct cell *cell = &display->image[row * columns];
+		if (row + rows != display->rows) {
+			moveto(display, row + rows - lines, 0);
+			outf(display, CSI "%uM", lines);
+		}
+		moveto(display, row, 0);
+		background_color(display, bgrgba);
+		outf(display, CSI "%uL", lines);
+		memmove(&display->image[(row + lines) * columns],
+			cell, (rows - lines) * columns * sizeof *cell);
+		while (c--) {
+			cell->unicode = ' ';
+			cell++->bgrgba = bgrgba;
+		}
+		return;
+	}
+
+	for (j = rows - lines; j-- > 0; ) {
+		struct cell *cell = &display->image[(row + j) * display->columns +
+						    column];
+		for (k = 0; k < columns; k++) {
+			display_put(display, row + lines + j, column + k,
+				    cell->unicode, cell->fgrgba, cell->bgrgba);
+			cell++;
+		}
+	}
+	display_erase(display, row, column, lines, columns, bgrgba);
+}
+
+void display_delete_lines(struct display *display, unsigned row,
+			  unsigned column, unsigned lines,
+			  unsigned rows, unsigned columns, unsigned bgrgba)
+{
+	int j, k;
+
+	if (row >= display->rows || column >= display->columns)
+		return;
+	if (row + rows > display->rows)
+		rows = display->rows - row;
+	if (lines > rows)
+		lines = rows;
+	if (column + columns > display->columns)
+		columns = display->columns - column;
+	if (!lines || !columns)
+		return;
+
+	if (!column && columns == display->columns) {
+		unsigned c = lines * columns;
+		struct cell *cell = &display->image[row * columns];
+		moveto(display, row, 0);
+		background_color(display, bgrgba);
+		outf(display, CSI "%uM", lines);
+		if (row + rows != display->rows) {
+			moveto(display, row + rows - lines, 0);
+			background_color(display, bgrgba);
+			outf(display, CSI "%uL", lines);
+		}
+		memmove(cell, cell + lines * columns,
+			(rows - lines) * columns * sizeof *cell);
+		cell += (rows - lines) * columns;
+		while (c--) {
+			cell->unicode = ' ';
+			cell++->bgrgba = bgrgba;
+		}
+		return;
+	}
+
+	for (j = 0; j < rows - lines; j++) {
+		struct cell *cell = &display->image[(row + lines + j) *
+						    display->columns + column];
+		for (k = 0; k < columns; k++) {
+			display_put(display, row + j, column + k,
+				    cell->unicode, cell->fgrgba, cell->bgrgba);
+			cell++;
+		}
+	}
+	display_erase(display, row + rows - lines, column,
+		      lines, columns, bgrgba);
 }
 
 static struct cell *resize(struct display *display, struct cell *old,
