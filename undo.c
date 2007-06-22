@@ -49,7 +49,8 @@ unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 	edit.bytes = buffer_raw(text->buffer, &old, offset, bytes);
 
 	if ((last = last_edit(text)) &&
-	    last->bytes >= 0 && last->offset == offset)
+	    last->bytes >= 0 &&
+	    last->offset == offset)
 		last->bytes += bytes;
 	else {
 		resume_editing(text);
@@ -74,7 +75,8 @@ unsigned text_insert(struct text *text, const void *in,
 	text_dirty(text);
 	bytes = buffer_insert(text->buffer, in, offset, bytes);
 	if ((last = last_edit(text)) &&
-	    last->bytes < 0 && last->offset - last->bytes == offset)
+	    last->bytes < 0 &&
+	    last->offset - last->bytes == offset)
 		last->bytes -= bytes;
 	else {
 		resume_editing(text);

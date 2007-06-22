@@ -1,4 +1,6 @@
 2007
+06-21 pmk: improve folding/unfolding commands
+06-21 pmk: remove needless erasures and cursor motion from display
 06-18 1.0.1 release
 06-18 pmk: nicer background colors
 06-07 pmk: "asdfg" QWERTY variant

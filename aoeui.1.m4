@@ -493,16 +493,19 @@ that are heavily indented,
 has an automatic nested folding capability.
 .TP
 .B ^Space,
-with a selection and no numeric value will fold the selection.
-With a numeric value and no selection, it will repeatedly fold
+with a selection will fold the selection.
+Otherwise, it will repeatedly fold
 indented regions of the text to provide an outline view.
-The numeric value specifies the number of leading spaces or
+A numeric value, if any, specifies the number of leading spaces or
 equivalent tabs at which code lines will be folded.
+The default is 1, causing the folding of any line that isn't left-justified.
 .TP
 .B ^Space.
-with no numeric value will unfold the folded region under the
-cursor.
-With a numeric value, which is ignored, it will unfold the entire view.
+with a selection will unfold the topmost foldings within it.
+Otherwise, if there is no numeric value, it will unfold the
+single folded region immediately beneath the cursor.
+With a numeric value, which is ignored, it will completely
+unfold the entire view.
 .SH SHELLS
 .TP
 .B ^cmd(E,R)

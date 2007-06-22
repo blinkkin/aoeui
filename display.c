@@ -250,7 +250,17 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 	if (!columns)
 		return;
 
-	background_color(display, bgrgba);
+	for (r = 0; r < rows; r++) {
+		struct cell *cell = &display->image[(row+r)*display->columns +
+						    column];
+		for (c = 0; c < columns; c++)
+			if (cell->unicode != ' ' ||
+			    cell++->bgrgba != bgrgba)
+				goto doit;
+	}
+	return;
+
+doit:	background_color(display, bgrgba);
 	if (column + columns == display->columns)
 		if (!column && rows == display->rows - row) {
 			moveto(display, row, column);
@@ -273,7 +283,6 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 			cell++->bgrgba = bgrgba;
 		}
 	}
-	moveto(display, display->cursor_row, display->cursor_column);
 }
 
 static struct cell *resize(struct display *display, struct cell *old,

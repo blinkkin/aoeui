@@ -29,7 +29,7 @@ Command characters
 *  ESC	function keys and query responses, ALT
   ^@	(^Space)
   ^^	literal, control [; unicode]
-* ^[	(ESC)
+* ^[	(ESC or "smaller font")
   ^]	move to corresponding or nearest bracket
 *  TAB	tab / tab completion [align; set tab stop]
   ^P	select another window [closing current]
@@ -43,7 +43,7 @@ Command characters
 * ^?	(BCK) delete character before cursor
 * ^+	-- larger font
   ^\	[quit without saving]
-* ^A	-- reserved for screen(1)
+* ^A	-- reserved for screen(1) or user definition
   ^O	macro end, execute [macro start]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
@@ -73,8 +73,8 @@ Non-control characters -- commands must be [variants]
   -	[; goto bookmark]
   ;	[new anonymous text]
   '	[go to tag]
-  ,	[; fold view on indentation] / [fold selection]
-  .	[unfold; unfold entire view]
+  ,	[fold view on indentation] / [fold selection]
+  .	[unfold; unfold entire view] / [unfold selection once]
   0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
   x 0-9 a-f A-F		hexadecimal argument
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
@@ -86,6 +86,9 @@ Non-control characters -- commands must be [variants]
 
 Missing features:
 	color cue for clean/dirty text
+	programmable function keys
+	preserving window layouts
+	moving to prior window
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

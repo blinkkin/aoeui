@@ -235,10 +235,8 @@ struct view *window_current_view(void)
 
 void windows_reset(void)
 {
-	if (display) {
-		display_end(display);
-		display = NULL;
-	}
+	display_end(display);
+	display = NULL;
 	window_raise(window_current_view());
 }
 
@@ -409,7 +407,6 @@ static void paint(struct window *window, unsigned default_bgrgba)
 				bgrgba = 0x00ffff00;
 				fgrgba = bgrgba ^ 0xffffff00;
 			}
-
 
 			if (ch == '\t') {
 				unsigned bg = lame_tab(view, at+1) ?

@@ -203,16 +203,6 @@ unsigned find_line_number(struct view *view, unsigned line)
 	return offset;
 }
 
-INLINE unsigned char_columns(unsigned ch, unsigned column,
-				unsigned tabstop)
-{
-	if (ch == '\t')
-		return tabstop - column % tabstop;
-	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
-		return 2; /* ^X or folded <> */
-	return 1;
-}
-
 unsigned find_row_bytes(struct view *view, unsigned offset0, unsigned columns)
 {
 	unsigned offset = offset0, next;

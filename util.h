@@ -43,3 +43,12 @@ INLINE int is_idch(int ch)
 {
 	return ch == '_' || is_wordch(ch);
 }
+
+INLINE unsigned char_columns(unsigned ch, unsigned column, unsigned tabstop)
+{
+	if (ch == '\t')
+		return tabstop - column % tabstop;
+	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
+		return 2; /* ^X or folded <> */
+	return 1;
+}

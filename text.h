@@ -103,6 +103,7 @@ void align(struct view *);
 /* fold.c */
 void view_fold(struct view *, unsigned, unsigned);
 int view_unfold(struct view *, unsigned);
+void view_unfold_selection(struct view *);
 void view_fold_indented(struct view *, unsigned);
 void view_unfold_all(struct view *);
 void text_unfold_all(struct text *);

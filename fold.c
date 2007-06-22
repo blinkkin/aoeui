@@ -32,6 +32,38 @@ int view_unfold(struct view *view, unsigned offset)
 	return offset + fbytes;
 }
 
+void view_unfold_selection(struct view *view)
+{
+	unsigned offset = locus_get(view, CURSOR);
+	unsigned end = locus_get(view, MARK);
+
+	if (end == UNSET)
+		return;
+	if (end < offset) {
+		unsigned t = end;
+		end = offset;
+		offset = t;
+	}
+
+	while (offset < end) {
+		unsigned next, next2, fbytes;
+		int ch = view_unicode(view, offset, &next);
+		if (ch < FOLD_START || ch >= FOLD_END) {
+			offset = next;
+			continue;
+		}
+		fbytes = FOLDED_BYTES(ch);
+		if (view_unicode(view, next + fbytes, &next2) !=
+		    FOLD_END + fbytes) {
+			offset = next;
+			continue;
+		}
+		view_delete(view, next + fbytes, next2 - (next + fbytes));
+		view_delete(view, offset, next - offset);
+		offset += fbytes;
+	}
+}
+
 static unsigned indentation(struct view *view, unsigned offset)
 {
 	unsigned indent = 0, tabstop = view->text->tabstop;
