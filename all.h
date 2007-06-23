@@ -2,6 +2,7 @@
 
 /* Standard and system headers */
 #define _GNU_SOURCE /* for mremap */
+#define _POSIX_C_SOURCE_199309 /* for nanosleep */
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -12,6 +13,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <termios.h>
+#include <time.h>
 
 #ifndef INLINE
 # ifdef __GNUC__

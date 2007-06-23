@@ -458,8 +458,10 @@ static void paint(struct window *window)
 			column = paintch(window, view_char(view, at, &next),
 					 row, column, at, cursor, mark,
 					 &brackets);
-		display_erase(display, window->row + row, window->column + column,
-			      1, window->columns - column, window->bgrgba);
+		display_erase(display, window->row + row,
+			      window->column + column, 1,
+			      window->columns - column,
+			      window->fgrgba, window->bgrgba);
 	}
 }
 
@@ -490,7 +492,8 @@ void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes
 			display_delete_chars(display, window->row + row,
 					     window->column + column,
 					     end_column - column,
-					     window->columns, window->bgrgba);
+					     window->columns, window->fgrgba,
+					     window->bgrgba);
 			return;
 		}
 		lines++;
@@ -501,7 +504,7 @@ void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes
 	}
 	display_delete_lines(display, window->row + row, window->column,
 			     lines, window->rows, window->columns,
-			     window->bgrgba);
+			     window->fgrgba, window->bgrgba);
 }
 
 void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes)
@@ -531,7 +534,8 @@ void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes
 			display_insert_spaces(display, window->row + row,
 					      window->column + column,
 					      end_column - column,
-					      window->columns, window->bgrgba);
+					      window->columns, window->fgrgba,
+					      window->bgrgba);
 			return;
 		}
 		lines++;
@@ -542,7 +546,7 @@ void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes
 	}
 	display_insert_lines(display, window->row + row, window->column,
 			     lines, window->rows, window->columns,
-			     window->bgrgba);
+			     window->fgrgba, window->bgrgba);
 }
 
 void window_next(struct view *view)
@@ -586,8 +590,12 @@ void window_page_up(struct view *view)
 			start += find_row_bytes(view, start, 0, window->columns);
 		new_start(view, start);
 		for (row = 0; row < window->rows-1; row++, start += bytes)
-			if (!(bytes = find_row_bytes(view, start, 0, window->columns)))
+			if (!(bytes = find_row_bytes(view, start, 0,
+						     window->columns)))
 				break;
+		display_insert_lines(display, window->row, window->column,
+				     1, window->rows, window->columns,
+				     window->fgrgba, window->bgrgba);
 	}
 	locus_set(view, CURSOR, start);
 }
@@ -601,6 +609,9 @@ void window_page_down(struct view *view)
 	for (row = 0; row + OVERLAP < window->rows; row++, start += bytes)
 		if (!(bytes = find_row_bytes(view, start, 0, window->columns)))
 			break;
+	display_delete_lines(display, window->row, window->column, 1,
+			     window->rows, window->columns,
+			     window->fgrgba, window->bgrgba);
 	new_start(view, start);
 	locus_set(view, CURSOR, start);
 }
