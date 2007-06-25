@@ -1,4 +1,4 @@
-VERSION = 1.0.2
+VERSION = 1.0.3
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
@@ -49,7 +49,7 @@ install: aoeui aoeui.1.gz asdfg.1.gz
 	install *.txt $(INST_DIR)/share/aoeui
 	install *.1.gz $(INST_DIR)/share/man/man1
 clean:
-	rm -f *.o core gmon.out
+	rm -f *.o core gmon.out screenlog.*
 clobber: clean
 	rm -f aoeui TAGS aoeui.1 asdfg.1 aoeui.1.gz asdfg.1.gz aoeui.1.html asdfg.1.html
 spotless: clobber

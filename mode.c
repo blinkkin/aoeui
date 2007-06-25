@@ -98,46 +98,58 @@ static int funckey(struct view *view, int Fk)
 static int escape(struct view *view)
 {
 	int ch;
+	unsigned val[8], vals = 0;
 
 	switch ((ch = view_getch(view))) {
 
-	/* Function keys */
+	/* Function keys and report responses */
 
 	case '[':
 		ch = view_getch(view);
-		if (isdigit(ch)) {
-			unsigned val = 0;
+		while (isdigit(ch)) {
+			val[vals] = 0;
 			do {
-				val *= 10;
-				val += ch - '0';
+				val[vals] *= 10;
+				val[vals] += ch - '0';
 				ch = view_getch(view);
 			} while (isdigit(ch));
-			if (ch != '~')
+			vals++;
+			if (ch != ';')
+				break;
+			ch = view_getch(view);
+			if (vals == 8)
+				vals--;
+		}
+		switch (ch) {
+		case 'R': /* cursor position report */
+			message("pmk: CPR val=%u y=%u x=%u",
+				vals, val[0], val[1]);
+			windows_force_geometry(val[0], val[1]);
+			break;
+		case '~':
+			if (!vals)
 				return 0;
-			switch (val) {
-	/*INS*/		case 2: paste(view); break;
-	/*DEL*/		case 3: cut(view, 1); break;
-	/*PgUp*/	case 5: window_page_up(view); break;
-	/*PgDn*/	case 6: window_page_down(view); break;
-	/*F5*/		case 15: return funckey(view, 5);
-	/*F6*/		case 17: return funckey(view, 6);
-	/*F7*/		case 18: return funckey(view, 7);
-	/*F8*/		case 19: return funckey(view, 8);
-	/*F9*/		case 20: return funckey(view, 9);
-	/*F10*/		case 21: return funckey(view, 10);
-	/*F11 - reserved for window manager for maximization */
-	/*F12*/		case 24: return funckey(view, 12);
+			switch (val[0]) {
+/*INS*/			case 2: paste(view); break;
+/*DEL*/			case 3: cut(view, 1); break;
+/*PgUp*/		case 5: window_page_up(view); break;
+/*PgDn*/		case 6: window_page_down(view); break;
+/*F5*/			case 15: return funckey(view, 5);
+/*F6*/			case 17: return funckey(view, 6);
+/*F7*/			case 18: return funckey(view, 7);
+/*F8*/			case 19: return funckey(view, 8);
+/*F9*/			case 20: return funckey(view, 9);
+/*F10*/			case 21: return funckey(view, 10);
+/*F11 - reserved for window manager for maximization */
+/*F12*/			case 24: return funckey(view, 12);
 			default: return 0;
 			}
-			return 1;
-		} else {
-			switch (ch) {
-	/*Up*/		case 'A': backward_lines(view); break;
-	/*Down*/	case 'B': forward_lines(view); break;
-	/*Right*/	case 'C': forward_chars(view); break;
-	/*Left*/	case 'D': backward_chars(view); break;
-			default: return 0;
-			}
+			break;
+/*Up*/		case 'A': backward_lines(view); break;
+/*Down*/	case 'B': forward_lines(view); break;
+/*Right*/	case 'C': forward_chars(view); break;
+/*Left*/	case 'D': backward_chars(view); break;
+		default: return 0;
 		}
 		break;
 	case 'O':

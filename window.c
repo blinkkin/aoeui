@@ -688,3 +688,8 @@ int window_getch(void)
 		block = 1;
 	}
 }
+
+void windows_force_geometry(unsigned rows, unsigned columns)
+{
+	display_set_geometry(display, rows, columns);
+}

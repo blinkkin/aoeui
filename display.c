@@ -19,9 +19,12 @@
 #define ST "\x07"
 
 #define CTL_RESET	ESC "c"
+#define CTL_NUMLOCK	ESC ">"
+#define CTL_CLEARLEDS	ESC "[0q"
+#define CTL_NUMLOCKLED	ESC "[2q"
+#define CTL_UTF8	ESC "%G"
 #define CTL_RESETMODES	CSI "0m"
 #define CTL_RESETCOLORS	CSI "39;49m"
-#define CTL_UTF8	ESC "%G"
 #define CTL_GOTO	CSI "%d;%df"
 #define CTL_ERASEALL	CSI "2J"
 #define CTL_ERASETOEND	CSI "J"
@@ -32,6 +35,7 @@
 #define CTL_INSCOLS	CSI "%u@"
 #define CTL_INSLINES	CSI "%uL"
 #define CTL_RGB		OSC "4;%d;rgb:%02x/%02x/%02x" ST
+#define CTL_CURSORPOS	CSI "6n"
 #define FG_COLOR	30
 #define BG_COLOR	40
 #define XTERM_TITLE	OSC "2;%s" ESC "\\"
@@ -554,19 +558,9 @@ static struct cell *resize(struct display *display, struct cell *old,
 	return new;
 }
 
-static void display_geometry(struct display *display)
+void display_set_geometry(struct display *display,
+			  unsigned rows, unsigned columns)
 {
-	int rows, columns;
-	struct winsize ws;
-
-	if (!ioctl(1, TIOCGWINSZ, &ws)) {
-		rows = ws.ws_row;
-		columns = ws.ws_col;
-	} else {
-		rows = 24;
-		columns = 80;
-	}
-
 	if (display->image &&
 	    display->rows == rows &&
 	    display->columns == columns)
@@ -579,6 +573,24 @@ static void display_geometry(struct display *display)
 	display->columns = columns;
 	display->size_changed = 1;
 	display_cursor(display, display->cursor_row, display->cursor_column);
+}
+
+static void display_geometry(struct display *display)
+{
+	int rows = 0, columns = 0;
+	struct winsize ws;
+
+	if (!ioctl(1, TIOCGWINSZ, &ws)) {
+		rows = ws.ws_row;
+		columns = ws.ws_col;
+	}
+	if (!rows)
+		rows = 24;
+	if (!columns)
+		columns = 80;
+	moveto(display, 666, 666);
+	outs(display, CTL_CURSORPOS);
+	display_set_geometry(display, rows, columns);
 }
 
 void display_get_geometry(struct display *display,
@@ -600,7 +612,12 @@ void display_reset(struct display *display)
 		outs(display, XTERM_BCKISDEL);
 	} else
 		outs(display, CTL_RESET);
-	outs(display, CTL_UTF8 CTL_RESETMODES CTL_RESETCOLORS CTL_ERASEALL);
+	outs(display, CTL_UTF8
+		      CTL_RESETMODES
+		      CTL_RESETCOLORS
+		      CTL_ERASEALL);
+	if (!display->is_xterm)
+		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
 	display->fgrgba = 1;
 	display->bgrgba = ~0;
@@ -693,10 +710,8 @@ void display_end(struct display *display)
 
 void display_title(struct display *display, const char *title)
 {
-	if (display->is_xterm) {
+	if (display->is_xterm)
 		outf(display, XTERM_TITLE, title ? title : "");
-		display_sync(display);
-	}
 }
 
 void display_cursor(struct display *display, unsigned row, unsigned column)

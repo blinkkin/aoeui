@@ -4,6 +4,7 @@ struct display *display_init(void);
 void display_reset(struct display *);
 void display_end(struct display *);
 
+void display_set_geometry(struct display *, unsigned rows, unsigned columns);
 void display_get_geometry(struct display *, unsigned *rows, unsigned *columns);
 
 void display_title(struct display *, const char *);
