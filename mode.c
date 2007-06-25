@@ -122,8 +122,6 @@ static int escape(struct view *view)
 		}
 		switch (ch) {
 		case 'R': /* cursor position report */
-			message("pmk: CPR val=%u y=%u x=%u",
-				vals, val[0], val[1]);
 			windows_force_geometry(val[0], val[1]);
 			break;
 		case '~':
