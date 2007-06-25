@@ -741,27 +741,30 @@ int display_getch(struct display *display, int block)
 	if (!display)
 		return DISPLAY_EOF;
 
-again:	if (display->inbuf_at >= display->inbuf_bytes) {
-		int n;
+again:	if (display->inbuf_at >= display->inbuf_bytes)
 		display->inbuf_at = display->inbuf_bytes = 0;
-		display_sync(display);
-		if (display->size_changed)
-			return DISPLAY_WINCH;
-		if (!multiplexor(block))
-			return DISPLAY_NONE;
+	if (display->size_changed)
+		return DISPLAY_WINCH;
+	display_sync(display);
+	if (!multiplexor(block))
+		return DISPLAY_NONE;
+	if (display->inbuf_bytes < sizeof display->inbuf - 1) {
+		int n;
 		do {
 			errno = 0;
-			n = read(0, display->inbuf, sizeof display->inbuf-1);
+			n = read(0, display->inbuf + display->inbuf_bytes,
+				 sizeof display->inbuf - 1 -
+					display->inbuf_bytes);
 		} while (n < 0 && (errno == EAGAIN || errno == EINTR));
 		if (!n)
 			return DISPLAY_EOF;
 		if (n < 0)
 			return DISPLAY_ERR;
-		display->inbuf[display->inbuf_bytes = n] = '\0';
+		display->inbuf[display->inbuf_bytes += n] = '\0';
 	}
 
 	/* function keys and report responses */
-	p = p0 = display->inbuf + display->inbuf_at++;
+	p = p0 = display->inbuf + display->inbuf_at;
 	if (*p == ESCCHAR && p[1] == '[') {
 		unsigned val[16], vals = 0;
 		for (p += 2; isdigit(*p); p++) {
@@ -779,7 +782,7 @@ again:	if (display->inbuf_at >= display->inbuf_bytes) {
 		switch (*p) {
 		case 'R': /* cursor position report from southeast corner */
 			if (vals >= 2) {
-				display->inbuf_at += p - p0;
+				display->inbuf_at += p + 1 - p0;
 				set_geometry(display, val[0], val[1]);
 				goto again;
 			}
@@ -806,6 +809,20 @@ again:	if (display->inbuf_at >= display->inbuf_bytes) {
 		case 'B': fkey = DISPLAY_DOWN;	break;
 		case 'C': fkey = DISPLAY_RIGHT;	break;
 		case 'D': fkey = DISPLAY_LEFT;	break;
+		case '\0': /* truncated escape sequence; get more */
+			if (display->inbuf_at) {
+				memmove(display->inbuf,
+					display->inbuf + display->inbuf_at,
+					display->inbuf_bytes -
+						display->inbuf_at);
+				display->inbuf_bytes -= display->inbuf_at;
+				display->inbuf_at = 0;
+			} else if (display->inbuf_bytes >=
+				   sizeof display->inbuf - 1)
+				display->inbuf_bytes = 0;
+			if (block)
+				goto again;
+			return DISPLAY_NONE;
 		}
 	} else if (*p == ESCCHAR && p[1] == 'O')
 		switch (*(p += 2)) {
@@ -818,9 +835,10 @@ again:	if (display->inbuf_at >= display->inbuf_bytes) {
 		}
 
 	if (fkey) {
-		display->inbuf_at += p - p0;
+		display->inbuf_at += p + 1 - p0;
 		return fkey;
 	}
 
+	display->inbuf_at++;
 	return *p0;
 }
