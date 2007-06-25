@@ -10,9 +10,11 @@
  *	reference: man 4 console_codes
  */
 
-#define BUFSZ 1024
-#define MAX_COLORS 8
+#define OUTBUF_SIZE	1024
+#define INBUF_SIZE	64
+#define MAX_COLORS	8
 
+#define ESCCHAR '\x1b'
 #define ESC "\x1b"
 #define CSI ESC "["
 #define OSC ESC "]"
@@ -56,8 +58,9 @@ struct display {
 	unsigned at_row, at_column;
 	struct cell *image;
 	struct display *next;
-	unsigned buffered_bytes;
-	char *buffer;
+	unsigned char inbuf[INBUF_SIZE];
+	char outbuf[OUTBUF_SIZE];
+	unsigned inbuf_bytes, inbuf_at, outbuf_bytes;
 	int is_xterm;
 	unsigned color[MAX_COLORS], colors;
 };
@@ -84,19 +87,19 @@ static void emit(struct display *display, const char *str, unsigned bytes)
 
 static void flush(struct display *display)
 {
-	emit(display, display->buffer, display->buffered_bytes);
-	display->buffered_bytes = 0;
+	emit(display, display->outbuf, display->outbuf_bytes);
+	display->outbuf_bytes = 0;
 }
 
 static void out(struct display *display, const char *str, unsigned bytes)
 {
-	if (display->buffered_bytes + bytes > BUFSZ)
+	if (display->outbuf_bytes + bytes > sizeof display->outbuf)
 		flush(display);
-	if (bytes > BUFSZ)
+	if (bytes > sizeof display->outbuf)
 		emit(display, str, bytes);
 	else {
-		memcpy(display->buffer + display->buffered_bytes, str, bytes);
-		display->buffered_bytes += bytes;
+		memcpy(display->outbuf + display->outbuf_bytes, str, bytes);
+		display->outbuf_bytes += bytes;
 	}
 }
 
@@ -558,8 +561,8 @@ static struct cell *resize(struct display *display, struct cell *old,
 	return new;
 }
 
-void display_set_geometry(struct display *display,
-			  unsigned rows, unsigned columns)
+static void set_geometry(struct display *display,
+			 unsigned rows, unsigned columns)
 {
 	if (display->image &&
 	    display->rows == rows &&
@@ -575,7 +578,7 @@ void display_set_geometry(struct display *display,
 	display_cursor(display, display->cursor_row, display->cursor_column);
 }
 
-static void display_geometry(struct display *display)
+static void geometry(struct display *display)
 {
 	int rows = 0, columns = 0;
 	struct winsize ws;
@@ -590,7 +593,7 @@ static void display_geometry(struct display *display)
 		columns = 80;
 	moveto(display, 666, 666);
 	outs(display, CTL_CURSORPOS);
-	display_set_geometry(display, rows, columns);
+	set_geometry(display, rows, columns);
 }
 
 void display_get_geometry(struct display *display,
@@ -621,7 +624,7 @@ void display_reset(struct display *display)
 	display->colors = 0;
 	display->fgrgba = 1;
 	display->bgrgba = ~0;
-	display_geometry(display);
+	geometry(display);
 	display_sync(display);
 }
 
@@ -629,7 +632,7 @@ static void sigwinch(int signo, siginfo_t *info, void *data)
 {
 	struct display *display;
 	for (display = display_list; display; display = display->next)
-		display_geometry(display);
+		geometry(display);
 	if (old_sigwinch)
 		old_sigwinch(signo, info, data);
 }
@@ -669,8 +672,7 @@ struct display *display_init(void)
 	}
 
 	display_list = display;
-	display->buffer = allocate(NULL, BUFSZ);
-	display->buffered_bytes = 0;
+	display->inbuf_bytes = display->inbuf_at = display->outbuf_bytes = 0;
 	display->is_xterm = (term = getenv("TERM")) && !strcmp(term, "xterm");
 	display_reset(display);
 	display_sync(display);
@@ -694,7 +696,6 @@ void display_end(struct display *display)
 	tcsetattr(1, TCSADRAIN, &original_termios);
 
 	allocate(display->image, 0);
-	allocate(display->buffer, 0);
 
 	for (d = display_list; d; prev = d, d = d->next)
 		if (d == display) {
@@ -734,19 +735,92 @@ void display_beep(struct display *display)
 
 int display_getch(struct display *display, int block)
 {
-	unsigned char ch;
-	int n;
+	unsigned char *p, *p0;
+	int fkey = 0;
 
 	if (!display)
 		return DISPLAY_EOF;
-	display_sync(display);
-	if (display->size_changed)
-		return DISPLAY_WINCH;
-	if (!multiplexor(block))
-		return DISPLAY_NONE;
-	do {
-		errno = 0;
-		n = read(0, &ch, 1);
-	} while (n < 0 && (errno == EAGAIN || errno == EINTR));
-	return !n ? DISPLAY_EOF : n < 0 ? DISPLAY_ERR : ch;
+
+again:	if (display->inbuf_at >= display->inbuf_bytes) {
+		int n;
+		display->inbuf_at = display->inbuf_bytes = 0;
+		display_sync(display);
+		if (display->size_changed)
+			return DISPLAY_WINCH;
+		if (!multiplexor(block))
+			return DISPLAY_NONE;
+		do {
+			errno = 0;
+			n = read(0, display->inbuf, sizeof display->inbuf-1);
+		} while (n < 0 && (errno == EAGAIN || errno == EINTR));
+		if (!n)
+			return DISPLAY_EOF;
+		if (n < 0)
+			return DISPLAY_ERR;
+		display->inbuf[display->inbuf_bytes = n] = '\0';
+	}
+
+	/* function keys and report responses */
+	p = p0 = display->inbuf + display->inbuf_at++;
+	if (*p == ESCCHAR && p[1] == '[') {
+		unsigned val[16], vals = 0;
+		for (p += 2; isdigit(*p); p++) {
+			val[vals] = 0;
+			do {
+				val[vals] *= 10;
+				val[vals] += *p++ - '0';
+			} while (isdigit(*p));
+			vals++;
+			if (*p != ';')
+				break;
+			if (vals == 16)
+				vals--;
+		}
+		switch (*p) {
+		case 'R': /* cursor position report from southeast corner */
+			if (vals >= 2) {
+				display->inbuf_at += p - p0;
+				set_geometry(display, val[0], val[1]);
+				goto again;
+			}
+			break;
+		case '~':
+			if (!val)
+				break;
+			switch (val[0]) {
+			case  2: fkey = DISPLAY_INSERT;	break;
+			case  3: fkey = DISPLAY_DELETE;	break;
+			case  5: fkey = DISPLAY_PGUP;	break;
+			case  6: fkey = DISPLAY_PGDOWN;	break;
+			case 15: fkey = DISPLAY_F5;	break;
+			case 17: fkey = DISPLAY_F6;	break;
+			case 18: fkey = DISPLAY_F7;	break;
+			case 19: fkey = DISPLAY_F8;	break;
+			case 20: fkey = DISPLAY_F9;	break;
+			case 21: fkey = DISPLAY_F10;	break;
+	/*pmk?*/	case 22: fkey = DISPLAY_F11;	break;
+			case 24: fkey = DISPLAY_F12;	break;
+			}
+			break;
+		case 'A': fkey = DISPLAY_UP;	break;
+		case 'B': fkey = DISPLAY_DOWN;	break;
+		case 'C': fkey = DISPLAY_RIGHT;	break;
+		case 'D': fkey = DISPLAY_LEFT;	break;
+		}
+	} else if (*p == ESCCHAR && p[1] == 'O')
+		switch (*(p += 2)) {
+		case 'H': fkey = DISPLAY_HOME;	break;
+		case 'F': fkey = DISPLAY_END;	break;
+		case 'P': fkey = DISPLAY_F1;	break;
+		case 'Q': fkey = DISPLAY_F2;	break;
+		case 'R': fkey = DISPLAY_F3;	break;
+		case 'S': fkey = DISPLAY_F4;	break;
+		}
+
+	if (fkey) {
+		display->inbuf_at += p - p0;
+		return fkey;
+	}
+
+	return *p0;
 }

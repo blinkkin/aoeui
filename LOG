@@ -1,4 +1,5 @@
 2007
+06-25 pmk: decode function keys and command responses in display.c, not mode.c
 06-25 pmk: get display size from terminal as backup to ioctl
 06-23 1.0.2 release
 06-22 pmk: fun animated scrolling effects

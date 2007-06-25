@@ -16,5 +16,4 @@ void window_beep(struct view *);
 int window_getch(void);
 struct view *window_current_view(void);
 void windows_reset(void);
-void windows_force_geometry(unsigned rows, unsigned columns);
 void windows_end(void);

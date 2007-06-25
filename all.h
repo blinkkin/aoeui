@@ -32,6 +32,7 @@
 #include "window.h"
 #include "util.h"
 #include "clip.h"
+#include "display.h"
 
 /* Miscellaneous declarations and prototypes that didn't fit elsewhere */
 extern struct termios original_termios;

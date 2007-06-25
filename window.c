@@ -1,5 +1,4 @@
 #include "all.h"
-#include "display.h"
 
 /*
  *	A "window" is a presentation of a view on part or all of
@@ -687,9 +686,4 @@ int window_getch(void)
 		repaint();
 		block = 1;
 	}
-}
-
-void windows_force_geometry(unsigned rows, unsigned columns)
-{
-	display_set_geometry(display, rows, columns);
 }
