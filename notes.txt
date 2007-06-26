@@ -3,8 +3,8 @@ Dvorak keyboard layout
        ESC FFFFF FFFFF DEL
 	 ` 12345 67890 [] BCK
        TAB ',.py fgcrl /= \
-       CLK aoeui dhtns -  ENT
-       SHF ;qjkx bmwvz SHF
+       CLK AoeuI dhtns -  ENT
+       SHF ;qJkx bMwvz SHF
        CTL ALT SPC ALT CTL arrows
 
 Commands are denoted here in these notes by ^, which signifies use
@@ -85,7 +85,6 @@ Non-control characters -- commands must be [variants]
 	F9 ^[[20~  F10 ^[[21~  F12 ^[[24~
 
 Missing features:
-	color cue for clean/dirty text
 	programmable function keys
 	preserving window layouts
 	moving to prior window
@@ -101,7 +100,7 @@ Idioms
 - going forward or back a half screenful: use ^R/^L, then ^Z
 
 
-Experimental QWERTY mapping (unusable control keys capitalized):
+QWERTY->Dvorak command mapping
 
 	qwert yuIop
 	Asdfg hJkl;
@@ -114,5 +113,3 @@ selection:	V:u	F:c	D:x	B:v
 windows:	P:s	Y:d	W:f
 files:		Q:q	K:w	X:e
 others:		O:b	E:r	U:z
-
-

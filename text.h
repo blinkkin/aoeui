@@ -75,6 +75,7 @@ INLINE int view_byte(struct view *view, unsigned offset)
 struct view *view_open(const char *path);
 int text_rename(struct text *, const char *path);
 void text_dirty(struct text *);
+int text_is_dirty(struct text *);
 void text_preserve(struct text *);
 void texts_preserve(void);
 void texts_uncreate(void);

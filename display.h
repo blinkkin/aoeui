@@ -1,4 +1,10 @@
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
 struct display;
+
+typedef unsigned rgba_t;
+/* note: setting any alpha in RGBA means "default" */
 
 struct display *display_init(void);
 void display_reset(struct display *);
@@ -6,29 +12,19 @@ void display_end(struct display *);
 void display_get_geometry(struct display *, unsigned *rows, unsigned *columns);
 void display_title(struct display *, const char *);
 void display_cursor(struct display *, unsigned row, unsigned column);
-
-/* note: setting any alpha in RGBA means "default" */
 void display_put(struct display *, unsigned row, unsigned column,
-		 unsigned unicode, unsigned fgRGBA, unsigned bgRGBA);
-
+		 unsigned unicode, rgba_t fgRGBA, rgba_t bgRGBA);
 void display_erase(struct display *, unsigned row, unsigned column,
 		   unsigned rows, unsigned columns,
-		   unsigned fgRGBA, unsigned bgRGBA);
-void display_insert_spaces(struct display *, unsigned row, unsigned column,
-			   unsigned spaces, unsigned columns,
-			   unsigned fgRGBA, unsigned bgRGBA);
-void display_delete_chars(struct display *, unsigned row, unsigned column,
-			  unsigned chars, unsigned columns,
-			  unsigned fgRGBA, unsigned bgRGBA);
-void display_insert_lines(struct display *, unsigned row, unsigned column,
-			  unsigned lines, unsigned rows, unsigned columns,
-			  unsigned fgRGBA, unsigned bgRGBA);
-void display_delete_lines(struct display *, unsigned row, unsigned column,
-			  unsigned lines, unsigned rows, unsigned columns,
-			  unsigned fgRGBA, unsigned bgRGBA);
+		   rgba_t fgRGBA, rgba_t bgRGBA);
 void display_beep(struct display *);
 void display_sync(struct display *);
 
+/* notes:
+ * - display_getch() implies a display_sync()
+ * - once DISPLAY_WINCH is returned after a window size change,
+ *   it will continue to be returned until display_get_geometry() is called
+ */
 int display_getch(struct display *, int block);
 #define DISPLAY_EOF	( -1)
 #define DISPLAY_WINCH	( -2)	/* size changed; MUST call _get_geometry()! */
@@ -58,3 +54,19 @@ int display_getch(struct display *, int block);
 #define DISPLAY_F10	DISPLAY_FKEY(30)
 #define DISPLAY_F11	DISPLAY_FKEY(31)
 #define DISPLAY_F12	DISPLAY_FKEY(32)
+
+/* hints */
+void display_insert_spaces(struct display *, unsigned row, unsigned column,
+			   unsigned spaces, unsigned columns,
+			   rgba_t fgRGBA, rgba_t bgRGBA);
+void display_delete_chars(struct display *, unsigned row, unsigned column,
+			  unsigned chars, unsigned columns,
+			  rgba_t fgRGBA, rgba_t bgRGBA);
+void display_insert_lines(struct display *, unsigned row, unsigned column,
+			  unsigned lines, unsigned rows, unsigned columns,
+			  rgba_t fgRGBA, rgba_t bgRGBA);
+void display_delete_lines(struct display *, unsigned row, unsigned column,
+			  unsigned lines, unsigned rows, unsigned columns,
+			  rgba_t fgRGBA, rgba_t bgRGBA);
+
+#endif

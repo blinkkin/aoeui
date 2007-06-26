@@ -311,6 +311,13 @@ static void save_original(struct text *text)
 	text->flags |= TEXT_SAVED_ORIGINAL;
 }
 
+int text_is_dirty(struct text *text)
+{
+	return	text->preserved != text->dirties &&
+		text->fd >= 0 &&
+		text->buffer;
+}
+
 void text_preserve(struct text *text)
 {
 	char *raw;

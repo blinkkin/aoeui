@@ -12,8 +12,9 @@ struct window {
 	unsigned row, column;
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
-	unsigned last_dirties, last_fgrgba, last_bgrgba, last_cursor, last_mark;
-	unsigned fgrgba, bgrgba;
+	rgba_t fgrgba, bgrgba;
+	unsigned last_dirties, last_cursor, last_mark;
+	rgba_t last_fgrgba, last_bgrgba;
 	struct window *next;
 };
 
@@ -362,25 +363,27 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 			unsigned at, unsigned cursor, unsigned mark,
 			unsigned *brackets)
 {
-	unsigned fgrgba = window->fgrgba, bgrgba = window->bgrgba;
+	rgba_t fgrgba = window->fgrgba, bgrgba = window->bgrgba;
 	unsigned tabstop = window->view->text->tabstop;
 
 	if (ch == '\n')
 		return column;
 
-	if (window->view->text->flags & TEXT_RDONLY)
-		fgrgba = 0xff000000;
 	if (at >= cursor && at < mark ||
 	    at >= mark && at < cursor) {
 		bgrgba = 0x00ffff00;
 		fgrgba = 0xff000000;
-	}
+	} else if (at == cursor)
+		if (window->view->text->flags & TEXT_RDONLY)
+			fgrgba = 0xff000000;
+		else if (text_is_dirty(window->view->text))
+			fgrgba = 0x00ff0000;
 
 	if (ch == '\t') {
-		unsigned bg = lame_tab(window->view, at+1) ? 0xff00ff00 : bgrgba;
+		rgba_t bg = lame_tab(window->view, at+1) ? 0xff00ff00 : bgrgba;
 		do {
 			display_put(display, window->row + row,
-				    window->column + column++, ' ', 1, bg);
+				    window->column + column++, ' ', fgrgba, bg);
 			bg = bgrgba;
 		} while (column % tabstop);
 		return column;
@@ -477,6 +480,8 @@ void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes
 		bytes -= at - offset;
 		offset = at;
 	}
+	if (!bytes || view_char(view, offset, NULL) >= FOLD_START)
+		return;
 	column = find_column(&row, view, at, offset, 0, window->columns);
 	if (row >= window->rows)
 		return;
@@ -519,6 +524,8 @@ void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes
 		bytes -= at - offset;
 		offset = at;
 	}
+	if (!bytes || view_char(view, offset, NULL) >= FOLD_START)
+		return;
 	column = find_column(&row, view, at, offset, 0, window->columns);
 	if (row >= window->rows)
 		return;
@@ -628,7 +635,7 @@ static void window_colors(void)
 	int j;
 	struct window *window, *w;
 
-	static unsigned colors[][2] = {
+	static rgba_t colors[][2] = {
 		{ 0xff, ~0 },
 		{ 0xff00, 0xffff0000 },
 		{ 0x0, 0x7f7f7f00 },
@@ -668,7 +675,6 @@ static void repaint(void)
 	for (window = window_list; window; window = window->next)
 		if (needs_repainting(window))
 			paint(window);
-
 	display_cursor(display,
 		       active_window->row + active_window->cursor_row,
 		       active_window->column + active_window->cursor_column);

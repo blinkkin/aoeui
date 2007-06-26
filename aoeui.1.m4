@@ -92,6 +92,27 @@ launched with
 .B ^cmd(E,R)
 (below).
 There is one clip buffer shared by all views.
+.SH "COLOR CUES"
+AOEUI uses colors to convey information without cluttering the
+display with status lines or borders between windows.
+.P
+AOEUI uses distinct background colors to distinguish tiled windows.
+The active window is always presented in the terminal's default
+color scheme.
+Color is also used to highlight the current selection (in cyan)
+and folded regions (in red).
+.P
+Needless tabs and spaces are marked in violet.  These include
+any tabs or spaces before the end of a line, as well as any
+spaces followed by a tab or multiple spaces that could be
+replaced by a tab.
+.P
+Bracketing characters are presented in alternating colors so that
+matching parentheses, brackets, and braces are colored identically.
+.P
+A red cursor signifies a read-only text, whereas a green cursor
+indicates a dirty text (meaning one that needs saving, not one
+unfit for young persons).
 .SH COMMANDS
 .P
 Commands are denoted here by

@@ -1,5 +1,4 @@
 #include "all.h"
-#include "display.h"
 #include <sys/ioctl.h>
 
 /*
@@ -47,14 +46,15 @@
 
 
 struct cell {
-	unsigned unicode, fgrgba, bgrgba;
+	unsigned unicode;
+	rgba_t fgrgba, bgrgba;
 };
 
 struct display {
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
 	unsigned size_changed;
-	unsigned fgrgba, bgrgba;
+	rgba_t fgrgba, bgrgba;
 	unsigned at_row, at_column;
 	struct cell *image;
 	struct display *next;
@@ -62,7 +62,8 @@ struct display {
 	char outbuf[OUTBUF_SIZE];
 	unsigned inbuf_bytes, inbuf_at, outbuf_bytes;
 	int is_xterm;
-	unsigned color[MAX_COLORS], colors;
+	rgba_t color[MAX_COLORS];
+	unsigned colors;
 };
 
 static struct display *display_list;
@@ -145,7 +146,7 @@ void display_sync(struct display *display)
 	flush(display);
 }
 
-static unsigned linux_colormap(unsigned rgba)
+static unsigned linux_colormap(rgba_t rgba)
 {
 	unsigned bgr1;
 	if (rgba & 0xff)
@@ -156,7 +157,7 @@ static unsigned linux_colormap(unsigned rgba)
 	return bgr1;
 }
 
-static unsigned color_delta(unsigned rgba1, unsigned rgba2)
+static unsigned color_delta(rgba_t rgba1, rgba_t rgba2)
 {
 	unsigned delta = 1, j;
 	if (rgba1 >> 8 == rgba2 >> 8)
@@ -169,9 +170,10 @@ static unsigned color_delta(unsigned rgba1, unsigned rgba2)
 	return delta;
 }
 
-static unsigned color_mean(unsigned rgba1, unsigned rgba2)
+static rgba_t color_mean(rgba_t rgba1, rgba_t rgba2)
 {
-	unsigned mean = 0, j;
+	rgba_t mean = 0;
+	unsigned j;
 	for (j = 0; j < 32; j += 8) {
 		unsigned char c1 = rgba1 >> j, c2 = rgba2 >> j;
 		mean |= c1 + c2 >> 1 << j;
@@ -179,13 +181,13 @@ static unsigned color_mean(unsigned rgba1, unsigned rgba2)
 	return mean;
 }
 
-static unsigned colormap(struct display *display, unsigned rgba)
+static unsigned colormap(struct display *display, rgba_t rgba)
 {
-	static unsigned basic[] = {
+	static rgba_t basic[] = {
 		0, 0x7f000000, 0x007f0000, 0x7f7f0000,
 		0x00007f00, 0x7f007f00, 0x007f7f00, 0x7f7f7f00,
 	};
-	static unsigned bright[] = {
+	static rgba_t bright[] = {
 		0, 0xff000000, 0x00ff0000, 0xffff0000,
 		0x0000ff00, 0xff00ff00, 0x00ffff00, 0xffffff00,
 	};
@@ -223,7 +225,7 @@ static unsigned colormap(struct display *display, unsigned rgba)
 	return best;
 }
 
-static void set_color(struct display *display, unsigned rgba, unsigned magic)
+static void set_color(struct display *display, rgba_t rgba, unsigned magic)
 {
 	if (display->is_xterm) {
 		unsigned c = colormap(display, rgba);
@@ -237,7 +239,7 @@ static void set_color(struct display *display, unsigned rgba, unsigned magic)
 		outf(display, CSI "%dm", linux_colormap(rgba) + magic);
 }
 
-static void background_color(struct display *display, unsigned rgba)
+static void background_color(struct display *display, rgba_t rgba)
 {
 	if (rgba != display->bgrgba) {
 		set_color(display, rgba, BG_COLOR);
@@ -245,7 +247,7 @@ static void background_color(struct display *display, unsigned rgba)
 	}
 }
 
-static void foreground_color(struct display *display, unsigned rgba)
+static void foreground_color(struct display *display, rgba_t rgba)
 {
 	if (rgba != display->fgrgba) {
 		set_color(display, rgba, FG_COLOR);
@@ -254,7 +256,7 @@ static void foreground_color(struct display *display, unsigned rgba)
 }
 
 void display_put(struct display *display, unsigned row, unsigned column,
-		 unsigned unicode, unsigned fgrgba, unsigned bgrgba)
+		 unsigned unicode, rgba_t fgrgba, rgba_t bgrgba)
 {
 	char buf[8];
 	struct cell *cell;
@@ -279,8 +281,8 @@ void display_put(struct display *display, unsigned row, unsigned column,
 }
 
 static void fill(struct display *display, unsigned row, unsigned column,
-		 unsigned columns, unsigned code, unsigned fgrgba,
-		 unsigned bgrgba)
+		 unsigned columns, unsigned code, rgba_t fgrgba,
+		 rgba_t bgrgba)
 {
 	struct cell *cell = &display->image[row * display->columns +
 					    column];
@@ -293,7 +295,7 @@ static void fill(struct display *display, unsigned row, unsigned column,
 
 void display_erase(struct display *display, unsigned row, unsigned column,
 		   unsigned rows, unsigned columns,
-		   unsigned fgrgba, unsigned bgrgba)
+		   rgba_t fgrgba, rgba_t bgrgba)
 {
 	unsigned r, c;
 
@@ -311,12 +313,14 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 						    column];
 		for (c = 0; c < columns; c++)
 			if (cell->unicode != ' ' ||
+			    cell->fgrgba != fgrgba ||
 			    cell++->bgrgba != bgrgba)
 				goto doit;
 	}
 	return;
 
-doit:	background_color(display, bgrgba);
+doit:	foreground_color(display, fgrgba);
+	background_color(display, bgrgba);
 	if (column + columns == display->columns)
 		if (!column && rows == display->rows - row) {
 			moveto(display, row, column);
@@ -337,7 +341,7 @@ doit:	background_color(display, bgrgba);
 
 void display_insert_spaces(struct display *display, unsigned row,
 			   unsigned column, unsigned spaces, unsigned columns,
-			   unsigned fgrgba, unsigned bgrgba)
+			   rgba_t fgrgba, rgba_t bgrgba)
 {
 	struct cell *cell;
 
@@ -364,7 +368,7 @@ void display_insert_spaces(struct display *display, unsigned row,
 
 void display_delete_chars(struct display *display, unsigned row,
 			  unsigned column, unsigned chars, unsigned columns,
-			  unsigned fgrgba, unsigned bgrgba)
+			  rgba_t fgrgba, rgba_t bgrgba)
 {
 	struct cell *cell;
 
@@ -406,7 +410,7 @@ static int validate(struct display *display, unsigned row, unsigned column,
 
 static void insert_whole_lines(struct display *display, unsigned row,
 			       unsigned lines, unsigned rows,
-			       unsigned fgrgba, unsigned bgrgba)
+			       rgba_t fgrgba, rgba_t bgrgba)
 {
 	struct cell *cell = &display->image[row * display->columns];
 
@@ -424,7 +428,7 @@ static void insert_whole_lines(struct display *display, unsigned row,
 
 static void delete_whole_lines(struct display *display, unsigned row,
 			       unsigned lines, unsigned rows,
-			       unsigned fgrgba, unsigned bgrgba)
+			       rgba_t fgrgba, rgba_t bgrgba)
 {
 	struct cell *cell = &display->image[row * display->columns];
 
@@ -453,9 +457,9 @@ static void shortpause(struct display *display, int millisec)
 
 static void whole_lines(struct display *display, unsigned row,
 			unsigned lines, unsigned rows,
-			unsigned fgrgba, unsigned bgrgba,
+			rgba_t fgrgba, rgba_t bgrgba,
 			void (*mover)(struct display *, unsigned, unsigned,
-				      unsigned, unsigned, unsigned))
+				      unsigned, rgba_t, rgba_t))
 {
 	unsigned amount;
 	for (; lines; lines -= amount) {
@@ -479,7 +483,7 @@ static void copy_line(struct display *display, unsigned to_row,
 void display_insert_lines(struct display *display, unsigned row,
 			  unsigned column, unsigned lines,
 			  unsigned rows, unsigned columns,
-			  unsigned fgrgba, unsigned bgrgba)
+			  rgba_t fgrgba, rgba_t bgrgba)
 {
 	int j;
 
@@ -500,7 +504,7 @@ void display_insert_lines(struct display *display, unsigned row,
 void display_delete_lines(struct display *display, unsigned row,
 			  unsigned column, unsigned lines,
 			  unsigned rows, unsigned columns,
-			  unsigned fgrgba, unsigned bgrgba)
+			  rgba_t fgrgba, rgba_t bgrgba)
 {
 	int j;
 
@@ -723,8 +727,6 @@ void display_cursor(struct display *display, unsigned row, unsigned column)
 		column = display->columns - 1;
 	moveto(display, display->cursor_row = row,
 		display->cursor_column = column);
-	foreground_color(display, display->image[row * display->columns +
-						 column].fgrgba);
 }
 
 void display_beep(struct display *display)
