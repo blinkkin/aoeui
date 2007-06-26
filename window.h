@@ -15,5 +15,4 @@ void window_page_down(struct view *);
 void window_beep(struct view *);
 int window_getch(void);
 struct view *window_current_view(void);
-void windows_reset(void);
 void windows_end(void);

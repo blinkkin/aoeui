@@ -556,7 +556,7 @@ static struct cell *resize(struct display *display, struct cell *old,
 	for (; j < new_rows; j++) {
 		struct cell *cell = &new[j*new_columns];
 		for (k = 0; k < new_columns; k++) {
-			*cell = cell[-display->columns];
+			*cell = *(cell - display->columns);
 			cell++->unicode = ' ';
 		}
 	}
@@ -587,10 +587,12 @@ static void geometry(struct display *display)
 	int rows = 0, columns = 0;
 	struct winsize ws;
 
+#ifdef TIOCGWINSZ
 	if (!ioctl(1, TIOCGWINSZ, &ws)) {
 		rows = ws.ws_row;
 		columns = ws.ws_col;
 	}
+#endif
 	if (!rows)
 		rows = 24;
 	if (!columns)

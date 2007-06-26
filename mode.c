@@ -518,7 +518,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			locus_set(view, CURSOR,
 				  find_line_number(view, mode->value));
 		else if (mode->variant)
-			windows_reset();
+			window_raise(view);
 		window_recenter(view);
 		break;
 	case '[': /* ESC */

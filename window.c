@@ -233,13 +233,6 @@ struct view *window_current_view(void)
 	return active_window->view;
 }
 
-void windows_reset(void)
-{
-	display_end(display);
-	display = NULL;
-	window_raise(window_current_view());
-}
-
 void windows_end(void)
 {
 	while (window_list)
@@ -686,7 +679,7 @@ int window_getch(void)
 	for (;;) {
 		int ch = display_getch(display, block);
 		if (ch == DISPLAY_WINCH)
-			windows_reset();
+			window_raise(window_current_view());
 		else if (ch != DISPLAY_NONE)
 			return ch;
 		repaint();

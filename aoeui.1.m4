@@ -577,11 +577,11 @@ and to remove DOS carriage returns with
 .BR fmt (1)
 to reformat paragraphs of natural language text
 .TP
-.BI "indent -st -kr -i8 -nbbo"
+.B "indent -st -kr -i8 -nbbo"
 to reformat C language source code sensibly
 .TP
-.BR column (1)
-to align data into columns
+.B "column -t"
+to realign data nicely into columns
 .TP
 .B "man | colcrt"
 to read a man page
