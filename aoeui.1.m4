@@ -3,7 +3,7 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "June 18, 2007"
+.TH AOEUI 1 "June 27, 2007"
 .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
@@ -173,7 +173,7 @@ moves the cursor forward one sentence.
 .TP
 .B ^cmd(G,T)
 moves the cursor back to the beginning of the line.
-If already there, it moves back to the beginniong of the previous line.
+If already there, it moves back to the beginning of the previous line.
 .TP
 .B ^cmd(C,Y)
 moves the cursor forward to the end of the line.
@@ -238,7 +238,7 @@ utility and its
 .B -x
 output format.
 If there is a selection, it is deleted from the view and its entire contents
-will constitute the identifer to be looked up; otherwise, the identifier
+will constitute the identifier to be looked up; otherwise, the identifier
 that is immediately before or around the cursor is sought.
 .SH SELECTION
 These commands are sensitive to the presence or absence of a current selection.
@@ -402,7 +402,7 @@ The variant command
 searches for occurrences of POSIX regular expressions.
 Each non-command character that is typed thereafter will be appended
 to the current search target string and the selection is moved to the
-next occurence thereof.
+next occurrence thereof.
 .P
 The case of alphabetic characters is
 .I not
@@ -419,7 +419,9 @@ will remove the last character from the search target and
 move the selection back to its previous position.
 .TP
 .B ^cmd(V,U)
-is typically used to leave search mode and abandon the selection.
+is typically used to leave search mode with the cursor at the beginning of
+the latest hit, with the mark returned to where it was before the search
+(if anywhere).
 .TP
 .B ^/
 with no characters in the search target string will cause the
@@ -459,7 +461,7 @@ saved in another file.
 .TP
 .B ^cmd(W,F)
 finds an invisible view and associates it with the current window,
-making its currint view invisible.  Hitting
+making its current view invisible.  Hitting
 .B ^cmd(W,F)
 repeatedly will cycle through all of the views.
 If there was no invisible view,
@@ -591,6 +593,9 @@ to monitor additions to a file such as a log
 .TP
 .BR make (1)
 to compile your code
+.TP
+.B "aspell -l | sort | uniq | column"
+to get a list of words that may be misspelled
 .B ^Space^cmd(E,R)
 with no selection will terminate the output of any asynchronous
 child process that's still running.
@@ -626,7 +631,7 @@ will be placed at its beginning.
 .TP
 .B *
 Reconfigure your keyboards so that the key to the left of A, which is
-probably labelled
+probably labeled
 .BR "Caps Lock" ,
 is interpreted as a Control modifier instead.
 .TP
@@ -683,18 +688,19 @@ holds any new "anonymous" texts created during editing sessions.
 .P
 Helpful commands to use with
 .BR ^cmd(E,R) :
+.BR aspell (1),
 .BR cat (1),
-.BR mkfifo (1),
-.BR grep (1),
-.BR sort (1),
-.BR uniq (1),
-.BR sed (1),
-.BR tr (1),
-.BR fmt (1),
-.BR indent (1),
-.BR column (1),
 .BR colcrt (1),
-.BR tailf (1)
+.BR column (1),
+.BR fmt (1),
+.BR grep (1),
+.BR indent (1),
+.BR mkfifo (1),
+.BR sed (1),
+.BR sort (1),
+.BR tailf (1),
+.BR tr (1),
+.BR uniq (1)
 .SH AUTHOR
 Peter Klausler <peter@klausler.com> wrote
 .BR AOEUI .

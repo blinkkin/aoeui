@@ -11,7 +11,7 @@ struct mode_search {
 	unsigned char *pattern;
 	unsigned bytes, alloc, last_bytes;
 	int backward;
-	unsigned start_locus;
+	unsigned start, mark;
 	regex_t *regex;
 	int regex_ready;
 };
@@ -122,7 +122,7 @@ static int search(struct view *view, int backward, int new)
 	int at;
 
 	if (!mode->bytes) {
-		locus_set(view, CURSOR, locus_get(view, mode->start_locus));
+		locus_set(view, CURSOR, mode->start);
 		locus_set(view, MARK, UNSET);
 		return 1;
 	}
@@ -171,9 +171,10 @@ static int search(struct view *view, int backward, int new)
 static void command_handler(struct view *view, unsigned ch)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
-	static char backfwd[2][2] = {
-		{ 'H'-'@', 'T'-'@' } /* aoeui */,
-		{ 'G'-'@', 'H'-'@' } /* asdfg */
+	static char cmdchar[][2] = {
+		{ 'H'-'@', 'G'-'@' },
+		{ 'T'-'@', 'H'-'@' },
+		{ 'V'-'@', 'U'-'@' }
 	};
 
 	/* Backspace removes the last character from the search target and
@@ -211,16 +212,18 @@ static void command_handler(struct view *view, unsigned ch)
 	 * ^T, ^/, and ^_ proceed to a later hit.
 	 */
 	if (mode->last_bytes &&
-	    (ch == backfwd[is_asdfg][0] || ch == backfwd[is_asdfg][1] || ch == '_'-'@')) {
+	    (ch == cmdchar[0][is_asdfg] ||
+	     ch == cmdchar[1][is_asdfg] ||
+	     ch == '_'-'@')) {
 		mode->bytes = mode->last_bytes;
-		search(view, mode->backward = (ch == backfwd[is_asdfg][0]), 0);
+		search(view, mode->backward = (ch == cmdchar[is_asdfg][0]), 0);
 		return;
 	}
 
 	/* Hitting ^T, ^/, or ^_ with an empty search pattern causes
 	 * the last successful search target to be reused.
 	 */
-	if ((ch == backfwd[is_asdfg][1] || ch == '_'-'@') &&
+	if ((ch == cmdchar[1][is_asdfg] || ch == '_'-'@') &&
 	    !mode->bytes && view->last_search) {
 		mode->bytes = strlen(view->last_search);
 		mode->alloc = mode->bytes + 8;
@@ -237,19 +240,21 @@ done:	if (mode->bytes) {
 		view->last_search[mode->bytes] = '\0';
 	}
 
-	/* Release search mode resources */
 	view->mode = mode->previous;
-	locus_destroy(view, mode->start_locus);
+
+	if (ch == '\r' || ch == '_'-'@')
+		;
+	else if (ch == cmdchar[2][is_asdfg]) /* unset mark */
+		locus_set(view, MARK, mode->mark);
+	else if (ch != 0x7f /*BCK*/)
+		view->mode->command(view, ch);
+
+	/* Release search mode resources */
 	allocate(mode->pattern, 0);
 	if (mode->regex_ready)
 		regfree(mode->regex);
 	allocate(mode->regex, 0);
 	allocate(mode, 0);
-
-	if (ch == '\r' || ch == '_'-'@')
-		;
-	else if (ch != 0x7f /*BCK*/)
-		view->mode->command(view, ch);
 }
 
 void mode_search(struct view *view, int regex)
@@ -259,7 +264,8 @@ void mode_search(struct view *view, int regex)
 	memset(mode, 0, sizeof *mode);
 	mode->previous = view->mode;
 	mode->command = command_handler;
-	mode->start_locus = locus_create(view, locus_get(view, CURSOR));
+	mode->start = locus_get(view, CURSOR);
+	mode->mark = locus_get(view, MARK);;
 	if (regex) {
 		mode->regex = allocate(NULL, sizeof *mode->regex);
 		memset(mode->regex, 0, sizeof *mode->regex);

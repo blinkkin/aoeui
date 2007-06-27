@@ -1,4 +1,7 @@
 2007
+06-27 pmk: fix misspellings in documentation
+06-27 pmk: remove -Werror and TAGS default build from Makefile
+06-26 pmk: preserve original mark when search ends with ^V
 06-26 pmk: fixes, work again on serial port
 06-25 pmk: decode function keys and command responses in display.c, not mode.c
 06-25 pmk: get display size from terminal as backup to ioctl

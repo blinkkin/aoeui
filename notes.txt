@@ -78,13 +78,9 @@ Non-control characters -- commands must be [variants]
   0-9	decimal argument (for ^Z, ^H/^T/^N/^S, ^^)
   x 0-9 a-f A-F		hexadecimal argument
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
-  F-keys:
-	F1 is help, F11 is full-screen on/off
-	F2 ^[OQ  F3 ^[OR  F4 ^[OS
-	F5 ^[[15~  F6 ^[[17~  F7 ^[[18~  F8 ^[[19~
-	F9 ^[[20~  F10 ^[[21~  F12 ^[[24~
 
 Missing features:
+	^Space> and < could be indent/outdent on selection
 	programmable function keys
 	preserving window layouts
 	moving to prior window

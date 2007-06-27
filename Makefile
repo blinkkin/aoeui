@@ -7,13 +7,14 @@ HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h \
 	window.h util.h clip.h
 RELS = $(SRCS:.c=.o)
 INST_DIR = $(DESTDIR)/usr
-CFLAGS += -Wall -Werror -Wno-parentheses \
+CFLAGS += -Wall -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
+# -Werror
 LIBS = -lutil
 # BSD users may need -lcompat as well
 
-default: aoeui TAGS
+default: aoeui
 aoeui: $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
@@ -51,7 +52,8 @@ install: aoeui aoeui.1.gz asdfg.1.gz
 clean:
 	rm -f *.o core gmon.out screenlog.*
 clobber: clean
-	rm -f aoeui TAGS aoeui.1 asdfg.1 aoeui.1.gz asdfg.1.gz aoeui.1.html asdfg.1.html
+	rm -f aoeui TAGS aoeui.1 asdfg.1 aoeui.1.gz asdfg.1.gz \
+		aoeui.1.html asdfg.1.html
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless
