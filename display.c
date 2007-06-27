@@ -60,7 +60,7 @@ struct display {
 	struct display *next;
 	unsigned char inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
-	unsigned inbuf_bytes, inbuf_at, outbuf_bytes;
+	unsigned inbuf_bytes, outbuf_bytes;
 	int is_xterm;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
@@ -656,11 +656,9 @@ void cfmakeraw(struct termios *termios)
 
 struct display *display_init(void)
 {
-	struct display *display = allocate(NULL, sizeof *display);
+	struct display *display = allocate0(sizeof *display);
 	struct termios termios = original_termios;
 	const char *term;
-
-	memset(display, 0, sizeof *display);
 
 	cfmakeraw(&termios);
 	tcsetattr(1, TCSADRAIN, &termios);
@@ -678,7 +676,7 @@ struct display *display_init(void)
 	}
 
 	display_list = display;
-	display->inbuf_bytes = display->inbuf_at = display->outbuf_bytes = 0;
+	display->inbuf_bytes = display->outbuf_bytes = 0;
 	display->is_xterm = (term = getenv("TERM")) && !strcmp(term, "xterm");
 	display_reset(display);
 	display_sync(display);
@@ -739,20 +737,22 @@ void display_beep(struct display *display)
 
 int display_getch(struct display *display, int block)
 {
-	unsigned char *p, *p0;
-	int fkey = 0;
+	unsigned char *p;
+	int key = 0;
+	unsigned used;
 
 	if (!display)
 		return DISPLAY_EOF;
 
-again:	if (display->inbuf_at >= display->inbuf_bytes)
-		display->inbuf_at = display->inbuf_bytes = 0;
-	if (display->size_changed)
+again:	if (display->size_changed)
 		return DISPLAY_WINCH;
 	display_sync(display);
-	if (!multiplexor(block))
-		return DISPLAY_NONE;
-	if (display->inbuf_bytes < sizeof display->inbuf - 1) {
+	if (display->inbuf_bytes >= sizeof display->inbuf - 1)
+		;
+	else if (!multiplexor(block)) {
+		if (!display->inbuf_bytes)
+			return DISPLAY_NONE;
+	} else {
 		int n;
 		do {
 			errno = 0;
@@ -768,7 +768,7 @@ again:	if (display->inbuf_at >= display->inbuf_bytes)
 	}
 
 	/* function keys and report responses */
-	p = p0 = display->inbuf + display->inbuf_at;
+	p = display->inbuf;
 	if (*p == ESCCHAR && p[1] == '[') {
 		unsigned val[16], vals = 0;
 		for (p += 2; isdigit(*p); p++) {
@@ -786,7 +786,9 @@ again:	if (display->inbuf_at >= display->inbuf_bytes)
 		switch (*p) {
 		case 'R': /* cursor position report from southeast corner */
 			if (vals >= 2) {
-				display->inbuf_at += p + 1 - p0;
+				used = ++p - display->inbuf;
+				memmove(display->inbuf, p,
+					display->inbuf_bytes -= used);
 				set_geometry(display, val[0], val[1]);
 				goto again;
 			}
@@ -795,54 +797,42 @@ again:	if (display->inbuf_at >= display->inbuf_bytes)
 			if (!val)
 				break;
 			switch (val[0]) {
-			case  2: fkey = DISPLAY_INSERT;	break;
-			case  3: fkey = DISPLAY_DELETE;	break;
-			case  5: fkey = DISPLAY_PGUP;	break;
-			case  6: fkey = DISPLAY_PGDOWN;	break;
-			case 15: fkey = DISPLAY_F5;	break;
-			case 17: fkey = DISPLAY_F6;	break;
-			case 18: fkey = DISPLAY_F7;	break;
-			case 19: fkey = DISPLAY_F8;	break;
-			case 20: fkey = DISPLAY_F9;	break;
-			case 21: fkey = DISPLAY_F10;	break;
-	/*pmk?*/	case 22: fkey = DISPLAY_F11;	break;
-			case 24: fkey = DISPLAY_F12;	break;
+			case  2: key = DISPLAY_INSERT;	break;
+			case  3: key = DISPLAY_DELETE;	break;
+			case  5: key = DISPLAY_PGUP;	break;
+			case  6: key = DISPLAY_PGDOWN;	break;
+			case 15: key = DISPLAY_F5;	break;
+			case 17: key = DISPLAY_F6;	break;
+			case 18: key = DISPLAY_F7;	break;
+			case 19: key = DISPLAY_F8;	break;
+			case 20: key = DISPLAY_F9;	break;
+			case 21: key = DISPLAY_F10;	break;
+	/*pmk?*/	case 22: key = DISPLAY_F11;	break;
+			case 24: key = DISPLAY_F12;	break;
 			}
 			break;
-		case 'A': fkey = DISPLAY_UP;	break;
-		case 'B': fkey = DISPLAY_DOWN;	break;
-		case 'C': fkey = DISPLAY_RIGHT;	break;
-		case 'D': fkey = DISPLAY_LEFT;	break;
+		case 'A': key = DISPLAY_UP;	break;
+		case 'B': key = DISPLAY_DOWN;	break;
+		case 'C': key = DISPLAY_RIGHT;	break;
+		case 'D': key = DISPLAY_LEFT;	break;
 		case '\0': /* truncated escape sequence; get more */
-			if (display->inbuf_at) {
-				memmove(display->inbuf,
-					display->inbuf + display->inbuf_at,
-					display->inbuf_bytes -
-						display->inbuf_at);
-				display->inbuf_bytes -= display->inbuf_at;
-				display->inbuf_at = 0;
-			} else if (display->inbuf_bytes >=
-				   sizeof display->inbuf - 1)
-				display->inbuf_bytes = 0;
 			if (block)
 				goto again;
 			return DISPLAY_NONE;
 		}
 	} else if (*p == ESCCHAR && p[1] == 'O')
 		switch (*(p += 2)) {
-		case 'H': fkey = DISPLAY_HOME;	break;
-		case 'F': fkey = DISPLAY_END;	break;
-		case 'P': fkey = DISPLAY_F1;	break;
-		case 'Q': fkey = DISPLAY_F2;	break;
-		case 'R': fkey = DISPLAY_F3;	break;
-		case 'S': fkey = DISPLAY_F4;	break;
+		case 'H': key = DISPLAY_HOME;	break;
+		case 'F': key = DISPLAY_END;	break;
+		case 'P': key = DISPLAY_F1;	break;
+		case 'Q': key = DISPLAY_F2;	break;
+		case 'R': key = DISPLAY_F3;	break;
+		case 'S': key = DISPLAY_F4;	break;
 		}
 
-	if (fkey) {
-		display->inbuf_at += p + 1 - p0;
-		return fkey;
-	}
-
-	display->inbuf_at++;
-	return *p0;
+	if (!key)
+		key = *(p = display->inbuf);
+	used = ++p - display->inbuf;
+	memmove(display->inbuf, p, display->inbuf_bytes -= used);
+	return key;
 }

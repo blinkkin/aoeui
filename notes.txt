@@ -27,6 +27,7 @@ macro are local to their view.
 
 Command characters
 *  ESC	function keys and query responses, ALT
+*  Fk	global macro execute [start]
   ^@	(^Space)
   ^^	literal, control [; unicode]
 * ^[	(ESC or "smaller font")
@@ -44,7 +45,7 @@ Command characters
 * ^+	-- larger font
   ^\	[quit without saving]
 * ^A	-- reserved for screen(1) or user definition
-  ^O	macro end, execute [macro start]
+  ^O	macro end, local macro execute [local macro start]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
 * ^I	(TAB)
@@ -64,7 +65,7 @@ Command characters
   ^B	paste / exchange with clip buffer [; register]
 * ^M	(ENT)
   ^W	select other view [closing current]
-  ^V	set/unset mark [select line / exchange mark with cursor]
+  ^V	set/unset mark [select line / exchange mark with cursor; force unset]
   ^Z	recenter view [single window, reset display; go to line]
  ^Space	(^@) variant, beginning of value
 
@@ -81,7 +82,6 @@ Non-control characters -- commands must be [variants]
 
 Missing features:
 	^Space> and < could be indent/outdent on selection
-	programmable function keys
 	preserving window layouts
 	moving to prior window
 

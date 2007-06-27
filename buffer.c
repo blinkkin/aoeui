@@ -21,15 +21,13 @@
  *	file texts,
  *
  *	Besides being used to hold the content of files, buffers
- *	are used for cut/copied text (the "clip buffer") and for
- *	undo histories.
+ *	are used for cut/copied text (the "clip buffer"), macros,
+ *	and for undo histories.
  */
 
 struct buffer *buffer_create(char *path)
 {
-	struct buffer *buffer = allocate(NULL, sizeof *buffer);
-
-	memset(buffer, 0, sizeof *buffer);
+	struct buffer *buffer = allocate0(sizeof *buffer);
 	if (path && *path) {
 		buffer->path = allocate(NULL, strlen(path) + 2);
 		sprintf(buffer->path, "%s#", path);

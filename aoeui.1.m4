@@ -180,10 +180,10 @@ moves the cursor forward to the end of the line.
 If already there, it moves forward to the end of the next line.
 .TP
 .B ^cmd(R,O)
-moves the window backward by screenfuls.
+moves the window backward by screenfulls.
 .TP
 .B ^cmd(L,P)
-moves the window forward by screenfuls.
+moves the window forward by screenfulls.
 .TP
 .B ^Space^cmd(R,O)
 moves to the very beginning of the view.
@@ -258,6 +258,11 @@ with no selection.
 With a selection present,
 .B ^Space^cmd(V,U)
 exchanges its cursor with its mark.
+.P
+Note that
+.B ^Space^cmd(V,U)
+with a numeric argument unconditionally unsets the mark, which can be
+handy in a macro.
 .TP
 .B ^Space^cmd(D,X)
 with no selection causes all of the contiguous white space characters
@@ -288,7 +293,7 @@ first cut to the clip buffer, so that the new text replaces it.
 .B ^^
 (that's Control-Shift-6, the caret character, on most keyboards,
 and ^6 will probably also work)
-inserts an untypable control character into the text.
+inserts an untypeable control character into the text.
 The very next key to be pressed is either taken literally,
 if it is a control character, or converted to a control character
 if it is not, and inserted.
@@ -496,16 +501,26 @@ creates a new anonymous text.
 .SH MACROS
 .TP
 .B ^Space^cmd(O,B)
-commences the recording of your keystrokes in the current view
-as its
-.IR macro,
-which may contain anything but another macro or macro invocation.
+commences the recording of your keystrokes as the current view's local
+.IR macro ,
+which may contain anything but another macro definition or
+local macro invocation.
+.TP
+.B ^SpaceF1-F12
+commences the recording of your keystrokes as a new global macro for a
+function key.
+Note that
+.B F1
+and
+.B F11
+are typically hijacked by window managers for their own purposes and
+probably will not be usable.
 .TP
 .B ^cmd(O,B)
 ends the recording of a macro, if one is in progress.
 Afterwards,
 .B ^cmd(O,B)
-replays the view's macro.
+replays the view's local macro.
 .SH FOLDING
 .B AOEUI
 supports the "folding" of portions of text into what appear to be
@@ -644,7 +659,7 @@ if you configure the terminal's scrollback limit to a relatively
 small value.
 .TP
 .B *
-To move backward or forward by half a screenful, use
+To move backward or forward by half a screenfull, use
 .B ^cmd(R,O)
 or
 .B ^cmd(L,P)

@@ -26,8 +26,7 @@ static struct edit *last_edit(struct text *text)
 static void resume_editing(struct text *text)
 {
 	if (!text->undo) {
-		text->undo = allocate(NULL, sizeof *text->undo);
-		memset(text->undo, 0, sizeof *text->undo);
+		text->undo = allocate0(sizeof *text->undo);
 		text->undo->edits = buffer_create(NULL);
 		text->undo->deleted = buffer_create(NULL);
 	}

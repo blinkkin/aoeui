@@ -64,7 +64,7 @@ int main(int argc, char *const *argv)
 
 	/* Main loop */
 	while ((view = window_current_view()) &&
-	       (ch = view_getch(view)) >= 0)
+	       (ch = macro_getch()) >= 0)
 		view->mode->command(view, ch);
 
 	return EXIT_SUCCESS;

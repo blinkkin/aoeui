@@ -77,12 +77,21 @@ static void backward_chars(struct view *view)
 	locus_set(view, CURSOR, cursor);
 }
 
-static int funckey(struct view *view, int Fk)
+static void funckey(struct view *view, int Fk)
 {
+	struct mode_default *mode = (struct mode_default *) view->mode;
 	char buf[8];
+	if (Fk <= FUNCTION_KEYS) {
+		if (mode->variant) {
+			macro_free(function_key[Fk]);
+			function_key[Fk] = macro_record();
+			return;
+		}
+		if (macro_play(function_key[Fk]))
+			return;
+	}
 	snprintf(buf, sizeof buf, "<F%d>", Fk);
 	view_insert(view, buf, locus_get(view, CURSOR), strlen(buf));
-	return 1;
 }
 
 
@@ -97,7 +106,7 @@ static int funckey(struct view *view, int Fk)
 
 static int escape(struct view *view)
 {
-	int ch = view_getch(view);
+	int ch = macro_getch();
 
 	switch (ch) {
 
@@ -289,7 +298,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	ch += '@';
 	if (is_asdfg && ch >= 'A' && ch <= 'Z') {
 		static char asdfg_to_aoeui[26] = {
-			'A', 'V', 'F', 'Y', 'X', 'W', 'H', 'T',
+			'A', 'O', 'F', 'Y', 'X', 'W', 'H', 'T',
 			'I', 'J', 'N', 'S', 'M', 'Z', 'R', 'L',
 			'Q', 'E', 'P', 'G', 'V', 'B', 'K', 'D',
 			'C', 'U'
@@ -407,16 +416,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'O': /* macro end/execute [start] */
 		if (mode->variant) {
-			view->macro_alloc = 64;
-			view->macro = allocate(view->macro, view->macro_alloc);
-			view->macro_bytes = 0;
-			view->macro_at = 1; /* recording */
-		} else if (view->macro && view->macro_bytes)
-			if (view->macro_at == view->macro_bytes + 1)
-				view->macro_at = --view->macro_bytes;
-			else
-				view->macro_at = 0; /* replay */
-		else
+			macro_free(view->local_macro);
+			view->local_macro = macro_record();
+		} else if (!macro_end_recording(1) &&
+			   !macro_play(view->local_macro))
 			window_beep(view);
 		break;
 	case 'P': /* select other window [closing current] */
@@ -464,11 +467,12 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			locus_set(view, CURSOR, offset);
 		locus_set(view, MARK, UNSET);
 		break;
-	case 'V': /* set/unset mark [exchange, or select line] */
-		if (!mode->variant) {
-			mark = mark == UNSET ? cursor : UNSET;
-			locus_set(view, MARK, mark);
-		} else if (mark == UNSET) {
+	case 'V': /* set/unset mark [exchange, or select line; force unset] */
+		if (!mode->variant)
+			locus_set(view, MARK, mark == UNSET ? cursor : UNSET);
+		else if (mode->value)
+			locus_set(view, MARK, UNSET);
+		else if (mark == UNSET) {
 			locus_set(view, MARK, find_line_end(view, cursor) + 1);
 			locus_set(view, CURSOR, find_line_start(view, cursor));
 		} else {
@@ -544,7 +548,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			literal_unicode = 1;
 			goto self_insert;
 		}
-		if ((signed) (ch = view_getch(view)) >= 0) {
+		if ((signed) (ch = macro_getch()) >= 0) {
 			if (ch >= '@' && ch <= '_')
 				ch -= '@';
 			else if (ch >= 'a' && ch <= 'z')
@@ -570,8 +574,7 @@ done:	mode->variant = mode->value = mode->is_hex = 0;
 
 struct mode *mode_default(void)
 {
-	struct mode_default *dft = allocate(NULL, sizeof *dft);
-	memset(dft, 0, sizeof *dft);
+	struct mode_default *dft = allocate0(sizeof *dft);
 	dft->command = command_handler;
 	return (struct mode *) dft;
 }

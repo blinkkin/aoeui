@@ -81,8 +81,7 @@ static int out_activity(struct stream *stream, char *x, int bytes)
 
 static struct stream *stream_create(int fd)
 {
-	struct stream *stream = allocate(NULL, sizeof *stream);
-	memset(stream, 0, sizeof *stream);
+	struct stream *stream = allocate0(sizeof *stream);
 	stream->fd = fd;
 	if (!streams)
 		streams = stream;

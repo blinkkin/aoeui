@@ -32,11 +32,13 @@
 #include "window.h"
 #include "util.h"
 #include "clip.h"
+#include "macro.h"
 #include "display.h"
 
 /* Miscellaneous declarations and prototypes that didn't fit elsewhere */
 extern struct termios original_termios;
 void *allocate(const void *, unsigned bytes);	/* mem.c */
+void *allocate0(unsigned bytes);
 void die(const char *, ...);			/* die.c */
 void message(const char *, ...);
 int child(int *stdfd, unsigned stdfds, const char *argv[]);	/* child.c */

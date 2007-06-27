@@ -9,9 +9,7 @@ struct view {
 	unsigned loci, *locus;
 	struct mode *mode;
 	char *last_search;
-	char *macro;
-	unsigned macro_bytes, macro_alloc;
-	int macro_at;
+	struct macro *local_macro;
 	int shell_std_in, shell_out_locus;
 };
 
@@ -54,7 +52,6 @@ unsigned view_get(struct view *, void *, unsigned offset, unsigned bytes);
 unsigned view_raw(struct view *, char **, unsigned offset, unsigned bytes);
 unsigned view_delete(struct view *, unsigned offset, unsigned bytes);
 unsigned view_insert(struct view *, const void *, unsigned offset, int bytes);
-int view_getch(struct view *);
 
 /* Use only for raw bytes.  See util.h for general folded and Unicode
  * character access with view_char[_prior]().

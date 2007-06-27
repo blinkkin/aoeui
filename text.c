@@ -69,8 +69,7 @@ void view_name(struct view *view)
 
 struct view *view_create(struct text *text)
 {
-	struct view *view = allocate(NULL, sizeof *view);
-	memset(view, 0, sizeof *view);
+	struct view *view = allocate0(sizeof *view);
 	view->loci = DEFAULT_LOCI;
 	view->locus = allocate(NULL, view->loci * sizeof *view->locus);
 	memset(view->locus, UNSET, view->loci * sizeof *view->locus);
@@ -88,8 +87,7 @@ struct view *view_create(struct text *text)
 
 struct view *text_create(const char *path, unsigned flags)
 {
-	struct text *text = allocate(NULL, sizeof *text), *prev, *bp;
-	memset(text, 0, sizeof *text);
+	struct text *text = allocate0(sizeof *text), *prev, *bp;
 	text->tabstop = default_tab_stop;
 	text->fd = -1;
 	text->flags = flags;
@@ -152,7 +150,7 @@ void view_close(struct view *view)
 
 	allocate(view->name, 0);
 	allocate(view->last_search, 0);
-	allocate(view->macro, 0);
+	macro_free(view->local_macro);
 	allocate(view, 0);
 }
 
@@ -251,24 +249,4 @@ unsigned view_insert(struct view *view, const void *in,
 	if (bytes < 0)
 		bytes = in ? strlen(in) : 0;
 	return text_insert(view->text, in, view->start + offset, bytes);
-}
-
-int view_getch(struct view *view)
-{
-	int ch;
-
-	if (view->macro && view->macro_at < view->macro_bytes)
-		return view->macro[view->macro_at++];
-	ch = window_getch();
-	if (ch >= 0 &&
-	    view->macro &&
-	    view->macro_at == view->macro_bytes+1) {
-		/* record */
-		if (view->macro_bytes == view->macro_alloc)
-			view->macro = allocate(view->macro,
-						view->macro_alloc += 64);
-		view->macro[view->macro_bytes++] = ch;
-		view->macro_at++;
-	}
-	return ch;
 }

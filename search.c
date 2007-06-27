@@ -259,16 +259,12 @@ done:	if (mode->bytes) {
 
 void mode_search(struct view *view, int regex)
 {
-	struct mode_search *mode = allocate(NULL, sizeof *mode);
-
-	memset(mode, 0, sizeof *mode);
+	struct mode_search *mode = allocate0(sizeof *mode);
 	mode->previous = view->mode;
 	mode->command = command_handler;
 	mode->start = locus_get(view, CURSOR);
 	mode->mark = locus_get(view, MARK);;
-	if (regex) {
-		mode->regex = allocate(NULL, sizeof *mode->regex);
-		memset(mode->regex, 0, sizeof *mode->regex);
-	}
+	if (regex)
+		mode->regex = allocate0(sizeof *mode->regex);
 	view->mode = (struct mode *) mode;
 }

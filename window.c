@@ -35,8 +35,7 @@ static struct window *window_create(struct view *view, struct view *after)
 	struct window *window = view->window;
 
 	if (!window) {
-		window = allocate(NULL, sizeof *window);
-		memset(window, 0, sizeof *window);
+		window = allocate0(sizeof *window);
 		window->view = view;
 		view->window = window;
 		window->start = locus_create(view, UNSET);

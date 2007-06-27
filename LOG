@@ -1,4 +1,6 @@
 2007
+06-27 pmk: fix buffered input bug
+06-27 pmk: modularized macro facility, function key definitions
 06-27 pmk: fix misspellings in documentation
 06-27 pmk: remove -Werror and TAGS default build from Makefile
 06-26 pmk: preserve original mark when search ends with ^V
