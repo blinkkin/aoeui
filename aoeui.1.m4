@@ -502,9 +502,9 @@ creates a new anonymous text.
 .TP
 .B ^Space^cmd(O,B)
 commences the recording of your keystrokes as the current view's local
-.IR macro ,
-which may contain anything but another macro definition or
-local macro invocation.
+macro, which continues until the next
+.B ^cmd(O,B)
+or another macro recording.
 .TP
 .B ^SpaceF1-F12
 commences the recording of your keystrokes as a new global macro for a

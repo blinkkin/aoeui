@@ -739,7 +739,9 @@ int display_getch(struct display *display, int block)
 {
 	unsigned char *p;
 	int key = 0;
-	unsigned used;
+	unsigned used, vals = 0, val[16];
+
+#define SET_GEOMETRY DISPLAY_FKEY(-1)
 
 	if (!display)
 		return DISPLAY_EOF;
@@ -767,10 +769,24 @@ again:	if (display->size_changed)
 		display->inbuf[display->inbuf_bytes += n] = '\0';
 	}
 
-	/* function keys and report responses */
 	p = display->inbuf;
-	if (*p == ESCCHAR && p[1] == '[') {
-		unsigned val[16], vals = 0;
+	if (*p != ESCCHAR) {
+		if (utf8_bytes[*p] > display->inbuf_bytes) {
+			if (block)
+				goto again;
+			return DISPLAY_NONE;
+		}
+		used = utf8_length((char *) p, display->inbuf_bytes);
+		key = utf8_unicode((char *) p, used);
+		p += used - 1;
+		goto done;
+	}
+
+	/* Translate Escape characters */
+
+	switch (p[1]) {
+
+	case '[':
 		for (p += 2; isdigit(*p); p++) {
 			val[vals] = 0;
 			do {
@@ -785,13 +801,8 @@ again:	if (display->size_changed)
 		}
 		switch (*p) {
 		case 'R': /* cursor position report from southeast corner */
-			if (vals >= 2) {
-				used = ++p - display->inbuf;
-				memmove(display->inbuf, p,
-					display->inbuf_bytes -= used);
-				set_geometry(display, val[0], val[1]);
-				goto again;
-			}
+			if (vals >= 2)
+				key = SET_GEOMETRY;
 			break;
 		case '~':
 			if (!val)
@@ -820,7 +831,9 @@ again:	if (display->size_changed)
 				goto again;
 			return DISPLAY_NONE;
 		}
-	} else if (*p == ESCCHAR && p[1] == 'O')
+		break;
+
+	case 'O':
 		switch (*(p += 2)) {
 		case 'H': key = DISPLAY_HOME;	break;
 		case 'F': key = DISPLAY_END;	break;
@@ -829,10 +842,45 @@ again:	if (display->size_changed)
 		case 'R': key = DISPLAY_F3;	break;
 		case 'S': key = DISPLAY_F4;	break;
 		}
+		break;
 
-	if (!key)
+	/* Translate many Escape'd characters into Control */
+	case '@':
+	case ' ':
+		key = CONTROL('@');
+		p++;
+		break;
+	case '\\':
+	case ']':
+	case '^':
+	case '_':
+		key = CONTROL(*++p);
+		break;
+	case '/':
+		key = CONTROL('_');
+		p++;
+		break;
+	case '?':
+		key = '\x7f';
+		p++;
+		break;
+	case ESCCHAR:
+		memmove(display->inbuf, p+2, display->inbuf_bytes -= 2);
+		goto again;
+	default:
+		if (p[1] >= 'a' && p[1] <= 'z')
+			key = CONTROL(*++p-'a'+'A');
+		else if (p[1] >= 'A' && p[1] <= 'Z')
+			key = CONTROL(*++p);
+	}
+
+done:	if (!key)
 		key = *(p = display->inbuf);
 	used = ++p - display->inbuf;
 	memmove(display->inbuf, p, display->inbuf_bytes -= used);
+	if (key == SET_GEOMETRY) {
+		set_geometry(display, val[0], val[1]);
+		goto again;
+	}
 	return key;
 }

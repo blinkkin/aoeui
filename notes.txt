@@ -82,8 +82,10 @@ Non-control characters -- commands must be [variants]
 
 Missing features:
 	^Space> and < could be indent/outdent on selection
+		but it would be better to use sed!
 	preserving window layouts
 	moving to prior window
+	saving, restoring, rewriting F-key definitions
 
 Idioms
 - search and replace: cut replacement text, search for first occurrence,

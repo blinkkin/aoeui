@@ -172,9 +172,9 @@ static void command_handler(struct view *view, unsigned ch)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
 	static char cmdchar[][2] = {
-		{ 'H'-'@', 'G'-'@' },
-		{ 'T'-'@', 'H'-'@' },
-		{ 'V'-'@', 'U'-'@' }
+		{ CONTROL('H'), CONTROL('G') },
+		{ CONTROL('T'), CONTROL('H') },
+		{ CONTROL('V'), CONTROL('U') }
 	};
 
 	/* Backspace removes the last character from the search target and
@@ -214,7 +214,7 @@ static void command_handler(struct view *view, unsigned ch)
 	if (mode->last_bytes &&
 	    (ch == cmdchar[0][is_asdfg] ||
 	     ch == cmdchar[1][is_asdfg] ||
-	     ch == '_'-'@')) {
+	     ch == CONTROL('_'))) {
 		mode->bytes = mode->last_bytes;
 		search(view, mode->backward = (ch == cmdchar[is_asdfg][0]), 0);
 		return;
@@ -223,7 +223,7 @@ static void command_handler(struct view *view, unsigned ch)
 	/* Hitting ^T, ^/, or ^_ with an empty search pattern causes
 	 * the last successful search target to be reused.
 	 */
-	if ((ch == cmdchar[1][is_asdfg] || ch == '_'-'@') &&
+	if ((ch == cmdchar[1][is_asdfg] || ch == CONTROL('_')) &&
 	    !mode->bytes && view->last_search) {
 		mode->bytes = strlen(view->last_search);
 		mode->alloc = mode->bytes + 8;
@@ -242,7 +242,7 @@ done:	if (mode->bytes) {
 
 	view->mode = mode->previous;
 
-	if (ch == '\r' || ch == '_'-'@')
+	if (ch == '\r' || ch == CONTROL('_'))
 		;
 	else if (ch == cmdchar[2][is_asdfg]) /* unset mark */
 		locus_set(view, MARK, mode->mark);

@@ -19,7 +19,7 @@ int utf8_out(char *out, unsigned unicode)
 	return p - out;
 }
 
-static char utf8_bytes[0x100] = {
+unsigned char utf8_bytes[0x100] = {
 	/* 00-7f are themselves */
 /*00*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 /*10*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

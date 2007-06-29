@@ -77,71 +77,24 @@ static void backward_chars(struct view *view)
 	locus_set(view, CURSOR, cursor);
 }
 
-static void funckey(struct view *view, int Fk)
+static int funckey(struct view *view, int Fk)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
-	char buf[8];
-	if (Fk <= FUNCTION_KEYS) {
-		if (mode->variant) {
-			macro_free(function_key[Fk]);
-			function_key[Fk] = macro_record();
-			return;
-		}
-		if (macro_play(function_key[Fk]))
-			return;
+	if (Fk > FUNCTION_KEYS)
+		return 0;
+	if (mode->variant) {
+		macro_end_recording(CONTROL('@'));
+		macro_free(function_key[Fk]);
+		function_key[Fk] = macro_record();
+		return 1;
 	}
-	snprintf(buf, sizeof buf, "<F%d>", Fk);
-	view_insert(view, buf, locus_get(view, CURSOR), strlen(buf));
+	return macro_play(function_key[Fk]);
 }
 
-
-/*
- *	Treat Escape-(key), which is also Alt-(key), as it had
- *	been Control-(key).
- *
- *	Function keys and terminal command responses that are
- *	encoded as Escape sequences have been translated and/or
- *	handled in display.c already.
- */
-
-static int escape(struct view *view)
-{
-	int ch = macro_getch();
-
-	switch (ch) {
-
-	case '@':
-	case ' ':
-		command_handler(view, '\0');
-		break;
-	case '\\':
-	case ']':
-	case '^':
-	case '_':
-		command_handler(view, ch-'@');
-		break;
-	case '/':
-		command_handler(view, '_'-'@');
-		break;
-	case '?':
-		command_handler(view, '\x7f');
-		break;
-	case '\x1b': /* ESC ESC */
-		break;
-	default:
-		if (ch >= 'a' && ch <= 'z')
-			command_handler(view, ch-'a'+'A'-'@');
-		else
-			return 0;
-		break;
-	}
-
-	return 1;
-}
-
-static void command_handler(struct view *view, unsigned ch)
+static void command_handler(struct view *view, unsigned ch0)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
+	unsigned ch = ch0;
 	unsigned cursor = locus_get(view, CURSOR);
 	unsigned mark = locus_get(view, MARK);
 	unsigned offset;
@@ -193,9 +146,8 @@ static void command_handler(struct view *view, unsigned ch)
 			cut(view, 1);
 			break;
 		default:
-			if (ch >= DISPLAY_F1)
-				funckey(view, ch - DISPLAY_F1 + 1);
-			else
+			if (ch < DISPLAY_F1 ||
+			    !funckey(view, ch - DISPLAY_F1 + 1))
 				ok = 0;
 		}
 		goto done;
@@ -252,7 +204,8 @@ static void command_handler(struct view *view, unsigned ch)
 				goto done;
 			case ',':
 				if (mark == UNSET)
-					view_fold_indented(view, mode->value);					else {
+					view_fold_indented(view, mode->value);
+				else {
 					view_fold(view, cursor, mark);
 					locus_set(view, MARK, UNSET);
 				}
@@ -416,9 +369,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'O': /* macro end/execute [start] */
 		if (mode->variant) {
+			macro_end_recording(CONTROL('@'));
 			macro_free(view->local_macro);
 			view->local_macro = macro_record();
-		} else if (!macro_end_recording(1) &&
+		} else if (!macro_end_recording(ch0) &&
 			   !macro_play(view->local_macro))
 			window_beep(view);
 		break;
@@ -525,9 +479,6 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			window_raise(view);
 		window_recenter(view);
 		break;
-	case '[': /* ESC */
-		ok &= escape(view);
-		break;
 	case '\\': /* quit */
 		if (mode->variant) {
 			windows_end();
@@ -550,9 +501,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		}
 		if ((signed) (ch = macro_getch()) >= 0) {
 			if (ch >= '@' && ch <= '_')
-				ch -= '@';
+				ch = CONTROL(ch);
 			else if (ch >= 'a' && ch <= 'z')
-				ch -= 'a'-1;
+				ch = CONTROL(ch-'a'+'A');
 			else if (ch == '?')
 				ch = 0x7f;
 			goto self_insert;

@@ -1,4 +1,6 @@
 2007
+06-28 pmk: handle all Escape sequences and conversions in display.c
+06-27 pmk: allow multibyte characters in macros and display input
 06-27 pmk: fix buffered input bug
 06-27 pmk: modularized macro facility, function key definitions
 06-27 pmk: fix misspellings in documentation

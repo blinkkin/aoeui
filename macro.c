@@ -33,15 +33,23 @@ static void adjust(unsigned past, int delta, struct macro *not)
 
 int macro_end_recording(unsigned chop)
 {
+	char *raw;
+	unsigned n;
+
 	if (!recording)
 		return 0;
-	if (chop > recording->bytes)
-		chop = recording->bytes;
-	adjust(recording->start + recording->bytes, -chop, recording);
-	buffer_delete(macbuf, recording->start + recording->bytes - chop, chop);
-	recording->bytes -= chop;
+	n = buffer_raw(macbuf, &raw, recording->start,
+		       recording->bytes);
+	while (n) {
+		unsigned lastlen = utf8_length_backwards(raw+n-1, n);
+		n -= lastlen;
+		if (utf8_unicode(raw+n, lastlen) == chop)
+			break;
+	}
+	buffer_delete(macbuf, recording->start + n, recording->bytes - n);
+	recording->bytes = n;
 	recording->at = recording->bytes; /* not playing */
-	recording = recording->suspended;
+	recording = NULL;
 	return 1;
 }
 
@@ -53,7 +61,6 @@ static int macro_is_playing(struct macro *macro)
 int macro_play(struct macro *macro)
 {
 	if (!macro ||
-	    recording ||
 	    macro_is_playing(macro) ||
 	    !macro->bytes)
 		return 0;
@@ -93,18 +100,23 @@ int macro_getch(void)
 	int ch;
 
 	if (playing) {
-		ch = buffer_byte(macbuf, playing->start + playing->at++);
-		if (playing->at == playing->bytes)
+		char *p;
+		unsigned n = buffer_raw(macbuf, &p, playing->start + playing->at,
+					playing->bytes - playing->at);
+		ch = utf8_unicode(p, n = utf8_length(p, n));
+		if ((playing->at += n) == playing->bytes)
 			playing = playing->suspended;
 	} else {
 		ch = window_getch();
 		if (ch >= 0 && recording) {
-			char rch = ch;
-			adjust(recording->start + recording->bytes, 1,
+			char buf[8];
+			int n = utf8_out(buf, ch);
+			adjust(recording->start + recording->bytes, n,
 			       recording);
-			buffer_insert(macbuf, &rch,
-				      recording->start + recording->bytes++,
-				      1);
+			buffer_insert(macbuf, buf,
+				      recording->start + recording->bytes,
+				      n);
+			recording->bytes += n;
 		}
 	}
 	return ch;
