@@ -1,4 +1,5 @@
 2007
+06-29 1.0.3 release
 06-28 pmk: handle all Escape sequences and conversions in display.c
 06-27 pmk: allow multibyte characters in macros and display input
 06-27 pmk: fix buffered input bug
