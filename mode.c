@@ -170,7 +170,7 @@ static void command_handler(struct view *view, unsigned ch0)
 				if (isdigit(ch))
 					mode->value += ch - '0';
 				else
-					mode->value += tolower(ch) - 'a';
+					mode->value += tolower(ch) - 'a' + 10;
 				return;
 			}
 			if (isdigit(ch)) {

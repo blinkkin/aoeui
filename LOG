@@ -1,4 +1,6 @@
 2007
+07-02 pmk: fix looping bug after redefined macro
+07-02 pmk: fix hex literal characters
 06-29 1.0.3 release
 06-28 pmk: handle all Escape sequences and conversions in display.c
 06-27 pmk: allow multibyte characters in macros and display input

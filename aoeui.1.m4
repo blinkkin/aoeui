@@ -68,7 +68,7 @@ A text in the editor has at least one view, and possibly more.
 .P
 A
 .I window
-is a rectilinear portion of the display, and is always associated
+is a rectangular portion of the display, and is always associated
 with a single view, a contiguous portion of whose text is rendered
 in the window.  Not every view has a window.
 .P

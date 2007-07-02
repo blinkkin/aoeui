@@ -18,17 +18,8 @@ struct macro *macro_record(void)
 		macbuf = buffer_create(NULL);
 	new = allocate0(sizeof *new);
 	new->next = macros;
-	new->suspended = recording;
 	new->start = buffer_bytes(macbuf);
 	return macros = recording = new;
-}
-
-static void adjust(unsigned past, int delta, struct macro *not)
-{
-	struct macro *mac;
-	for (mac = macros; mac; mac = mac->next)
-		if (mac != not && mac->start >= past)
-			mac->start += delta;
 }
 
 int macro_end_recording(unsigned chop)
@@ -90,7 +81,6 @@ void macro_free(struct macro *macro)
 		else if (mac->start > macro->start)
 			mac->start -= macro->bytes;
 	}
-	adjust(macro->start + macro->bytes, -macro->bytes, macro);
 	buffer_delete(macbuf, macro->start, macro->bytes);
 	allocate(macro, 0);
 }
@@ -111,8 +101,6 @@ int macro_getch(void)
 		if (ch >= 0 && recording) {
 			char buf[8];
 			int n = utf8_out(buf, ch);
-			adjust(recording->start + recording->bytes, n,
-			       recording);
 			buffer_insert(macbuf, buf,
 				      recording->start + recording->bytes,
 				      n);
