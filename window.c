@@ -345,7 +345,6 @@ static int lame_space(struct view *view, unsigned offset, unsigned look)
 static int lame_tab(struct view *view, unsigned offset)
 {
 	int ch;
-
 	for (; (ch = view_char(view, offset, &offset)) >= 0 && ch != '\n';)
 		if (ch != ' ' && ch != '\t')
 			return 0;

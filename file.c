@@ -97,6 +97,30 @@ static void grab_mtime(struct text *text)
 		text->mtime = 0;
 }
 
+static void scan(struct view *view)
+{
+	char *raw, scratch[8];
+	unsigned bytes = view_raw(view, &raw, 0, getpagesize());
+	unsigned at, chlen, ch, check, lastch = 0, crnl = 0, nl = 0;
+
+	for (at = 0; at + 8 < bytes; at += chlen, lastch = ch) {
+		chlen = utf8_length(raw + at, bytes - at);
+		ch = utf8_unicode(raw + at, chlen);
+		check = utf8_out(scratch, ch);
+		if (chlen != check) {
+			view->text->flags |= TEXT_NO_UTF8;
+			break;
+		}
+		if (ch == '\n') {
+			nl++;
+			crnl += lastch == '\r';
+		}
+	}
+
+	if (nl && crnl == nl)
+		view->text->flags |= TEXT_CRNL;
+}
+
 struct view *view_open(const char *path0)
 {
 	struct view *view;
@@ -159,6 +183,7 @@ struct view *view_open(const char *path0)
 		}
 		view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 					     text->clean_bytes;
+		scan(view);
 		text_forget_undo(text);
 	}
 	goto done;

@@ -226,7 +226,7 @@ unsigned find_row_bytes(struct view *view, unsigned offset0,
 
 	if (column == columns &&
 	    offset != locus_get(view, CURSOR) &&
-	    view_byte(view, offset) == '\n')
+	    view_char(view, offset, NULL) == '\n')
 		offset++;
 	return offset - offset0;
 }

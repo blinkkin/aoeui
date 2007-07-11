@@ -29,12 +29,14 @@ struct text {
 };
 
 /* text->flags */
-#define TEXT_SAVED_ORIGINAL 1
-#define TEXT_RDONLY 2
-#define TEXT_EDITOR 4
-#define TEXT_CREATED 8
-#define TEXT_SCRATCH 16
-#define TEXT_FOLDED 32
+#define TEXT_SAVED_ORIGINAL 0x001
+#define TEXT_RDONLY 0x002
+#define TEXT_EDITOR 0x004
+#define TEXT_CREATED 0x008
+#define TEXT_SCRATCH 0x010
+#define TEXT_FOLDED 0x020
+#define TEXT_NO_UTF8 0x040
+#define TEXT_CRNL 0x080
 
 extern struct text *text_list;
 extern int default_tab_stop;

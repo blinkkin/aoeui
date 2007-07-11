@@ -231,7 +231,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			cursor = cut(view, 1);
 			mark = UNSET;
 		}
-		if (ch <= 0x100 && !literal_unicode) {
+		if (ch == '\n' && view->text->flags & TEXT_CRNL)
+			view_insert(view, "\r\n", cursor, 2);
+		else if (ch <= 0x100 && !literal_unicode) {
 			buf[0] = ch;
 			view_insert(view, buf, cursor, 1);
 		} else
@@ -333,6 +335,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			align(view);
 		break;
 	case 'J': /* line feed: new line with alignment */
+		if (view->text->flags & TEXT_CRNL)
+			view_insert(view, "\r", cursor++, 1);
 		view_insert(view, "\n", cursor++, 1);
 		align(view);
 		break;
@@ -350,7 +354,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'M': /* (ENT) new line [opened] */
 		if (mode->variant) {
-			view_insert(view, "\n", cursor, 1);
+			if (view->text->flags & TEXT_CRNL)
+				view_insert(view, "\r\n", cursor, 2);
+			else
+				view_insert(view, "\n", cursor, 1);
 			locus_set(view, CURSOR, cursor);
 		} else {
 			ch = '\n';

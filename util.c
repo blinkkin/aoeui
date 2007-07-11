@@ -84,7 +84,14 @@ int view_unicode(struct view *view, unsigned offset, unsigned *next)
 	char *raw;
 	unsigned length;
 
-	if (ch < 0x80) {
+	if (ch < 0x80 || view->text->flags & TEXT_NO_UTF8) {
+		if (ch == '\r' &&
+		    view->text->flags & TEXT_CRNL &&
+		    view_byte(view, offset + 1) == '\n') {
+			if (next)
+				*next = offset + 2;
+			return '\n';
+		}
 		if (next)
 			*next = offset + (ch >= 0);
 		return ch;
@@ -104,13 +111,17 @@ int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev)
 
 	if (offset) {
 		ch = view_byte(view, --offset);
-		if (ch >= 0x80) {
+		if (ch >= 0x80 && !(view->text->flags & TEXT_NO_UTF8)) {
 			unsigned at = offset >= 7 ? offset-7 : 0;
 			view_raw(view, &raw, at, offset-at+1);
 			offset -= utf8_length_backwards(raw+offset-at,
 					offset-at+1) - 1;
 			ch = view_unicode(view, offset, NULL);
-		}
+		} else if (ch == '\n' &&
+			   view->text->flags & TEXT_CRNL &&
+			   offset &&
+			   view_byte(view, offset-1) == '\r')
+			offset--;
 	}
 	if (prev)
 		*prev = offset;
