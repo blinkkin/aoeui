@@ -22,12 +22,12 @@ void display_sync(struct display *);
 
 /* notes:
  * - display_getch() implies a display_sync()
- * - once DISPLAY_WINCH is returned after a window size change,
+ * - once DISPLAY_CHANGED is returned after a window size change,
  *   it will continue to be returned until display_get_geometry() is called
  */
 int display_getch(struct display *, int block);
 #define DISPLAY_EOF	( -1)
-#define DISPLAY_WINCH	( -2)	/* size changed; MUST call _get_geometry()! */
+#define DISPLAY_CHANGED	( -2)	/* size changed; MUST call _get_geometry()! */
 #define DISPLAY_ERR	( -3)
 #define DISPLAY_NONE	( -4)
 #define DISPLAY_FKEY(x)	(0x10000 + (x))

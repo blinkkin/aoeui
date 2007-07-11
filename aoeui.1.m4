@@ -673,6 +673,13 @@ Inevitable; please tell me about any that you find.
 is used to name the program run by the
 .B ^cmd(E,R)
 command.
+.TP
+.B ROWS
+and
+.B COLUMNS
+may be set to override
+.BR AOEUI 's
+automatic mechanisms for determining the size of the display surface.
 .SH FILES
 .TP
 .IB file ~

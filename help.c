@@ -9,21 +9,20 @@ static const char help[] =
 "  Keyboard	 SHIFT  ; Q J K X  B M W V Z  SHIFT\n"
 "    layout	  CTRL  ALT	Space	 ALT  CTRL\n"
 "\n"
-"To leave aoeui now, perhaps because you arrived here by accident, hold down\n"
-"the Control key, hit the Space bar, and then the backslash (\\) key.  This\n"
-"emergency escape sequence is deliberately hard to type so that you won't\n"
-"accidentally terminate the editor and lose work.\n"
+"(or to asdfg, aoeui's QWERTY edition)\n"
 "\n"
-"Documentation for aoeui is now a standard manual page and should be available\n"
-"with the shell command \"man aoeui\".\n"
+"To leave now, perhaps because you arrived here by accident, hold down\n"
+"the Control key and hit both the Space bar and then the backslash (\\) key.\n"
+"This emergency escape sequence is deliberately hard to type so that you\n"
+"won't accidentally terminate the editor and lose work.\n"
+"\n"
+"Documentation for the editor should be available with the shell command\n"
+"\"man aoeui\" or \"man asdfg\".\n"
 "\n"
 "Bugs, complaints, suggestions, and greetings can be sent to the forum linked\n"
 "to aoeui's home page http://aoeui.sourceforge.net.  Please let me know how\n"
 "aoeui is working for you.\n"
-"\n"
-"THANKS to my lovely wife for putting up with her Dvorak-obsessed husband\n"
-"for a few evenings recently as aoeui has been polished and uploaded,\n"
-"and to all you brave souls curious enough to play with it!\n";
+;
 
 struct view *view_help(void)
 {

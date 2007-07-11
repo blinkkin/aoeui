@@ -586,6 +586,8 @@ static void geometry(struct display *display)
 {
 	int rows = 0, columns = 0;
 	struct winsize ws;
+	const char *p;
+	unsigned n;
 
 #ifdef TIOCGWINSZ
 	if (!ioctl(1, TIOCGWINSZ, &ws)) {
@@ -593,12 +595,24 @@ static void geometry(struct display *display)
 		columns = ws.ws_col;
 	}
 #endif
-	if (!rows)
-		rows = 24;
-	if (!columns)
-		columns = 80;
-	moveto(display, 666, 666);
-	outs(display, CTL_CURSORPOS);
+	if (!rows &&
+	    (p = getenv("ROWS")) &&
+	    (n = atoi(p)) &&
+	    n <= 100)
+		rows = n;
+	if (!columns &&
+	    (p = getenv("COLUMNS")) &&
+	    (n = atoi(p)) &&
+	    n <= 200)
+		columns = n;
+	if (!rows || !columns) {
+		if (!rows)
+			rows = 24;
+		if (!columns)
+			columns = 80;
+		moveto(display, 666, 666);
+		outs(display, CTL_CURSORPOS);
+	}
 	set_geometry(display, rows, columns);
 }
 
@@ -738,8 +752,8 @@ void display_beep(struct display *display)
 int display_getch(struct display *display, int block)
 {
 	unsigned char *p;
-	int key = 0;
-	unsigned used, vals = 0, val[16];
+	int key;
+	unsigned used, vals, val[16];
 
 #define SET_GEOMETRY DISPLAY_FKEY(-1)
 
@@ -747,7 +761,7 @@ int display_getch(struct display *display, int block)
 		return DISPLAY_EOF;
 
 again:	if (display->size_changed)
-		return DISPLAY_WINCH;
+		return DISPLAY_CHANGED;
 	display_sync(display);
 	if (display->inbuf_bytes >= sizeof display->inbuf - 1)
 		;
@@ -784,6 +798,7 @@ again:	if (display->size_changed)
 
 	/* Translate Escape characters */
 
+	key = vals = 0;
 	switch (p[1]) {
 
 	case '[':
@@ -827,9 +842,9 @@ again:	if (display->size_changed)
 		case 'C': key = DISPLAY_RIGHT;	break;
 		case 'D': key = DISPLAY_LEFT;	break;
 		case '\0': /* truncated escape sequence; get more */
-			if (block)
-				goto again;
-			return DISPLAY_NONE;
+			if (!block)
+				return DISPLAY_NONE;
+			goto again;
 		}
 		break;
 
@@ -866,6 +881,10 @@ again:	if (display->size_changed)
 		break;
 	case ESCCHAR:
 		memmove(display->inbuf, p+2, display->inbuf_bytes -= 2);
+		goto again;
+	case '\0': /* truncated escape sequence; get more */
+		if (!block)
+			return DISPLAY_NONE;
 		goto again;
 	default:
 		if (p[1] >= 'a' && p[1] <= 'z')

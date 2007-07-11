@@ -1,4 +1,6 @@
 2007
+07-11 pmk: fix partial escape sequence parsing, support $ROWS/$COLUMNS
+07-10 pmk: erase display after display size change
 07-02 pmk: fix looping bug after redefined macro
 07-02 pmk: fix hex literal characters
 06-29 1.0.3 release

@@ -19,9 +19,9 @@ aoeui: $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
 aoeui.1.gz: aoeui.1
-	gzip -c aoeui.1 >$@
+	gzip -9 -c aoeui.1 >$@
 asdfg.1.gz: asdfg.1
-	gzip -c asdfg.1 >$@
+	gzip -9 -c asdfg.1 >$@
 aoeui.1.html: aoeui.1
 	man2html aoeui.1 >$@
 asdfg.1.html: asdfg.1

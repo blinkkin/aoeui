@@ -143,6 +143,8 @@ struct window *window_raise(struct view *view)
 	if (!display)
 		display = display_init();
 	display_get_geometry(display, &display_rows, &display_columns);
+	display_erase(display, 0, 0, display_rows, display_columns,
+		      0x1, 0x1);
 	while (window_list && window_list->view != view)
 		window_destroy(window_list);
 	while (window_list && window_list->next)
@@ -677,7 +679,7 @@ int window_getch(void)
 	int block = 0;
 	for (;;) {
 		int ch = display_getch(display, block);
-		if (ch == DISPLAY_WINCH)
+		if (ch == DISPLAY_CHANGED)
 			window_raise(window_current_view());
 		else if (ch != DISPLAY_NONE)
 			return ch;
