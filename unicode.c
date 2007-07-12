@@ -1,0 +1,27 @@
+#include "utf8.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+int main(int argc, const char *argv[])
+{
+	unsigned ch = 0x203b, num = 1, at = 0;
+	char buf[8];
+	if (argc > 1)
+		ch = strtoul(argv[1], NULL, 16);
+	if (argc > 2)
+		num = strtoul(argv[2], NULL, 0);
+	while (num--) {
+		if (!at)
+			printf("0x%04x", ch);
+		buf[utf8_out(buf, ch++)] = '\0';
+		printf("\t%s", buf);
+		if (++at == 8) {
+			at = 0;
+			putchar('\n');
+		}
+	}
+	if (at)
+		putchar('\n');
+	return EXIT_SUCCESS;
+}

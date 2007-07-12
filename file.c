@@ -102,8 +102,9 @@ static void scan(struct view *view)
 	char *raw, scratch[8];
 	unsigned bytes = view_raw(view, &raw, 0, getpagesize());
 	unsigned at, chlen, ch, check, lastch = 0, crnl = 0, nl = 0;
+	unsigned chop = bytes < view->bytes ? 8 : 0;
 
-	for (at = 0; at < bytes; at += chlen, lastch = ch) {
+	for (at = 0; at + chop < bytes; at += chlen, lastch = ch) {
 		chlen = utf8_length(raw + at, bytes - at);
 		ch = utf8_unicode(raw + at, chlen);
 		check = utf8_out(scratch, ch);

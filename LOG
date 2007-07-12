@@ -1,3 +1,4 @@
+07-12 pmk: fix non-UTF-8 detection when UTF-8 sequence spans first page boundary
 07-12 1.1.0 release
 07-11 pmk: fix partial escape sequence parsing, support $ROWS/$COLUMNS
 07-10 pmk: erase display after display size change

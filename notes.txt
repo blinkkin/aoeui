@@ -114,7 +114,16 @@ files:		Q:q	K:w	X:e
 others:		O:b	E:r	U:z
 
 
-Compose key sequences
+Unicode tips:
+0x2000-206f	general punctuation
+0x2100-22ff	math
+0x2300-23ff	misc. technical
+0x2400-24ff	printable control chars, boxed numbers and letters
+0x2500-25ff	block graphics
+0x2600-26b2	misc. symbols
+0x2700-27ff	dingbats
+
+Compose key sequences for Latin-1:
 
 		0xa1 (¡) !!	0xa2 (¢) c/	0xa3 (£) l-
 0xa4 (¤) ox	0xa5 (¥) Y=	0xa6 (¦)	0xa7 (§) so
@@ -133,3 +142,5 @@ Compose key sequences
 						0xf7 (÷) :-
 				0xfe (þ) th
 (€) C=
+
+0x203b ※  0x2230 ∰  0x237e ⍾  0x2615 ☕  0x2620 ☠  0x2767 ❧
