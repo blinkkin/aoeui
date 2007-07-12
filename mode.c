@@ -233,7 +233,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		}
 		if (ch == '\n' && view->text->flags & TEXT_CRNL)
 			view_insert(view, "\r\n", cursor, 2);
-		else if (ch <= 0x100 && !literal_unicode) {
+		else if (ch <= 0x100 &&
+			 (!literal_unicode ||
+			  view->text->flags & TEXT_NO_UTF8)) {
 			buf[0] = ch;
 			view_insert(view, buf, cursor, 1);
 		} else

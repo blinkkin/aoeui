@@ -56,7 +56,7 @@ unsigned utf8_length(const char *in, unsigned max)
 
 	if (max > n)
 		max = n;
-	else if (max < n)
+	if (max < n)
 		return 1;
 	for (n = 1; n < max; n++)
 		if ((p[n] & 0xc0) != 0x80)

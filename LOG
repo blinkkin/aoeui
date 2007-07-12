@@ -1,4 +1,4 @@
-07-?? 1.1.0 release
+07-12 1.1.0 release
 07-11 pmk: fix partial escape sequence parsing, support $ROWS/$COLUMNS
 07-10 pmk: erase display after display size change
 07-06 pmk: disable UTF-8 and accept DOS CR-NL line ends automatically

@@ -61,6 +61,9 @@ are for.
 A
 .I text
 is a sequence of characters to be viewed or edited, such as a file.
+If not ASCII, the editor will automatically determine if it is
+encoded in UTF-8 or in an eight-bit encoding like ISO-8859.
+The editor can also automatically detect DOS-style line endings.
 A
 .I view
 comprises all or part of a text.
@@ -680,6 +683,13 @@ and
 may be set to override
 .BR AOEUI 's
 automatic mechanisms for determining the size of the display surface.
+.TP
+.BR TERM ,
+when set to
+.B xterm
+will cause
+.B AOEUI
+to try to set the title of the window to the name of the active view.
 .SH FILES
 .TP
 .IB file ~
