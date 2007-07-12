@@ -81,7 +81,7 @@ Non-control characters -- commands must be [variants]
   unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
 
 Missing features:
-	disable UTF-8 on a text
+	multiple column characters (using wcwidth)
 	^Space> and < could be indent/outdent on selection
 		but it would be better to use sed!
 	preserving window layouts

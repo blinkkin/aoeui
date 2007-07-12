@@ -61,8 +61,8 @@ are for.
 A
 .I text
 is a sequence of characters to be viewed or edited, such as a file.
-If not ASCII, the editor will automatically determine if it is
-encoded in UTF-8 or in an eight-bit encoding like ISO-8859.
+If not ASCII, the editor will automatically determine whether it is
+encoded in legal UTF-8 and do the right thing.
 The editor can also automatically detect DOS-style line endings.
 A
 .I view
