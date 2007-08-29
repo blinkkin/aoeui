@@ -13,6 +13,7 @@ CFLAGS += -Wall -Wno-parentheses \
 # -Werror
 LIBS = -lutil
 # BSD users may need -lcompat as well
+CTAGS = exuberant-ctags
 
 default: aoeui
 aoeui: $(RELS)
@@ -39,7 +40,7 @@ profile: clean
 	$(MAKE) CFLAGS="-pg" LIBS="$(LIBS) -pg"
 
 TAGS: $(SRCS) $(HDRS)
-	ctags -x $(SRCS) $(HDRS) >$@
+	$(CTAGS) -x $(SRCS) $(HDRS) >$@
 
 install: aoeui aoeui.1.gz asdfg.1.gz
 	install -d $(INST_DIR)/bin

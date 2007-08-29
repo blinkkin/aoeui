@@ -65,10 +65,20 @@ void find_tag(struct view *view)
 	if (first >= last)
 		goto done;
 
-	allocate(id, 0);
 	wordstart = find_nonspace(tags, wordend); /* line number */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
+	if (!isdigit(*this)) {
+		/* exuberant-ctags puts a classifier before the line number */
+		allocate(this, 0);
+		wordstart = find_nonspace(tags, wordend); /* line number */
+		wordend = find_space(tags, wordstart);
+		this = view_extract(tags, wordstart, wordend - wordstart);
+		if (!isdigit(*this)) {
+			allocate(this, 0);
+			goto done;
+		}
+	}
 	line = atoi(this);
 	allocate(this, 0);
 	wordstart = find_nonspace(tags, wordend); /* file name */
@@ -76,9 +86,14 @@ void find_tag(struct view *view)
 	this = view_extract(tags, wordstart, wordend - wordstart);
 	new_view = view_open(this);
 	allocate(this, 0);
+	if (new_view->text->flags & TEXT_CREATED) {
+		view_close(new_view);
+		goto done;
+	}
 	locus_set(new_view, CURSOR, find_line_number(new_view, line));
 	locus_set(new_view, MARK, UNSET);
 	window_below(view, new_view, 4);
+	allocate(id, 0);
 	return;
 
 done:	errno = 0;
