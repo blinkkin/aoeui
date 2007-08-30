@@ -62,5 +62,6 @@ release: spotless
 	mkdir .tar
 	find . | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
 	mv .tar $(PACKAGE)
+	ls -CF $(PACKAGE)
 	tar czf $(PACKAGE).tgz $(PACKAGE)
 	rm -rf $(PACKAGE)

@@ -3,7 +3,7 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "June 27, 2007"
+.TH AOEUI 1 "July 12, 2007"
 .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
@@ -12,6 +12,11 @@ AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboa
 [
 .B -t
 .I "tab stop"
+]
+[
+.B -u
+|
+.B -U
 ]
 .RI [ file... ]
 .SH DESCRIPTION
@@ -27,6 +32,16 @@ displays a short command introduction and summary.
 can browse very large read-only files with quick start-up,
 since original texts are memory-mapped from files and not
 duplicated in memory until they are about to be modified.
+.SH OPTIONS
+.TP
+.BI -t "tab stop"
+Set the tab stop to some value other than the only reasonable default, 8.
+.TP
+.B -u
+Treat files as UTF-8 even if they contain invalid UTF-8 encodings.
+.TP
+.B -U
+Don't treat files as UTF-8 even if they look like it.
 .SH "INTENTIONALLY MISSING FEATURES"
 .B AOEUI
 has no embedded extension language, since it is trivial to
@@ -614,6 +629,7 @@ to compile your code
 .TP
 .B "aspell -l | sort | uniq | column"
 to get a list of words that may be misspelled
+.P
 .B ^Space^cmd(E,R)
 with no selection will terminate the output of any asynchronous
 child process that's still running.

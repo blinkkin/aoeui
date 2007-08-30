@@ -40,7 +40,7 @@ int main(int argc, char *const *argv)
 
 	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
 
-	while ((ch = getopt(argc, argv, "dqt:")) >= 0)
+	while ((ch = getopt(argc, argv, "dqt:uU")) >= 0)
 		switch (ch) {
 		case 'd':
 			is_asdfg = 0;
@@ -54,6 +54,12 @@ int main(int argc, char *const *argv)
 				default_tab_stop = value;
 			else
 				message("bad tab stop setting: %s", optarg);
+			break;
+		case 'u':
+			utf8_mode = 1;
+			break;
+		case 'U':
+			utf8_mode = 0;
 			break;
 		default:
 			die("unknown flag -%c", ch);

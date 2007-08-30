@@ -3,6 +3,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+int utf8_mode = 2; /* auto */
+
 static int old_fashioned_read(struct text *text)
 {
 	char *raw;
@@ -104,20 +106,24 @@ static void scan(struct view *view)
 	unsigned at, chlen, ch, check, lastch = 0, crnl = 0, nl = 0;
 	unsigned chop = bytes < view->bytes ? 8 : 0;
 
-	for (at = 0; at + chop < bytes; at += chlen, lastch = ch) {
-		chlen = utf8_length(raw + at, bytes - at);
-		ch = utf8_unicode(raw + at, chlen);
-		check = utf8_out(scratch, ch);
-		if (chlen != check) {
-			view->text->flags |= TEXT_NO_UTF8;
-			break;
+	if (!utf8_mode)
+		view->text->flags |= TEXT_NO_UTF8;
+	else if (utf8_mode == 2 /*auto*/)
+		for (at = 0; at + chop < bytes; at += chlen) {
+			chlen = utf8_length(raw + at, bytes - at);
+			ch = utf8_unicode(raw + at, chlen);
+			check = utf8_out(scratch, ch);
+			if (chlen != check) {
+				view->text->flags |= TEXT_NO_UTF8;
+				break;
+			}
 		}
-		if (ch == '\n') {
+
+	for (at = 0; at + chop < bytes; lastch = ch)
+		if ((ch = view_unicode(view, at, &at)) == '\n') {
 			nl++;
 			crnl += lastch == '\r';
 		}
-	}
-
 	if (nl && crnl == nl)
 		view->text->flags |= TEXT_CRNL;
 }

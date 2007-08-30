@@ -40,6 +40,7 @@ struct text {
 
 extern struct text *text_list;
 extern int default_tab_stop;
+extern int utf8_mode;
 
 /* text.c */
 struct view *view_find(const char *name);
