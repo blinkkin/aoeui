@@ -22,6 +22,28 @@ unsigned find_line_end(struct view *view, unsigned offset)
 	return offset;
 }
 
+unsigned find_paragraph_start(struct view *view, unsigned offset)
+{
+	int ch, nch = -1, nnch = -1;
+	unsigned prev;
+	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
+		if (ch == '\n' && nch == '\n' && nnch >= 0)
+			return offset + 1;
+		offset = prev, nnch = nch, nch = ch;
+	}
+	return offset;
+}
+
+unsigned find_paragraph_end(struct view *view, unsigned offset)
+{
+	int ch, pch = -1, ppch = -1;
+	unsigned next;
+	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	       (ch == '\n' || pch != '\n' || ppch != '\n'))
+		offset = next, ppch = pch, pch = ch;
+	return offset;
+}
+
 unsigned find_space(struct view *view, unsigned offset)
 {
 	int ch;

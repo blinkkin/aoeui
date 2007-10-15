@@ -197,6 +197,14 @@ If already there, it moves back to the beginning of the previous line.
 moves the cursor forward to the end of the line.
 If already there, it moves forward to the end of the next line.
 .TP
+.B ^Space^cmd(G,T)
+moves the cursor back to the beginning of the paragraph.
+If already there, it moves back to the beginning of the previous paragraph.
+.TP
+.B ^Space^cmd(S,L)
+moves the cursor forward to the end of the paragraph.
+If already there, it moves forward to the end of the next paragraph.
+.TP
 .B ^cmd(R,O)
 moves the window backward by screenfulls.
 .TP
@@ -241,7 +249,7 @@ numeric argument.
 .TP
 .B ^Space'
 (note that the single quote
-.B .
+.B '
 is not a control character)
 looks an identifier up the identifier in the
 .B TAGS

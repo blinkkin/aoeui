@@ -36,8 +36,8 @@ Command characters
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection
   ^F	/ copy [pre/append]
-  ^G	backward to line start(s)
-  ^C	forward to line end(s)
+  ^G	backward to line start [paragraph start; multiple lines]
+  ^C	forward to line end [paragraph end; multiple lines]
   ^R	backward screen(s) [beginning of view]
   ^L	forward screen(s) [end of view]
   ^/	(^_) incremental search mode [regexp]

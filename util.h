@@ -5,6 +5,8 @@ struct view;
 /* find.c */
 unsigned find_line_start(struct view *, unsigned offset);
 unsigned find_line_end(struct view *, unsigned offset);
+unsigned find_paragraph_start(struct view *, unsigned offset);
+unsigned find_paragraph_end(struct view *, unsigned offset);
 unsigned find_space(struct view *, unsigned offset);
 unsigned find_nonspace(struct view *, unsigned offset);
 unsigned find_word_start(struct view *, unsigned offset);

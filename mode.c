@@ -42,8 +42,11 @@ static void forward_lines(struct view *view)
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
 	unsigned cursor = locus_get(view, CURSOR);
-	while (count-- && cursor < view->bytes)
-		cursor = find_line_end(view, cursor+1);
+	if (!count)
+		cursor = find_paragraph_end(view, cursor);
+	else
+		while (count-- && cursor < view->bytes)
+			cursor = find_line_end(view, cursor+1);
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -52,8 +55,11 @@ static void backward_lines(struct view *view)
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
 	unsigned cursor = locus_get(view, CURSOR);
-	while (count-- && cursor)
-		cursor = find_line_start(view, cursor-1);
+	if (!count)
+		cursor = find_paragraph_start(view, cursor);
+	else
+		while (count-- && cursor)
+			cursor = find_line_start(view, cursor-1);
 	locus_set(view, CURSOR, cursor);
 }
 
