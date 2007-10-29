@@ -1,3 +1,4 @@
+10-29 pmk: fix ^ and $ in regex searches by adding REG_NEWLINE to regcomp
 08-29 pmk: support output from exuberant-ctags
 08-13 pmk: add -u and -U options to force and disable automatic UTF-8 detection
 07-12 pmk: fix non-UTF-8 detection when UTF-8 sequence spans first page boundary

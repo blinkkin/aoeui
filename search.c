@@ -136,7 +136,7 @@ static int search(struct view *view, int backward, int new)
 		if (!mode->regex_ready) {
 			mode->pattern[mode->bytes] = '\0';
 			err = regcomp(mode->regex, (char *) mode->pattern,
-				      REG_EXTENDED | REG_ICASE);
+				      REG_EXTENDED | REG_ICASE | REG_NEWLINE);
 			if (err)
 				return 0;
 			mode->regex_ready = 1;
@@ -202,6 +202,7 @@ static void command_handler(struct view *view, unsigned ch)
 		}
 		mode->bytes += new = utf8_out((char *) mode->pattern +
 					      mode->bytes, ch);
+		mode->pattern[mode->bytes] = '\0';
 		if (!search(view, mode->backward, new) &&
 		    !mode->regex)
 			mode->bytes -= new;
@@ -263,7 +264,7 @@ void mode_search(struct view *view, int regex)
 	mode->previous = view->mode;
 	mode->command = command_handler;
 	mode->start = locus_get(view, CURSOR);
-	mode->mark = locus_get(view, MARK);;
+	mode->mark = locus_get(view, MARK);
 	if (regex)
 		mode->regex = allocate0(sizeof *mode->regex);
 	view->mode = (struct mode *) mode;
