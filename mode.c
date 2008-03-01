@@ -275,8 +275,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			break; /* unset variant */
 		mode->variant = 1;
 		return;
-	case 'A': /* reserved for screen(1) */
-		window_beep(view);
+	case 'A': /* synonym */
+	case '_': /* ^/, ^_: search */
+		mode_search(view, mode->variant);
 		break;
 	case 'B': /* exchange clip buffer and selection, if any, else paste */
 		if (mark != UNSET) {
@@ -329,10 +330,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'I': /* (TAB) tab / tab completion [align; set tab stop] */
 		if (!mode->variant) {
-			if (!tab_completion_command(view)) {
-				ch = '\t';
-				goto self_insert;
-			}
+			if (!tab_completion_command(view))
+				insert_tab(view);
 		} else if (mode->value)
 			if (mode->value >= 1 && mode->value <= 20)
 				view->text->tabstop =
@@ -524,9 +523,6 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			goto self_insert;
 		}
 		ok = 0;
-		break;
-	case '_': /* ^/: search */
-		mode_search(view, mode->variant);
 		break;
 	default:
 		ok = 0;

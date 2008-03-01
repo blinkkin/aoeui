@@ -122,6 +122,8 @@ static void resize(struct buffer *buffer, unsigned bytes)
 	} else {
 #ifdef MAP_ANONYMOUS
 		mapflags |= MAP_ANONYMOUS;
+#elif defined MAP_ANON
+		mapflags |= MAP_ANON;
 #else
 		static int anonymous_fd = -1;
 		if (anonymous_fd < 0) {

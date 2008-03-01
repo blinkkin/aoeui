@@ -44,7 +44,7 @@ Command characters
 * ^?	(BCK) delete character before cursor
 * ^+	-- larger font
   ^\	[quit without saving]
-* ^A	-- reserved for screen(1) or user definition
+* ^A	synonym for ^/(^_)
   ^O	macro end, local macro execute [local macro start]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]

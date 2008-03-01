@@ -240,10 +240,12 @@ struct view *text_new(void)
 		sprintf(dir, "/tmp/aoeui-%s", me);
 		fd = try_dir(path, dir, gmt);
 	}
+#ifndef __APPLE__
 	if (fd < 0 && (me = cuserid(NULL))) {
 		sprintf(dir, "/tmp/aoeui-%s", me);
 		fd = try_dir(path, dir, gmt);
 	}
+#endif
 	if (fd < 0)
 		fd = try_dir(path, "/tmp/aoeui", gmt);
 	if (fd < 0)

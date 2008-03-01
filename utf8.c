@@ -35,15 +35,20 @@ unsigned char utf8_bytes[0x100] = {
 /*a0*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 /*b0*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	/* c0-df are first byte of two-byte sequences (5+6=11 bits) */
+	/* c0-c1 are noncanonical */
 /*c0*/	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
 /*d0*/	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
 	/* e0-ef are first byte of three-byte (4+6+6=16 bits) */
+	/* e0 80-9f are noncanonical */
 /*e0*/	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	/* f0-f7 are first byte of four-byte (3+6+6+6=21 bits) */
+	/* f0 80-8f are noncanonical */
 /*f0*/	4, 4, 4, 4, 4, 4, 4, 4,
 	/* f8-fb are first byte of five-byte (2+6+6+6+6+6=26 bits) */
+	/* f8 80-87 are noncanonical */
 /*f8*/	5, 5, 5, 5,
 	/* fc-fd are first byte of six-byte (1+6+6+6+6+6+6=31 bits) */
+	/* fc 80-83 are noncanonical */
 /*fc*/	6, 6,
 	/* fe and ff are not part of valid UTF-8 so they stand alone */
 /*fe*/	1, 1

@@ -2,7 +2,7 @@
 
 /*
  *	Handle the ^E command, which runs the shell command pipeline
- *	in the selection using the current  buffer content as
+ *	in the selection using the current buffer content as
  *	the standard input, replacing the selection with the
  *	standard output of the child process.
  *
@@ -73,6 +73,10 @@ static int out_activity(struct stream *stream, char *x, int bytes)
 			      chunk);
 	} while (bytes < 0 && (errno == EAGAIN || errno == EINTR));
 
+	if (bytes < 0 && errno == EPIPE) {
+		message("write failed (child terminated?)");
+		return 0;
+	}
 	if (bytes <= 0)
 		die("write of %d bytes failed", chunk);
 	stream->writ += bytes;
@@ -218,6 +222,8 @@ int child(int *stdfd, unsigned stdfds, const char *argv[])
 	int pipefd[3][2];
 	int j, k, pid;
 
+	if (stdfds > 3)
+		stdfds = 3;
 	errno = 0;
 	for (j = 0; j < stdfds; j++)
 		if (pipe(pipefd[j])) {
@@ -235,7 +241,14 @@ int child(int *stdfd, unsigned stdfds, const char *argv[])
 	}
 	if (!pid) {
 		for (j = 0; j < 3; j++) {
-			dup2(pipefd[j][!!j], j);
+			errno = 0;
+			if (dup2(pipefd[j][!!j], j) != j) {
+				fprintf(stderr, "dup2(%d,%d) "
+					"failed: %s\n",
+					pipefd[j][!!j], j,
+					strerror(errno));
+				exit(EXIT_FAILURE);
+			}
 			for (k = 0; k < 2; k++)
 				close(pipefd[j][k]);
 		}
@@ -253,7 +266,7 @@ int child(int *stdfd, unsigned stdfds, const char *argv[])
 		stdfd[j] = pipefd[j][!j];
 		close(pipefd[j][!!j]);
 	}
-	return 1;
+	return stdfds;
 }
 
 void mode_child(struct view *view)
@@ -325,11 +338,15 @@ void mode_shell_pipe(struct view *view)
 	const char *argv[4];
 	struct stream *output;
 	const char *shell = getenv("SHELL");
+	int ai = 0;
 
-	argv[0] = shell ? shell : "/bin/sh";
-	argv[1] = "--noediting";
-	argv[2] = "-il";
-	argv[3] = NULL;
+	argv[ai++] = shell ? shell : "/bin/sh";
+	argv[ai++] = "--noediting";
+	argv[ai++] = "-l";
+#ifndef __APPLE__
+	argv[ai++] = "-i";
+#endif
+	argv[ai++] = NULL;
 	if (!child(stdfd, 2, argv))
 		return;
 	child_close(view);

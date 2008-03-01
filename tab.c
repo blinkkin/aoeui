@@ -146,6 +146,35 @@ int tab_completion_command(struct view *view)
 	return !!completed;
 }
 
+void insert_tab(struct view *view)
+{
+	unsigned cursor = locus_get(view, CURSOR);
+	unsigned mark = locus_get(view, MARK);
+
+	if (mark != UNSET && mark > cursor) {
+		view_delete(view, cursor, mark - cursor);
+		mark = UNSET;
+	}
+	if (no_tabs) {
+		int tabstop = view->text->tabstop;
+		int offset = 0;
+		unsigned at = find_line_start(view, cursor);
+		if (at)
+			while (at != cursor) {
+				int ch = view_char(view, at, &at);
+				if (ch == '\t')
+					offset = (offset / tabstop + 1) * tabstop;
+				else
+					offset++;
+			}
+		for (offset %= tabstop; offset++ < tabstop; )
+			view_insert(view, " ", cursor, 1);
+	} else
+		view_insert(view, "\t", cursor, 1);
+	if (mark == cursor)
+		locus_set(view, MARK, /*old*/ cursor);
+}
+
 void align(struct view *view)
 {
 	unsigned cursor = locus_get(view, CURSOR);
@@ -163,7 +192,7 @@ void align(struct view *view)
 	for (nonspace0 = lnstart0;
 	     (ch = view_char(view, nonspace0, &next)) >= 0;
 	     nonspace0 = next)
-		if (ch == '\n' || (ch != ' ' && ch != '\t'))
+		if (ch == '\n' || ch != ' ' && ch != '\t')
 			break;
 	lnstart = find_line_start(view, lnstart0-1);
 	while (lnstart && view_char(view, lnstart, NULL) == '\n')
@@ -206,8 +235,12 @@ void align(struct view *view)
 
 	indent_bytes = indent / tabstop + indent % tabstop;
 	indentation = allocate(NULL, indent_bytes);
-	memset(indentation, '\t', indent / tabstop);
-	memset(indentation + indent / tabstop, ' ', indent % tabstop);
+	if (no_tabs)
+		memset(indentation, ' ', indent);
+	else {
+		memset(indentation, '\t', indent / tabstop);
+		memset(indentation + indent / tabstop, ' ', indent % tabstop);
+	}
 
 	view_delete(view, lnstart0, nonspace0 - lnstart0);
 	view_insert(view, indentation, lnstart0, indent_bytes);

@@ -38,5 +38,5 @@ void message(const char *msg, ...)
 		view_printf(view, "(System error code: %s)\n", strerror(err));
 	view->text->flags |= TEXT_RDONLY;
 	locus_set(view, CURSOR, view->bytes);
-	window_raise(view);
+	window_below(NULL, view, 2 + !!err);
 }

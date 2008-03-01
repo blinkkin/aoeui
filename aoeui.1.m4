@@ -3,12 +3,15 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "July 12, 2007"
+.TH AOEUI 1 "February 29, 2008"
 .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
 .SH SYNOPSIS
 .B AOEUI
+[
+.B -s
+]
 [
 .B -t
 .I "tab stop"
@@ -72,6 +75,18 @@ There is no X window system interface; that's what
 and
 .BI gnome-terminal (1)
 are for.
+.SH COMMAND
+The
+.B -s
+flag forces
+.B AOEUI
+to insert only spaces, and no tabs, when automatically indenting lines.
+.P
+The
+.B -t
+.I "tab stop"
+flag sets the default tab stop (usually 8).
+This can be overridden on a per-text basis with a command.
 .SH BASICS
 A
 .I text
@@ -425,8 +440,10 @@ search.
 .SH SEARCHING
 .TP
 .B ^/
-and its synonym
+and its synonyms
 .B ^_
+and
+.B ^A
 enter search mode.
 The variant command
 .B ^Space^/
@@ -455,6 +472,11 @@ the latest hit, with the mark returned to where it was before the search
 (if anywhere).
 .TP
 .B ^/
+(or
+.B ^_
+or
+.B ^A
+)
 with no characters in the search target string will cause the
 last search's target string to be reused.
 .TP
@@ -466,7 +488,10 @@ target string, not single-character motion.
 .TP
 .B Enter
 (and
-.BR ^/ )
+.BR ^/ ,
+.BR ^_ ,
+and
+.BR ^A )
 simply leaves search mode with the last hit as the selection.
 .SH TEXTS, VIEWS, and WINDOWS
 .TP

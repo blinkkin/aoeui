@@ -28,8 +28,10 @@
 #define CTL_RESETCOLORS	CSI "39;49m"
 #define CTL_GOTO	CSI "%d;%df"
 #define CTL_ERASEALL	CSI "2J"
+#if 0 /* broken on Apple Terminal, dammit */
 #define CTL_ERASETOEND	CSI "J"
 #define CTL_ERASELINE	CSI "K"
+#endif
 #define CTL_ERASECOLS	CSI "%dX"
 #define CTL_DELCOLS	CSI "%uP"
 #define CTL_DELLINES	CSI "%uM"
@@ -321,20 +323,26 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 
 doit:	foreground_color(display, fgrgba);
 	background_color(display, bgrgba);
-	if (column + columns == display->columns)
-		if (!column && rows == display->rows - row) {
-			moveto(display, row, column);
-			outs(display, CTL_ERASETOEND);
-		} else
-			for (r = 0; r < rows; r++) {
-				moveto(display, row + r, column);
-				outs(display, CTL_ERASELINE);
-			}
-	else
+
+#ifdef CTL_ERASETOEND
+	if (!column && columns == display->columns && row + rows == display->rows) {
+		moveto(display, row, column);
+		outs(display, CTL_ERASETOEND);
+	} else
+#endif
+#ifdef CTL_ERASELINE
+	if (column + columns == display->columns) {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
-			outf(display, CTL_ERASECOLS, columns);
+			outs(display, CTL_ERASELINE);
 		}
+	} else
+#endif
+	for (r = 0; r < rows; r++) {
+		moveto(display, row + r, column);
+		outf(display, CTL_ERASECOLS, columns);
+	}
+
 	for (; rows--; row++)
 		fill(display, row, column, columns, ' ', fgrgba, bgrgba);
 }
@@ -657,7 +665,7 @@ static void sigwinch(int signo, siginfo_t *info, void *data)
 		old_sigwinch(signo, info, data);
 }
 
-#ifndef __linux__
+#if !(defined __linux__ || defined __APPLE__)
 void cfmakeraw(struct termios *termios)
 {
 	termios->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|IXON);

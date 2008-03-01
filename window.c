@@ -72,9 +72,9 @@ static int beside(struct window *left, struct window *right)
 
 static int adjacent(struct window *x, struct window *y)
 {
-	if (y->column > x->column + x->columns ||
+	if (x->column + x->columns < y->column ||
 	    y->column + y->columns < x->column ||
-	    y->row > x->row + x->rows ||
+	    x->row + x->rows < y->row ||
 	    y->row + y->rows < x->row)
 		return 0;
 	if (y->column != x->column + x->columns &&
@@ -144,7 +144,7 @@ struct window *window_raise(struct view *view)
 		display = display_init();
 	display_get_geometry(display, &display_rows, &display_columns);
 	display_erase(display, 0, 0, display_rows, display_columns,
-		      0x1, 0x1);
+		      0xff, 0xff /*default color*/);
 	while (window_list && window_list->view != view)
 		window_destroy(window_list);
 	while (window_list && window_list->next)
@@ -198,6 +198,8 @@ struct window *window_below(struct view *above, struct view *view,
 	struct window *window, *old;
 	if (view->window)
 		return view->window;
+	if (!above && active_window)
+		above = active_window->view;
 	if (!above || !(old = above->window) || old->rows < rows*2)
 		return window_raise(view);
 	window = window_create(view, above);
@@ -345,6 +347,8 @@ static int lame_space(struct view *view, unsigned offset, unsigned look)
 static int lame_tab(struct view *view, unsigned offset)
 {
 	int ch;
+	if (no_tabs)
+		return 1;
 	for (; (ch = view_char(view, offset, &offset)) >= 0 && ch != '\n';)
 		if (ch != ' ' && ch != '\t')
 			return 0;
@@ -362,15 +366,19 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 	if (ch == '\n')
 		return column;
 
-	if (at >= cursor && at < mark ||
-	    at >= mark && at < cursor) {
+	if (mark != UNSET &&
+	    (at >= cursor && at < mark ||
+	     at >= mark && at < cursor)) {
 		bgrgba = 0x00ffff00;
 		fgrgba = 0xff000000;
-	} else if (at == cursor)
+	} else if (at == cursor) {
 		if (window->view->text->flags & TEXT_RDONLY)
 			fgrgba = 0xff000000;
 		else if (text_is_dirty(window->view->text))
 			fgrgba = 0x00ff0000;
+		if (at == mark)
+			bgrgba = 0xff00ff00;
+	}
 
 	if (ch == '\t') {
 		rgba_t bg = lame_tab(window->view, at+1) ? 0xff00ff00 : bgrgba;
@@ -443,16 +451,17 @@ static void paint(struct window *window)
 	unsigned mark = locus_get(view, MARK);
 	unsigned brackets = 1;
 
-	if (mark == UNSET)
-		mark = cursor;
 	repainted(window, cursor, mark);
+
 	at = focus(window);
 	for (row = 0; row < window->rows; row++) {
+
 		unsigned limit = at + find_row_bytes(view, at, 0, window->columns);
 		for (column = 0; at < limit; at = next)
 			column = paintch(window, view_char(view, at, &next),
 					 row, column, at, cursor, mark,
 					 &brackets);
+
 		display_erase(display, window->row + row,
 			      window->column + column, 1,
 			      window->columns - column,
@@ -629,13 +638,15 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-		{ 0xff, ~0 },
-		{ 0xff00, 0xffff0000 },
-		{ 0x0, 0x7f7f7f00 },
-		{ 0xff00, 0x7f7f0000 },
-		{ 0x0, 0xffffff00 },
+		{ 0x000000ff, ~0 },
+		{ 0x0000ff00, 0xffff0000 },
+		{ 0x00000000, 0x7f7f7f00 },
+		{ 0x0000ff00, 0x7f7f0000 },
+		{ 0x00000000, 0xffffff00 },
 		{ 0xff00ff00, 0x007f0000 },
 		{ 0xff00ff00, 0x00ff0000 },
+		{ 0xffff0000, 0x00007f00 },
+		{ 0xffff0000, 0x0000ff00 },
 		{ }
 	};
 
@@ -646,7 +657,7 @@ static void window_colors(void)
 	for (window = window_list; window; window = window->next) {
 		if (window->bgrgba)
 			continue;
-		for (j = 0; colors[j][0]; j++) {
+		for (j = 0; colors[j][1]; j++) {
 			for (w = window_list; w; w = w->next)
 				if (w != window &&
 				    w->bgrgba == colors[j][1] &&

@@ -65,6 +65,7 @@ void find_tag(struct view *view)
 	if (first >= last)
 		goto done;
 
+	allocate(id, 0);
 	wordstart = find_nonspace(tags, wordend); /* line number */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
@@ -93,7 +94,6 @@ void find_tag(struct view *view)
 	locus_set(new_view, CURSOR, find_line_number(new_view, line));
 	locus_set(new_view, MARK, UNSET);
 	window_below(view, new_view, 4);
-	allocate(id, 0);
 	return;
 
 done:	errno = 0;

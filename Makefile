@@ -11,7 +11,8 @@ CFLAGS += -Wall -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
 # -Werror
-LIBS = -lutil
+# Some systems need:
+# LIBS = -lutil
 # BSD users may need -lcompat as well
 CTAGS = exuberant-ctags
 

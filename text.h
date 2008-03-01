@@ -40,6 +40,7 @@ struct text {
 
 extern struct text *text_list;
 extern int default_tab_stop;
+extern int no_tabs;
 extern int utf8_mode;
 
 /* text.c */
@@ -99,6 +100,7 @@ void demultiplex_view(struct view *);		/* child.c */
 struct view *view_help(void);			/* help.c */
 char *tab_complete(const char *, int path);	/* tab.c */
 int tab_completion_command(struct view *);
+void insert_tab(struct view *);
 void align(struct view *);
 
 /* fold.c */

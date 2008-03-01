@@ -12,6 +12,7 @@
 
 struct text *text_list;
 int default_tab_stop = 8; /* dammit */
+int no_tabs;
 
 struct view *view_find(const char *name)
 {

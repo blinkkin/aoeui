@@ -22,10 +22,23 @@ static void signals(void)
 			     SIGPWR,
 #endif
 			     0 };
+	static int sigig[] = {
+#ifdef SIGTTIN
+				SIGTTIN,
+#endif
+#ifdef SIGTTOUT
+				SIGTTOUT,
+#endif
+#ifdef SIGPIPE
+				SIGPIPE,
+#endif
+				0 };
 	int j;
 
 	for (j = 0; sig[j]; j++)
 		signal(sig[j], sighandler);
+	for (j = 0; sigig[j]; j++)
+		signal(sigig[j], SIG_IGN);
 }
 
 int main(int argc, char *const *argv)
@@ -40,13 +53,16 @@ int main(int argc, char *const *argv)
 
 	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
 
-	while ((ch = getopt(argc, argv, "dqt:uU")) >= 0)
+	while ((ch = getopt(argc, argv, "dqst:uU")) >= 0)
 		switch (ch) {
 		case 'd':
 			is_asdfg = 0;
 			break;
 		case 'q':
 			is_asdfg = 1;
+			break;
+		case 's':
+			no_tabs = 1;
 			break;
 		case 't':
 			value = atoi(optarg);
