@@ -3,7 +3,8 @@
 
 struct macro *macro_record(void);
 int macro_end_recording(unsigned chop);
-int macro_play(struct macro *);
+int macro_play(struct macro *, int repeat);
+void macros_abort(void);
 void macro_free(struct macro *);
 int macro_getch(void);
 

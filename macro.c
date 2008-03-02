@@ -1,7 +1,7 @@
 #include "all.h"
 
 struct macro {
-	int start, bytes, at;
+	int start, bytes, at, repeat;
 	struct macro *next, *suspended;
 };
 
@@ -49,7 +49,7 @@ static int macro_is_playing(struct macro *macro)
 	return macro && macro->at < macro->bytes;
 }
 
-int macro_play(struct macro *macro)
+int macro_play(struct macro *macro, int repeat)
 {
 	if (!macro ||
 	    macro_is_playing(macro) ||
@@ -57,8 +57,15 @@ int macro_play(struct macro *macro)
 		return 0;
 	macro->suspended = playing;
 	macro->at = 0;
+	macro->repeat = repeat;
 	playing = macro;
 	return 1;
+}
+
+void macros_abort(void)
+{
+	for (; playing; playing = playing->suspended)
+		playing->at = playing->bytes;
 }
 
 void macro_free(struct macro *macro)
@@ -69,8 +76,7 @@ void macro_free(struct macro *macro)
 	if (recording)
 		recording = NULL;
 	else if (macro_is_playing(macro))
-		for (; playing; playing = playing->suspended)
-			playing->at = playing->bytes;
+		macros_abort();
 	for (mac = macros; mac != macro; previous = mac, mac = next) {
 		next = mac->next;
 		if (mac == macro)
@@ -95,7 +101,10 @@ int macro_getch(void)
 					playing->bytes - playing->at);
 		ch = utf8_unicode(p, n = utf8_length(p, n));
 		if ((playing->at += n) == playing->bytes)
-			playing = playing->suspended;
+			if (playing->repeat-- > 0)
+				playing->at = 0;
+			else
+				playing = playing->suspended;
 	} else {
 		ch = window_getch();
 		if (ch >= 0 && recording) {

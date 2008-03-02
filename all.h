@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <time.h>
+#include <sys/time.h>
 
 #ifndef INLINE
 # ifdef __GNUC__

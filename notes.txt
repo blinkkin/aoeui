@@ -27,7 +27,7 @@ macro are local to their view.
 
 Command characters
 *  ESC	function keys and query responses, ALT
-*  Fk	global macro execute [start]
+*  Fk	global macro execute [start; repeat]
   ^@	(^Space)
   ^^	literal, control [; unicode]
 * ^[	(ESC or "smaller font")
@@ -45,7 +45,7 @@ Command characters
 * ^+	-- larger font
   ^\	[quit without saving]
 * ^A	synonym for ^/(^_)
-  ^O	macro end, local macro execute [local macro start]
+  ^O	macro end, local macro execute [local macro start; repeat]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
 * ^I	(TAB)

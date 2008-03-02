@@ -1,6 +1,8 @@
+pmk TO DO: don't do regex searches incrementally; put regex in selection
 02-29 pmk: -s (no_tabs)
 01-21 pmk: Mac OS X port
 2008
+12-26 pmk: support a repeat count on macros, abort macros on failed search
 10-29 pmk: fix ^ and $ in regex searches by adding REG_NEWLINE to regcomp
 08-29 pmk: support output from exuberant-ctags
 08-13 pmk: add -u and -U options to force and disable automatic UTF-8 detection

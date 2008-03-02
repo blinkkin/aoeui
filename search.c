@@ -158,6 +158,7 @@ static int search(struct view *view, int backward, int new)
 	}
 	if (at < 0) {
 		window_beep(view);
+		macros_abort();
 		return 0;
 	}
 

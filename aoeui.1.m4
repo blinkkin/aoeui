@@ -571,7 +571,9 @@ probably will not be usable.
 ends the recording of a macro, if one is in progress.
 Afterwards,
 .B ^cmd(O,B)
-replays the view's local macro.
+replays the view's local macro, possibly with a repeat count
+as the argument.
+Note that a failed search in a macro will terminate its execution.
 .SH FOLDING
 .B AOEUI
 supports the "folding" of portions of text into what appear to be
@@ -660,7 +662,7 @@ to monitor additions to a file such as a log
 .BR make (1)
 to compile your code
 .TP
-.B "aspell -l | sort | uniq | column"
+.B "aspell list | sort | uniq | column"
 to get a list of words that may be misspelled
 .P
 .B ^Space^cmd(E,R)

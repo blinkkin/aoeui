@@ -88,13 +88,13 @@ static int funckey(struct view *view, int Fk)
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	if (Fk > FUNCTION_KEYS)
 		return 0;
-	if (mode->variant) {
+	if (mode->variant && !mode->value) {
 		macro_end_recording(CONTROL('@'));
 		macro_free(function_key[Fk]);
 		function_key[Fk] = macro_record();
 		return 1;
 	}
-	return macro_play(function_key[Fk]);
+	return macro_play(function_key[Fk], mode->value);
 }
 
 static void command_handler(struct view *view, unsigned ch0)
@@ -382,12 +382,13 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'O': /* macro end/execute [start] */
-		if (mode->variant) {
+		if (mode->variant && !mode->value) {
 			macro_end_recording(CONTROL('@'));
 			macro_free(view->local_macro);
 			view->local_macro = macro_record();
 		} else if (!macro_end_recording(ch0) &&
-			   !macro_play(view->local_macro))
+			   !macro_play(view->local_macro,
+				       mode->value))
 			window_beep(view);
 		break;
 	case 'P': /* select other window [closing current] */
