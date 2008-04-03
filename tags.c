@@ -4,10 +4,12 @@
 
 static char *extract_id(struct view *view)
 {
-	unsigned at = locus_get(view, CURSOR);
+	int ch;
+	unsigned at = locus_get(view, CURSOR), next;
 	char *id;
 
-	if (is_idch(view_char(view, at, NULL)))
+	if (is_idch((ch = view_char(view, at, &next))) ||
+	    ch == ':' && view_char(view, next, NULL) == ':')
 		locus_set(view, CURSOR, at = find_id_end(view, at));
 	locus_set(view, MARK, find_id_start(view, at));
 	id = view_extract_selection(view);

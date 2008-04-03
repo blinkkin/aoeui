@@ -38,41 +38,40 @@ static int match_pattern(struct view *view, unsigned offset)
 	return mode->bytes;
 }
 
-static int match_regex(struct view *view, unsigned *offset)
+static int match_regex(struct view *view, unsigned *offset, int advance)
 {
-	struct mode_search *mode = (struct mode_search *) view->mode;
-	unsigned bytes;
+	int j, err;
 	char *raw;
+	unsigned bytes = view_raw(view, &raw, *offset, ~0);
+	unsigned flags = 0;
+	regmatch_t match[10];
+	struct mode_search *mode = (struct mode_search *) view->mode;
 
-	for (bytes = view_raw(view, &raw, *offset, ~0);
-	     bytes;
-	     bytes--, ++*offset) {
-		unsigned flags = 0, len, j;
-		int err;
-		regmatch_t match[10];
-		if (view_char_prior(view, *offset, NULL) != '\n')
-			flags |= REG_NOTBOL;
-		err = regexec(mode->regex, raw, 10, match, flags);
-		if (err && err != REG_NOMATCH)
-			window_beep(view);
-		if (err)
-			break;
-		len = match[0].rm_eo - match[0].rm_so;
-		if (len > bytes)
-			len = bytes;
-		if (len) {
-			for (j = 1; j < 10; j++) {
-				if (match[j].rm_so < 0)
-					continue;
-				clip_init(j);
-				clip(j, view, *offset + match[j].rm_so,
-				     match[j].rm_eo - match[j].rm_so, 0);
-			}
-			*offset += match[0].rm_so;
-			return len;
-		}
+	if (view_char_prior(view, *offset, NULL) != '\n')
+		flags |= REG_NOTBOL;
+	err = regexec(mode->regex, raw, 10, match, flags);
+	if (err && err != REG_NOMATCH)
+		window_beep(view);
+	if (err)
+		return 0;
+	if (!advance && match[0].rm_so)
+		return 0;
+	if (match[0].rm_so >= bytes)
+		return 0;
+	if (match[0].rm_eo > bytes)
+		match[0].rm_eo = bytes;
+	for (j = 1; j < 10; j++) {
+		if (match[j].rm_so < 0 ||
+		    match[j].rm_so >= bytes)
+			continue;
+		if (match[j].rm_eo > bytes)
+			match[j].rm_eo = bytes;
+		clip_init(j);
+		clip(j, view, *offset + match[j].rm_so,
+		     match[j].rm_eo - match[j].rm_so, 0);
 	}
-	return 0;
+	*offset += match[0].rm_so;
+	return match[0].rm_eo - match[0].rm_so;
 }
 
 static int scan_forward(struct view *view, unsigned *length,
@@ -85,7 +84,7 @@ static int scan_forward(struct view *view, unsigned *length,
 	if (max_offset + mode->bytes > view->bytes)
 		max_offset = view->bytes - mode->bytes;
 	if (mode->regex) {
-		if ((*length = match_regex(view, &offset)) &&
+		if ((*length = match_regex(view, &offset, 1)) &&
 		    offset < max_offset)
 			return offset;
 	} else
@@ -106,7 +105,7 @@ static int scan_backward(struct view *view, unsigned *length,
 		offset = view->bytes - mode->bytes;
 	if (mode->regex) {
 		for (; offset+1 > min_offset; offset--)
-			if ((*length = match_regex(view, &offset)))
+			if ((*length = match_regex(view, &offset, 0)))
 				return offset;
 	} else
 		for (; offset+1 > min_offset; offset--)

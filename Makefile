@@ -14,7 +14,8 @@ CFLAGS += -Wall -Wno-parentheses \
 # Some systems need:
 # LIBS = -lutil
 # BSD users may need -lcompat as well
-CTAGS = exuberant-ctags
+# CTAGS = exuberant-ctags
+CTAGS = ctags
 
 default: aoeui
 aoeui: $(RELS)

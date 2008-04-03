@@ -333,7 +333,7 @@ done:	window->cursor_column = find_column(&above, view, cursorrow,
 
 static int lame_space(struct view *view, unsigned offset, unsigned look)
 {
-	int all_spaces_lame = look > 1;
+	int all_spaces_lame = look > 1 && !no_tabs;
 	while (look--) {
 		int ch = view_char(view, offset, &offset);
 		if (ch < 0 || ch == '\n' || ch == '\t')
@@ -374,10 +374,10 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 	} else if (at == cursor) {
 		if (window->view->text->flags & TEXT_RDONLY)
 			fgrgba = 0xff000000;
+		else if (at == mark)
+			fgrgba = 0xff00ff00;
 		else if (text_is_dirty(window->view->text))
 			fgrgba = 0x00ff0000;
-		if (at == mark)
-			bgrgba = 0xff00ff00;
 	}
 
 	if (ch == '\t') {
@@ -639,13 +639,13 @@ static void window_colors(void)
 
 	static rgba_t colors[][2] = {
 		{ 0x000000ff, ~0 },
-		{ 0x0000ff00, 0xffff0000 },
 		{ 0x00000000, 0x7f7f7f00 },
 		{ 0x0000ff00, 0x7f7f0000 },
-		{ 0x00000000, 0xffffff00 },
 		{ 0xff00ff00, 0x007f0000 },
-		{ 0xff00ff00, 0x00ff0000 },
 		{ 0xffff0000, 0x00007f00 },
+		{ 0x00000000, 0xffffff00 },
+		{ 0x0000ff00, 0xffff0000 },
+		{ 0xff00ff00, 0x00ff0000 },
 		{ 0xffff0000, 0x0000ff00 },
 		{ }
 	};

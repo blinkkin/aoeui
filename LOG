@@ -1,4 +1,6 @@
-pmk TO DO: don't do regex searches incrementally; put regex in selection
+04-03 1.1.1 release
+04-02 pmk: snap buffers on abort (^\)
+04-01 pmk: make DELETE key synonymous with BACKSPACE (for screen(1))
 02-29 pmk: -s (no_tabs)
 01-21 pmk: Mac OS X port
 2008

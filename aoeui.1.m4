@@ -3,7 +3,7 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "February 29, 2008"
+.TH AOEUI 1 "April 3, 2008"
 .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
@@ -37,8 +37,12 @@ since original texts are memory-mapped from files and not
 duplicated in memory until they are about to be modified.
 .SH OPTIONS
 .TP
-.BI -t "tab stop"
-Set the tab stop to some value other than the only reasonable default, 8.
+.B -s
+Use spaces, never tabs, for automatic indentation.
+.TP
+.BI -t " 8"
+Set the tab stop to 8, or to an unreasonable value.
+This setting can be overridden on a per-text basis later.
 .TP
 .B -u
 Treat files as UTF-8 even if they contain invalid UTF-8 encodings.
@@ -75,18 +79,6 @@ There is no X window system interface; that's what
 and
 .BI gnome-terminal (1)
 are for.
-.SH COMMAND
-The
-.B -s
-flag forces
-.B AOEUI
-to insert only spaces, and no tabs, when automatically indenting lines.
-.P
-The
-.B -t
-.I "tab stop"
-flag sets the default tab stop (usually 8).
-This can be overridden on a per-text basis with a command.
 .SH BASICS
 A
 .I text

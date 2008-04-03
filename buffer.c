@@ -18,7 +18,7 @@
  *
  *	Buffers are represented by pages mmap'ed from the file's
  *	temporary# file, or anonymous storage for things that aren't
- *	file texts,
+ *	file texts.
  *
  *	Besides being used to hold the content of files, buffers
  *	are used for cut/copied text (the "clip buffer"), macros,
@@ -101,7 +101,6 @@ static void resize(struct buffer *buffer, unsigned bytes)
 		buffer->allocated = bytes;
 		return;
 	}
-
 #ifdef MREMAP_MAYMOVE
 	if (old) {
 		/* attempt extension */
@@ -109,6 +108,7 @@ static void resize(struct buffer *buffer, unsigned bytes)
 		p = mremap(old, buffer->allocated, bytes, MREMAP_MAYMOVE);
 		if (p != MAP_FAILED)
 			goto done;
+#define NEED_DONE_LABEL
 	}
 #endif
 
@@ -148,7 +148,10 @@ static void resize(struct buffer *buffer, unsigned bytes)
 		munmap(old, buffer->allocated);
 	}
 
-done:	buffer->data = p;
+#ifdef NEED_DONE_LABEL
+done:
+#endif
+	buffer->data = p;
 	buffer->allocated = bytes;
 }
 

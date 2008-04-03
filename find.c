@@ -96,7 +96,8 @@ unsigned find_id_start(struct view *view, unsigned offset)
 		if (!isspace(ch))
 			break;
 	}
-	while (is_idch(view_char_prior(view, offset, &prev)))
+	while (is_idch((ch = view_char_prior(view, offset, &prev))) ||
+	       ch == ':' && view_char_prior(view, prev, &prev) == ':')
 		offset = prev;
 	return offset;
 }
@@ -107,7 +108,8 @@ unsigned find_id_end(struct view *view, unsigned offset)
 	unsigned next;
 	offset = find_nonspace(view, offset)+1;
 	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)
-		if (!is_idch(ch))
+		if (!(is_idch(ch) ||
+		      ch == ':' && view_char(view, next, &next) == ':'))
 			break;
 	return offset;
 }

@@ -111,7 +111,7 @@ static void command_handler(struct view *view, unsigned ch0)
 
 	/* Backspace always deletes the character before cursor. */
 	if (ch == 0x7f /*BCK*/) {
-		if (view_char_prior(view, cursor, &mark) >= 0)
+delete:		if (view_char_prior(view, cursor, &mark) >= 0)
 			view_delete(view, mark, cursor-mark);
 		else
 			window_beep(view);
@@ -149,8 +149,7 @@ static void command_handler(struct view *view, unsigned ch0)
 			paste(view);
 			break;
 		case DISPLAY_DELETE:
-			cut(view, 1);
-			break;
+			goto delete;
 		default:
 			if (ch < DISPLAY_F1 ||
 			    !funckey(view, ch - DISPLAY_F1 + 1))
@@ -498,7 +497,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		if (mode->variant) {
 			windows_end();
 			texts_uncreate();
-			exit(EXIT_SUCCESS);
+			depart(EXIT_SUCCESS);
 		}
 		break;
 	case ']': /* move to corresponding bracket */

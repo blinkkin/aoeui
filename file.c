@@ -174,9 +174,7 @@ struct view *view_open(const char *path0)
 			errno = 0;
 			text->flags |= TEXT_RDONLY;
 			text->fd = open(path, O_RDONLY);
-			if (text->fd >= 0)
-				message("%s opened read-only", path);
-			else {
+			if (text->fd < 0) {
 				message("can't open %s", path);
 				goto fail;
 			}
@@ -381,7 +379,7 @@ void text_preserve(struct text *text)
 	    !fstat(text->fd, &statbuf) &&
 	    text->mtime < statbuf.st_mtime)
 		message("%s has been modified since it was read into the "
-			"editor, and those changes may have now been lost.",
+			"editor, and those changes may have been overwritten.",
 			text->path);
 
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);

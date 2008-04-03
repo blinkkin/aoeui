@@ -1,10 +1,35 @@
 #include "all.h"
 
+void depart(int status)
+{
+	struct text *text;
+	int msg = 0;
+	char *raw;
+
+	for (text = text_list; text; text = text->next) {
+		if (!text->path || !text->buffer || !text->buffer->path)
+			continue;
+		text_unfold_all(text);
+		if (text->clean &&
+		    buffer_raw(text->buffer, &raw, 0, ~0) ==
+			text->clean_bytes &&
+		    !memcmp(text->clean, raw, text->clean_bytes)) {
+			unlink(text->buffer->path);
+			continue;
+		}
+		if (!msg++)
+			fprintf(stderr, "\ncheck working files for "
+				"current unsaved data\n");
+		fprintf(stderr, "\t%s\n", text->buffer->path);
+		buffer_snap(text->buffer);
+	}
+	exit(status);
+}
+
 void die(const char *msg, ...)
 {
 	int err = errno;
 	va_list ap;
-	struct text *text;
 
 	tcsetattr(1, TCSANOW, &original_termios);
 	fputs("\aaoeui editor fatal error: ", stderr);
@@ -13,30 +38,28 @@ void die(const char *msg, ...)
 	va_end(ap);
 	if (err)
 		fprintf(stderr, ": %s", strerror(err));
-	fprintf(stderr, "\ncheck working files with # at the ends of their "
-		"names for current unsaved data\n");
-	for (text = text_list; text; text = text->next)
-		buffer_snap(text->buffer);
-	exit(EXIT_FAILURE);
+	depart(EXIT_FAILURE);
 }
 
 void message(const char *msg, ...)
 {
 	int err = errno;
 	va_list ap;
-	struct view *view = view_find("* Scratch *");
+	struct view *view = view_find("* ATTENTION *");
+	unsigned start;
 
 	if (!view)
-		view = text_create("* Scratch *", TEXT_EDITOR);
+		view = text_create("* ATTENTION *", TEXT_EDITOR);
 	view->text->flags &= ~TEXT_RDONLY;
 	view_insert(view, "\n", view->bytes, 1);
+	start = view->bytes;
 	va_start(ap, msg);
 	view_vprintf(view, msg, ap);
 	va_end(ap);
-	view_insert(view, "\n", view->bytes, 1);
 	if (err)
-		view_printf(view, "(System error code: %s)\n", strerror(err));
+		view_printf(view, "\n(System error code: %s)", strerror(err));
 	view->text->flags |= TEXT_RDONLY;
-	locus_set(view, CURSOR, view->bytes);
-	window_below(NULL, view, 2 + !!err);
+	view_insert(view, " ", view->bytes, 1);
+	locus_set(view, CURSOR, start);
+	window_below(NULL, view, 3 + !!err);
 }

@@ -41,10 +41,11 @@
 #define CTL_CURSORPOS	CSI "6n"
 #define FG_COLOR	30
 #define BG_COLOR	40
-#define XTERM_TITLE	OSC "2;%s" ESC "\\"
+#define XTERM_TITLE	OSC "0;%s" ST
+/* was: #define XTERM_TITLE	OSC "2;%s" ESC "\\" */
 #define XTERM_ALTSCREEN	CSI "?47h"
 #define XTERM_REGSCREEN	CSI "?47l"
-#define XTERM_BCKISDEL	CSI "?67h"
+#define XTERM_BCKISDEL	CSI "?67l"
 
 
 struct cell {
@@ -699,7 +700,8 @@ struct display *display_init(void)
 
 	display_list = display;
 	display->inbuf_bytes = display->outbuf_bytes = 0;
-	display->is_xterm = (term = getenv("TERM")) && !strcmp(term, "xterm");
+	display->is_xterm = (term = getenv("TERM")) &&
+			    !strncmp(term, "xterm", 5);
 	display_reset(display);
 	display_sync(display);
 	return display;
@@ -713,6 +715,8 @@ void display_end(struct display *display)
 		return;
 
 	display_title(display, NULL);
+	set_color(display, ~0 /*default*/, BG_COLOR);
+	set_color(display, ~0 /*default*/, FG_COLOR);
 	if (display->is_xterm)
 		outs(display, XTERM_REGSCREEN);
 	else

@@ -233,11 +233,13 @@ void align(struct view *view)
 			indent += tabstop;
 	}
 
-	indent_bytes = indent / tabstop + indent % tabstop;
-	indentation = allocate(NULL, indent_bytes);
-	if (no_tabs)
+	if (no_tabs) {
+		indent_bytes = indent;
+		indentation = allocate(NULL, indent_bytes);
 		memset(indentation, ' ', indent);
-	else {
+	} else {
+		indent_bytes = indent / tabstop + indent % tabstop;
+		indentation = allocate(NULL, indent_bytes);
 		memset(indentation, '\t', indent / tabstop);
 		memset(indentation + indent / tabstop, ' ', indent % tabstop);
 	}
