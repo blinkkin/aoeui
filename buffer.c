@@ -29,7 +29,7 @@ struct buffer *buffer_create(char *path)
 {
 	struct buffer *buffer = allocate0(sizeof *buffer);
 	if (path && *path) {
-		buffer->path = allocate(NULL, strlen(path) + 2);
+		buffer->path = allocate(strlen(path) + 2);
 		sprintf(buffer->path, "%s#", path);
 		errno = 0;
 		buffer->fd = open(buffer->path, O_CREAT|O_TRUNC|O_RDWR,
@@ -46,18 +46,18 @@ void buffer_destroy(struct buffer *buffer)
 {
 	if (!buffer)
 		return;
-	munmap(buffer->data, buffer->allocated);
+	munmap(buffer->data, buffer->mapped);
 	if (buffer->fd >= 0) {
 		close(buffer->fd);
 		unlink(buffer->path);
 	}
-	allocate(buffer->path, 0);
-	allocate(buffer, 0);
+	RELEASE(buffer->path);
+	RELEASE(buffer);
 }
 
-static void place_gap(struct buffer *buffer, unsigned offset)
+static void place_gap(struct buffer *buffer, position_t offset)
 {
-	unsigned gapsize = buffer_gap_bytes(buffer);
+	size_t gapsize = buffer_gap_bytes(buffer);
 
 	if (offset > buffer->payload)
 		offset = buffer->payload;
@@ -73,39 +73,43 @@ static void place_gap(struct buffer *buffer, unsigned offset)
 		memset(buffer->data + buffer->gap, ' ', gapsize);
 }
 
-static void resize(struct buffer *buffer, unsigned bytes)
+static void resize(struct buffer *buffer, size_t payload_bytes)
 {
 	void *p;
 	char *old = buffer->data;
-	int fd, mapflags = 0;
-	static unsigned pagesize;
+	fd_t fd;
+	int mapflags = 0;
+	size_t map_bytes = payload_bytes;
 
-	/* Whole pages, with extras as size increases */
+	static size_t pagesize;
 	if (!pagesize)
 		pagesize = getpagesize();
-	bytes += pagesize-1;
-	bytes /= pagesize;
-	bytes *= 11;
-	bytes /= 10;
-	bytes *= pagesize;
 
-	if (bytes < buffer->allocated)
-		munmap(old + bytes, buffer->allocated - bytes);
-	if (buffer->fd >= 0 && bytes != buffer->allocated) {
+	/* Whole pages, with extras as size increases */
+	map_bytes += pagesize-1;
+	map_bytes /= pagesize;
+	map_bytes *= 11;
+	map_bytes /= 10;
+	map_bytes *= pagesize;
+
+	if (map_bytes < buffer->mapped)
+		munmap(old + map_bytes, buffer->mapped - map_bytes);
+	if (buffer->fd >= 0 && map_bytes != buffer->mapped) {
 		errno = 0;
-		if (ftruncate(buffer->fd, bytes))
-			die("could not adjust %s from 0x%x to 0x%x bytes",
-			    buffer->path, buffer->allocated, bytes);
+		if (ftruncate(buffer->fd, map_bytes))
+			die("could not adjust %s from %lu to %lu bytes",
+			    buffer->path, (long) buffer->mapped,
+			    (long) map_bytes);
 	}
-	if (bytes <= buffer->allocated) {
-		buffer->allocated = bytes;
+	if (map_bytes <= buffer->mapped) {
+		buffer->mapped = map_bytes;
 		return;
 	}
 #ifdef MREMAP_MAYMOVE
 	if (old) {
 		/* attempt extension */
 		errno = 0;
-		p = mremap(old, buffer->allocated, bytes, MREMAP_MAYMOVE);
+		p = mremap(old, buffer->mapped, map_bytes, MREMAP_MAYMOVE);
 		if (p != MAP_FAILED)
 			goto done;
 #define NEED_DONE_LABEL
@@ -116,7 +120,7 @@ static void resize(struct buffer *buffer, unsigned bytes)
 	if ((fd = buffer->fd) >= 0) {
 		mapflags |= MAP_SHARED;
 		if (old) {
-			munmap(old, buffer->allocated);
+			munmap(old, buffer->mapped);
 			old = NULL;
 		}
 	} else {
@@ -125,7 +129,7 @@ static void resize(struct buffer *buffer, unsigned bytes)
 #elif defined MAP_ANON
 		mapflags |= MAP_ANON;
 #else
-		static int anonymous_fd = -1;
+		static fd_t anonymous_fd = -1;
 		if (anonymous_fd < 0) {
 			errno = 0;
 			anonymous_fd = open("/dev/zero", O_RDWR);
@@ -139,24 +143,24 @@ static void resize(struct buffer *buffer, unsigned bytes)
 	}
 
 	errno = 0;
-	p = mmap(0, bytes, PROT_READ|PROT_WRITE, mapflags, fd, 0);
+	p = mmap(0, map_bytes, PROT_READ|PROT_WRITE, mapflags, fd, 0);
 	if (p == MAP_FAILED)
-		die("mmap(0x%x bytes, fd %d) failed", bytes, fd);
+		die("mmap(%lu bytes, fd %d) failed", (long) map_bytes, fd);
 
 	if (old) {
-		memcpy(p, old, buffer->allocated);
-		munmap(old, buffer->allocated);
+		memcpy(p, old, buffer->payload);
+		munmap(old, buffer->mapped);
 	}
 
 #ifdef NEED_DONE_LABEL
 done:
 #endif
 	buffer->data = p;
-	buffer->allocated = bytes;
+	buffer->mapped = map_bytes;
 }
 
-unsigned buffer_raw(struct buffer *buffer, char **out,
-		    unsigned offset, unsigned bytes)
+size_t buffer_raw(struct buffer *buffer, char **out,
+		  position_t offset, size_t bytes)
 {
 	if (!buffer)
 		return 0;
@@ -175,10 +179,10 @@ unsigned buffer_raw(struct buffer *buffer, char **out,
 	return bytes;
 }
 
-unsigned buffer_get(struct buffer *buffer, void *out,
-		    unsigned offset, unsigned bytes)
+size_t buffer_get(struct buffer *buffer, void *out,
+		  position_t offset, size_t bytes)
 {
-	unsigned left;
+	size_t left;
 
 	if (!buffer)
 		return 0;
@@ -205,8 +209,8 @@ unsigned buffer_get(struct buffer *buffer, void *out,
 	return bytes;
 }
 
-unsigned buffer_delete(struct buffer *buffer,
-		       unsigned offset, unsigned bytes)
+size_t buffer_delete(struct buffer *buffer,
+		     position_t offset, size_t bytes)
 {
 	if (!buffer)
 		return 0;
@@ -219,8 +223,8 @@ unsigned buffer_delete(struct buffer *buffer,
 	return bytes;
 }
 
-unsigned buffer_insert(struct buffer *buffer, const void *in,
-		       unsigned offset, unsigned bytes)
+size_t buffer_insert(struct buffer *buffer, const void *in,
+		     position_t offset, size_t bytes)
 {
 	if (!buffer)
 		return 0;
@@ -240,9 +244,9 @@ unsigned buffer_insert(struct buffer *buffer, const void *in,
 	return bytes;
 }
 
-unsigned buffer_move(struct buffer *to, unsigned to_offset,
-		     struct buffer *from, unsigned from_offset,
-		     unsigned bytes)
+size_t buffer_move(struct buffer *to, position_t to_offset,
+		   struct buffer *from, position_t from_offset,
+		   size_t bytes)
 {
 	char *raw = NULL;
 	bytes = buffer_raw(from, &raw, from_offset, bytes);

@@ -9,14 +9,14 @@ void clip_init(unsigned reg)
 		buffer_delete(clip_buffer[reg], 0, ~0);
 }
 
-unsigned clip(unsigned reg, struct view *view, unsigned offset,
-		unsigned bytes, int append)
+size_t clip(unsigned reg, struct view *view, position_t offset,
+	    size_t bytes, Boolean_t append)
 {
 	char *raw;
 
 	if (reg >= clip_buffers) {
-		clip_buffer = allocate(clip_buffer,
-				       (reg+1) * sizeof *clip_buffer);
+		clip_buffer = reallocate(clip_buffer,
+					 (reg+1) * sizeof *clip_buffer);
 		memset(clip_buffer + clip_buffers, 0,
 		       (reg + 1 - clip_buffers) * sizeof *clip_buffer);
 		clip_buffers = reg + 1;
@@ -30,10 +30,10 @@ unsigned clip(unsigned reg, struct view *view, unsigned offset,
 			     bytes);
 }
 
-unsigned clip_paste(struct view *view, unsigned offset, unsigned reg)
+size_t clip_paste(struct view *view, position_t offset, unsigned reg)
 {
 	char *raw;
-	unsigned bytes;
+	size_t bytes;
 
 	if (reg >= clip_buffers)
 		return 0;

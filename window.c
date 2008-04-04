@@ -8,12 +8,13 @@
 
 struct window {
 	struct view *view;
-	unsigned start; /* locus index */
+	locus_t start;
 	unsigned row, column;
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
 	rgba_t fgrgba, bgrgba;
-	unsigned last_dirties, last_cursor, last_mark;
+	unsigned last_dirties;
+	position_t last_cursor, last_mark;
 	rgba_t last_fgrgba, last_bgrgba;
 	struct window *next;
 };
@@ -54,7 +55,7 @@ static struct window *window_create(struct view *view, struct view *after)
 	return window;
 }
 
-static int stacked(struct window *up, struct window *down)
+static Boolean_t stacked(struct window *up, struct window *down)
 {
 	return	up && down &&
 		up->column == down->column &&
@@ -62,7 +63,7 @@ static int stacked(struct window *up, struct window *down)
 		up->row + up->rows == down->row;
 }
 
-static int beside(struct window *left, struct window *right)
+static Boolean_t beside(struct window *left, struct window *right)
 {
 	return	left && right &&
 		left->row == right->row &&
@@ -70,36 +71,36 @@ static int beside(struct window *left, struct window *right)
 		left->column + left->columns == right->column;
 }
 
-static int adjacent(struct window *x, struct window *y)
+static Boolean_t adjacent(struct window *x, struct window *y)
 {
 	if (x->column + x->columns < y->column ||
 	    y->column + y->columns < x->column ||
 	    x->row + x->rows < y->row ||
 	    y->row + y->rows < x->row)
-		return 0;
+		return FALSE;
 	if (y->column != x->column + x->columns &&
 	    x->column != y->column + y->columns)
-		return 1;
+		return TRUE;
 	return y->row < x->row + x->rows &&
 	       x->row < y->row + y->rows;
 }
 
-static int window_expand_next(struct window *window)
+static Boolean_t window_expand_next(struct window *window)
 {
 	struct window *next = window->next;
 	if (!next)
-		return 0;
+		return FALSE;
 	if (stacked(window, next)) {
 		next->row = window->row;
 		next->rows += window->rows;
-		return 1;
+		return TRUE;
 	}
 	if (beside(window, next)) {
 		next->column = window->column;
 		next->columns += window->columns;
-		return 1;
+		return TRUE;
 	}
-	return 0;
+	return FALSE;
 }
 
 void window_destroy(struct window *window)
@@ -135,7 +136,7 @@ void window_destroy(struct window *window)
 	}
 	if (window == active_window)
 		activate(window_list);
-	allocate(window, 0);
+	RELEASE(window);
 }
 
 struct window *window_raise(struct view *view)
@@ -144,7 +145,7 @@ struct window *window_raise(struct view *view)
 		display = display_init();
 	display_get_geometry(display, &display_rows, &display_columns);
 	display_erase(display, 0, 0, display_rows, display_columns,
-		      0xff, 0xff /*default color*/);
+		      DEFAULT_FGRGBA, DEFAULT_BGRGBA);
 	while (window_list && window_list->view != view)
 		window_destroy(window_list);
 	while (window_list && window_list->next)
@@ -246,20 +247,22 @@ void windows_end(void)
 	}
 }
 
-static unsigned count_rows(struct window *window, unsigned start, unsigned end)
+static unsigned count_rows(struct window *window, position_t start,
+			   position_t end)
 {
 	unsigned rows = 0, bytes;
 
 	for (rows = 0; start < end; rows++, start += bytes)
-		if (!(bytes = find_row_bytes(window->view, start, 0, window->columns)))
+		if (!(bytes = find_row_bytes(window->view, start, 0,
+					     window->columns)))
 			break;
 	return rows;
 }
 
-static unsigned find_row_start(struct window *window, unsigned position,
-			       unsigned start)
+static position_t find_row_start(struct window *window, position_t position,
+				 position_t start)
 {
-	unsigned bytes;
+	size_t bytes;
 	if (position && position >= window->view->bytes)
 		position--;
 	while ((bytes = find_row_bytes(window->view, start, 0, window->columns))) {
@@ -270,28 +273,30 @@ static unsigned find_row_start(struct window *window, unsigned position,
 	return start;
 }
 
-static void new_start(struct view *view, unsigned start)
+static void new_start(struct view *view, position_t start)
 {
 	locus_set(view, view->window->start, start ? start-1 : UNSET);
 	view->window->last_dirties = ~0;
 }
 
-static unsigned screen_start(struct view *view)
+static position_t screen_start(struct view *view)
 {
-	unsigned start = locus_get(view, view->window->start);
+	position_t start = locus_get(view, view->window->start);
 	if (start++ == UNSET)
 		start = 0;
 	return start;
 }
 
-static unsigned focus(struct window *window)
+static position_t focus(struct window *window)
 {
 	struct view *view = window->view;
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned cursorrow = find_row_start(window, cursor,
-					    find_line_start(view, cursor));
-	unsigned start = screen_start(view);
-	unsigned end, above, below, at, bytes;
+	position_t cursor = locus_get(view, CURSOR);
+	position_t cursorrow = find_row_start(window, cursor,
+					      find_line_start(view, cursor));
+	position_t start = screen_start(view);
+	position_t end, at;
+	unsigned above, below;
+	size_t bytes;
 
 	start = find_row_start(window, start,
 			       find_line_start(view, start));
@@ -331,33 +336,35 @@ done:	window->cursor_column = find_column(&above, view, cursorrow,
 	return start;
 }
 
-static int lame_space(struct view *view, unsigned offset, unsigned look)
+static Boolean_t lame_space(struct view *view, position_t offset, unsigned look)
 {
 	int all_spaces_lame = look > 1 && !no_tabs;
 	while (look--) {
-		int ch = view_char(view, offset, &offset);
-		if (ch < 0 || ch == '\n' || ch == '\t')
-			return 1;
+		Unicode_t ch = view_char(view, offset, &offset);
+		if (!IS_UNICODE(ch) || ch == '\n' || ch == '\t')
+			return TRUE;
 		if (ch != ' ')
-			return 0;
+			return FALSE;
 	}
 	return all_spaces_lame;
 }
 
-static int lame_tab(struct view *view, unsigned offset)
+static Boolean_t lame_tab(struct view *view, position_t offset)
 {
-	int ch;
+	Unicode_t ch;
 	if (no_tabs)
-		return 1;
-	for (; (ch = view_char(view, offset, &offset)) >= 0 && ch != '\n';)
+		return TRUE;
+	for (;
+	     IS_UNICODE(ch = view_char(view, offset, &offset)) &&
+	     ch != '\n'; )
 		if (ch != ' ' && ch != '\t')
-			return 0;
-	return 1;
+			return FALSE;
+	return TRUE;
 }
 
-static unsigned paintch(struct window *window, int ch, unsigned row,
+static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 			unsigned column,
-			unsigned at, unsigned cursor, unsigned mark,
+			position_t at, position_t cursor, position_t mark,
 			unsigned *brackets)
 {
 	rgba_t fgrgba = window->fgrgba, bgrgba = window->bgrgba;
@@ -390,13 +397,12 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 		return column;
 	}
 
-	if (ch < ' ' || ch == 0x7f ||
-	    ch >= FOLD_START && ch < FOLD_END) {
+	if (ch < ' ' || ch == 0x7f || IS_FOLDED(ch)) {
 		bgrgba = 0xff000000;
 		fgrgba = 0xffffff00;
 		display_put(display, window->row + row, window->column + column++,
-			    ch >= FOLD_START ? '<' : '^', fgrgba, bgrgba);
-		if (ch >= FOLD_START)
+			    IS_FOLDED(ch) ? '<' : '^', fgrgba, bgrgba);
+		if (IS_FOLDED(ch))
 			ch = '>';
 		else if (ch == 0x7f)
 			ch = '?';
@@ -411,7 +417,7 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 		 (ch == ')' || ch == ']' || ch == '}') &&
 		 --*brackets & 1)
 		fgrgba = 0x0000ff00;
-	else if (ch < 0)
+	else if (!IS_UNICODE(ch))
 		ch = ' ', bgrgba = 0xff00ff00;
 
 	display_put(display, window->row + row, window->column + column++,
@@ -419,11 +425,11 @@ static unsigned paintch(struct window *window, int ch, unsigned row,
 	return column;
 }
 
-static int needs_repainting(struct window *window)
+static Boolean_t needs_repainting(struct window *window)
 {
 	struct view *view = window->view;
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned mark = locus_get(view, MARK);
+	position_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
 
 	if (mark == UNSET)
 		mark = cursor;
@@ -434,7 +440,7 @@ static int needs_repainting(struct window *window)
 		window->last_mark != mark;
 }
 
-static void repainted(struct window *window, unsigned cursor, unsigned mark)
+static void repainted(struct window *window, position_t cursor, position_t mark)
 {
 	window->last_dirties = window->view->text->dirties;
 	window->last_fgrgba = window->fgrgba;
@@ -445,10 +451,11 @@ static void repainted(struct window *window, unsigned cursor, unsigned mark)
 
 static void paint(struct window *window)
 {
-	unsigned at, row, next, column;
+	position_t at, next;
+	unsigned row, column;
 	struct view *view = window->view;
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned mark = locus_get(view, MARK);
+	position_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
 	unsigned brackets = 1;
 
 	repainted(window, cursor, mark);
@@ -456,7 +463,7 @@ static void paint(struct window *window)
 	at = focus(window);
 	for (row = 0; row < window->rows; row++) {
 
-		unsigned limit = at + find_row_bytes(view, at, 0, window->columns);
+		position_t limit = at + find_row_bytes(view, at, 0, window->columns);
 		for (column = 0; at < limit; at = next)
 			column = paintch(window, view_char(view, at, &next),
 					 row, column, at, cursor, mark,
@@ -469,10 +476,10 @@ static void paint(struct window *window)
 	}
 }
 
-void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes)
+void window_hint_deleting(struct window *window, position_t offset, size_t bytes)
 {
 	struct view *view = window->view;
-	unsigned at = screen_start(view);
+	position_t at = screen_start(view);
 	unsigned row = 0, column;
 	unsigned lines = 0, end_column;
 
@@ -513,12 +520,12 @@ void window_hint_deleting(struct window *window, unsigned offset, unsigned bytes
 			     window->fgrgba, window->bgrgba);
 }
 
-void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes)
+void window_hint_inserted(struct window *window, position_t offset, size_t bytes)
 {
 	struct view *view = window->view;
-	unsigned at = screen_start(view);
-	unsigned row = 0, column;
-	unsigned lines = 0, end_column;
+	position_t at = screen_start(view);
+	position_t column, end_column;
+	unsigned row = 0, lines = 0;
 
 	if (focus(window) != at || offset + bytes <= at)
 		return;
@@ -534,10 +541,10 @@ void window_hint_inserted(struct window *window, unsigned offset, unsigned bytes
 	end_column = find_column(&lines, view, offset,
 				 offset + bytes, column, window->columns);
 	if (!lines) {
-		unsigned old = find_row_bytes(view, offset + bytes,
-					      end_column, window->columns);
-		unsigned new = find_row_bytes(view, offset,
-					      column, window->columns);
+		size_t old = find_row_bytes(view, offset + bytes,
+					    end_column, window->columns);
+		size_t new = find_row_bytes(view, offset,
+					    column, window->columns);
 		if (new == old + bytes) {
 			display_insert_spaces(display, window->row + row,
 					      window->column + column,
@@ -566,8 +573,9 @@ void window_next(struct view *view)
 struct window *window_recenter(struct view *view)
 {
 	struct window *window = view->window;
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned start, row, end;
+	position_t cursor = locus_get(view, CURSOR);
+	position_t start, end;
+	int row;
 
 	if (!window)
 		window = window_raise(view);
@@ -586,8 +594,10 @@ struct window *window_recenter(struct view *view)
 void window_page_up(struct view *view)
 {
 	struct window *window = view->window;
-	unsigned start = screen_start(view);
-	unsigned end, row, bytes;
+	position_t start = screen_start(view);
+	position_t end;
+	int row;
+	size_t bytes;
 
 	if (start) {
 		for (row = 0;
@@ -611,8 +621,9 @@ void window_page_up(struct view *view)
 void window_page_down(struct view *view)
 {
 	struct window *window = view->window;
-	unsigned start = screen_start(view);
-	unsigned row, bytes;
+	position_t start = screen_start(view);
+	int row;
+	size_t bytes;
 
 	for (row = 0; row + OVERLAP < window->rows; row++, start += bytes)
 		if (!(bytes = find_row_bytes(view, start, 0, window->columns)))
@@ -638,7 +649,7 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-		{ 0x000000ff, ~0 },
+		{ DEFAULT_FGRGBA, DEFAULT_BGRGBA },
 		{ 0x00000000, 0x7f7f7f00 },
 		{ 0x0000ff00, 0x7f7f0000 },
 		{ 0xff00ff00, 0x007f0000 },
@@ -652,8 +663,8 @@ static void window_colors(void)
 
 	for (window = window_list; window; window = window->next)
 		window->bgrgba = 0;
-	active_window->fgrgba = 0xff;
-	active_window->bgrgba = ~0;
+	active_window->fgrgba = DEFAULT_FGRGBA;
+	active_window->bgrgba = DEFAULT_BGRGBA;
 	for (window = window_list; window; window = window->next) {
 		if (window->bgrgba)
 			continue;
@@ -684,16 +695,16 @@ static void repaint(void)
 		       active_window->column + active_window->cursor_column);
 }
 
-int window_getch(void)
+Unicode_t window_getch(void)
 {
-	int block = 0;
+	Boolean_t block = FALSE;
 	for (;;) {
-		int ch = display_getch(display, block);
-		if (ch == DISPLAY_CHANGED)
+		Unicode_t ch = display_getch(display, block);
+		if (ch == ERROR_CHANGED)
 			window_raise(window_current_view());
-		else if (ch != DISPLAY_NONE)
+		else if (ch != ERROR_EMPTY)
 			return ch;
 		repaint();
-		block = 1;
+		block = TRUE;
 	}
 }

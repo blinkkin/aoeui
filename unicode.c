@@ -1,11 +1,15 @@
-#include "utf8.h"
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include "types.h"
+#include "utf8.h"
 
 int main(int argc, const char *argv[])
 {
-	unsigned ch = 0x203b, num = 1, at = 0;
+	Unicode_t ch = 0x203b;
+	unsigned num = 1, at = 0;
 	char buf[8];
 	if (argc > 1)
 		ch = strtoul(argv[1], NULL, 16);
@@ -14,7 +18,7 @@ int main(int argc, const char *argv[])
 	while (num--) {
 		if (!at)
 			printf("0x%04x", ch);
-		buf[utf8_out(buf, ch++)] = '\0';
+		buf[unicode_utf8(buf, ch++)] = '\0';
 		printf("\t%s", buf);
 		if (++at == 8) {
 			at = 0;

@@ -1,5 +1,4 @@
 struct view;
 void clip_init(unsigned reg);
-unsigned clip(unsigned reg, struct view *, unsigned offset,
-	      unsigned bytes, int append);
-unsigned clip_paste(struct view *, unsigned offset, unsigned reg);
+size_t clip(unsigned reg, struct view *, position_t, size_t, Boolean_t append);
+size_t clip_paste(struct view *, position_t, unsigned reg);

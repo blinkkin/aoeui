@@ -3,7 +3,7 @@
 void depart(int status)
 {
 	struct text *text;
-	int msg = 0;
+	Boolean_t msg = FALSE;
 	char *raw;
 
 	for (text = text_list; text; text = text->next) {
@@ -17,9 +17,11 @@ void depart(int status)
 			unlink(text->buffer->path);
 			continue;
 		}
-		if (!msg++)
+		if (!msg) {
 			fprintf(stderr, "\ncheck working files for "
 				"current unsaved data\n");
+			msg = TRUE;
+		}
 		fprintf(stderr, "\t%s\n", text->buffer->path);
 		buffer_snap(text->buffer);
 	}
@@ -46,7 +48,7 @@ void message(const char *msg, ...)
 	int err = errno;
 	va_list ap;
 	struct view *view = view_find("* ATTENTION *");
-	unsigned start;
+	position_t start;
 
 	if (!view)
 		view = text_create("* ATTENTION *", TEXT_EDITOR);

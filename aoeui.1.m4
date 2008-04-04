@@ -38,10 +38,10 @@ duplicated in memory until they are about to be modified.
 .SH OPTIONS
 .TP
 .B -s
-Use spaces, never tabs, for automatic indentation.
+Use spaces, not tabs, for automatic indentation.
 .TP
 .BI -t " 8"
-Set the tab stop to 8, or to an unreasonable value.
+Set the tab stop to 8 or to some unreasonable value.
 This setting can be overridden on a per-text basis later.
 .TP
 .B -u
@@ -78,7 +78,7 @@ There is no X window system interface; that's what
 .BI xterm (1)
 and
 .BI gnome-terminal (1)
-are for.
+are used for.
 .SH BASICS
 A
 .I text
@@ -86,7 +86,8 @@ is a sequence of characters to be viewed or edited, such as a file.
 If not ASCII, the editor will automatically determine whether it is
 encoded in legal UTF-8 and do the right thing.
 The editor can also automatically detect DOS-style line endings.
-A
+.P
+.A
 .I view
 comprises all or part of a text.
 A text in the editor has at least one view, and possibly more.
@@ -139,10 +140,15 @@ A red cursor signifies a read-only text, whereas a green cursor
 indicates a dirty text (meaning one that needs saving, not one
 unfit for young persons).
 .SH COMMANDS
+.B AOEUI
+understands the arrow keys, page up and page down keys, and Delete
+on your keyboard, so you can actually just use it like a dumb
+notepad with no mouse if you don't want to read any further than
+the next section, which tells you how to leave the editor.
 .P
-Commands are denoted here by
+In the following sections of the manual, commands are denoted by
 .B ^key
-to signify the use of Control, Alt, or a leading Escape key.
+to signify the use of Control, Alt, or a preceding Escape key.
 They all mean the same thing.
 .P
 .B Variant
@@ -368,7 +374,7 @@ With a numeric argument between 1 and 20, it will set the tab stop pitch.
 .B ^J
 (or
 .B ^Enter
-under some terminal emulators)
+under good terminal emulators)
 inserts a new line into the text with automatic indentation.
 .TP
 .B ^SpaceEnter
@@ -399,6 +405,10 @@ The intent is for multiple
 .B ^Space^cmd(D,X)
 commands to collect data together in the same order in which
 they are most likely to have been visited.
+.P
+A numeric argument to
+.B ^Space^cmd(D,X)
+places the indicated number of copies of the selection into the clip buffer.
 .TP
 .B ^cmd(F,C)
 requires a selection, which is copied into the clip buffer and
@@ -414,6 +424,9 @@ is to
 It copies the selection to the clip buffer, putting it at the beginning or the end in the same way as
 .B ^Space^cmd(D,X)
 (above).
+A numeric argument to
+.B ^Space^cmd(F,C)
+places the indicated number of copies of the selection into the clip buffer.
 .TP
 .B ^cmd(B,V)
 with no selection will paste the current clip buffer's contents.
@@ -459,9 +472,10 @@ will remove the last character from the search target and
 move the selection back to its previous position.
 .TP
 .B ^cmd(V,U)
-is typically used to leave search mode with the cursor at the beginning of
+is typically used to leave search mode with the cursor at
 the latest hit, with the mark returned to where it was before the search
 (if anywhere).
+This is useful for using search to place the bounds of a selection.
 .TP
 .B ^/
 (or
@@ -470,7 +484,7 @@ or
 .B ^A
 )
 with no characters in the search target string will cause the
-last search's target string to be reused.
+last successful search's target string to be reused.
 .TP
 .B ^cmd(H,G)
 and
@@ -544,7 +558,7 @@ creates a new anonymous text.
 .SH MACROS
 .TP
 .B ^Space^cmd(O,B)
-commences the recording of your keystrokes as the current view's local
+commences the recording of your keystrokes as the
 macro, which continues until the next
 .B ^cmd(O,B)
 or another macro recording.
@@ -563,7 +577,7 @@ probably will not be usable.
 ends the recording of a macro, if one is in progress.
 Afterwards,
 .B ^cmd(O,B)
-replays the view's local macro, possibly with a repeat count
+replays the macro, possibly with a repeat count
 as the argument.
 Note that a failed search in a macro will terminate its execution.
 .SH FOLDING
@@ -584,10 +598,9 @@ equivalent tabs at which code lines will be folded.
 The default is 1, causing the folding of any line that isn't left-justified.
 .TP
 .B ^Space.
-with a selection will unfold the topmost foldings within it.
-Otherwise, if there is no numeric value, it will unfold the
-single folded region immediately beneath the cursor.
-With a numeric value, which is ignored, it will completely
+with a selection, or immediately atop a folded section, will unfold the
+topmost foldings within it.
+Otherwise, and if there is a numeric value, it will completely
 unfold the entire view.
 .SH SHELLS
 .TP
@@ -727,10 +740,10 @@ may be set to override
 .BR AOEUI 's
 automatic mechanisms for determining the size of the display surface.
 .TP
-.BR TERM ,
-when set to
-.B xterm
-will cause
+.B TERM
+will, when set to a string beginning with
+.BR xterm ,
+cause
 .B AOEUI
 to try to set the title of the window to the name of the active view.
 .SH FILES

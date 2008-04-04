@@ -1,13 +1,13 @@
 #include "all.h"
 
 struct edit {
-	unsigned offset;
-	int bytes; /* negative means "inserted" */
+	position_t offset;
+	ssize_t bytes; /* negative means "inserted" */
 };
 
 struct undo {
 	struct buffer *edits, *deleted;
-	unsigned redo, saved;
+	position_t redo, saved;
 };
 
 static struct edit *last_edit(struct text *text)
@@ -36,38 +36,40 @@ static void resume_editing(struct text *text)
 		      buffer_bytes(text->undo->deleted) - text->undo->saved);
 }
 
-static int in_view(struct view *view, unsigned *offset, unsigned *bytes)
+static Boolean_t in_view(struct view *view, position_t *offset, size_t *bytes)
 {
 	if (*offset < view->start) {
 		if (*offset + *bytes <= view->start)
-			return 0;
+			return FALSE;
 		*bytes -= view->start - *offset;
-		*offset = 0;
+		*offset = FALSE;
 	} else {
 		*offset -= view->start;
 		if (*offset >= view->bytes)
-			return 0;
+			return FALSE;
 		if (*offset + *bytes > view->bytes)
 			*bytes = view->bytes - *offset;
 	}
-	return 1;
+	return TRUE;
 }
 
-static void view_hint_deleting(struct view *view, unsigned offset, unsigned bytes)
+static void view_hint_deleting(struct view *view, position_t offset,
+			       size_t bytes)
 {
 	if (!view->window || !in_view(view, &offset, &bytes))
 		return;
 	window_hint_deleting(view->window, offset, bytes);
 }
 
-static void view_hint_inserted(struct view *view, unsigned offset, unsigned bytes)
+static void view_hint_inserted(struct view *view, position_t offset,
+			       size_t bytes)
 {
 	if (!view->window || !in_view(view, &offset, &bytes))
 		return;
 	window_hint_inserted(view->window, offset, bytes);
 }
 
-unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
+size_t text_delete(struct text *text, position_t offset, size_t bytes)
 {
 	char *old;
 	struct edit edit, *last;
@@ -99,8 +101,8 @@ unsigned text_delete(struct text *text, unsigned offset, unsigned bytes)
 	return bytes;
 }
 
-unsigned text_insert(struct text *text, const void *in,
-		     unsigned offset, unsigned bytes)
+size_t text_insert(struct text *text, const void *in,
+		   position_t offset, size_t bytes)
 {
 	struct edit edit, *last;
 	struct view *view;
@@ -127,7 +129,7 @@ unsigned text_insert(struct text *text, const void *in,
 	return bytes;
 }
 
-int text_undo(struct text *text)
+sposition_t text_undo(struct text *text)
 {
 	char *raw;
 	struct edit *edit;
@@ -148,7 +150,7 @@ int text_undo(struct text *text)
 	return edit->offset;
 }
 
-int text_redo(struct text *text)
+sposition_t text_redo(struct text *text)
 {
 	char *raw;
 	struct edit *edit;
@@ -176,7 +178,6 @@ void text_forget_undo(struct text *text)
 	if (text->undo) {
 		buffer_destroy(text->undo->edits);
 		buffer_destroy(text->undo->deleted);
-		allocate(text->undo, 0);
-		text->undo = NULL;
+		RELEASE(text->undo);
 	}
 }

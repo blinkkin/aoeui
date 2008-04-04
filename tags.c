@@ -4,8 +4,8 @@
 
 static char *extract_id(struct view *view)
 {
-	int ch;
-	unsigned at = locus_get(view, CURSOR), next;
+	Unicode_t ch;
+	position_t at = locus_get(view, CURSOR), next;
 	char *id;
 
 	if (is_idch((ch = view_char(view, at, &next))) ||
@@ -21,7 +21,7 @@ void find_tag(struct view *view)
 {
 	struct view *tags = view_find("TAGS"), *new_view;
 	char *id, *this;
-	unsigned first, last, at, wordstart, wordend, line;
+	position_t first, last, at, wordstart, wordend, line;
 	int cmp;
 
 	if (!tags) {
@@ -56,7 +56,7 @@ void find_tag(struct view *view)
 		if (!this)
 			goto done;
 		cmp = strcmp(id, this);
-		allocate(this, 0);
+		RELEASE(this);
 		if (!cmp)
 			break;
 		if (cmp < 0)
@@ -67,28 +67,28 @@ void find_tag(struct view *view)
 	if (first >= last)
 		goto done;
 
-	allocate(id, 0);
+	RELEASE(id);
 	wordstart = find_nonspace(tags, wordend); /* line number */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
 	if (!isdigit(*this)) {
 		/* exuberant-ctags puts a classifier before the line number */
-		allocate(this, 0);
+		RELEASE(this);
 		wordstart = find_nonspace(tags, wordend); /* line number */
 		wordend = find_space(tags, wordstart);
 		this = view_extract(tags, wordstart, wordend - wordstart);
 		if (!isdigit(*this)) {
-			allocate(this, 0);
+			RELEASE(this);
 			goto done;
 		}
 	}
 	line = atoi(this);
-	allocate(this, 0);
+	RELEASE(this);
 	wordstart = find_nonspace(tags, wordend); /* file name */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
 	new_view = view_open(this);
-	allocate(this, 0);
+	RELEASE(this);
 	if (new_view->text->flags & TEXT_CREATED) {
 		view_close(new_view);
 		goto done;
@@ -100,5 +100,5 @@ void find_tag(struct view *view)
 
 done:	errno = 0;
 	message("couldn't find tag %s", id);
-	allocate(id, 0);
+	RELEASE(id);
 }

@@ -1,19 +1,18 @@
+#ifndef BUFFER_H
+#define BUFFER_H
+
 /* Gap buffers */
 
 struct buffer;
 
 struct buffer *buffer_create(char *path);
 void buffer_destroy(struct buffer *);
-unsigned buffer_raw(struct buffer *, char **,
-		    unsigned offset, unsigned bytes);
-unsigned buffer_get(struct buffer *, void *,
-		    unsigned offset, unsigned bytes);
-unsigned buffer_delete(struct buffer *,
-		       unsigned offset, unsigned bytes);
-unsigned buffer_insert(struct buffer *, const void *,
-		       unsigned offset, unsigned bytes);
-unsigned buffer_move(struct buffer *dest, unsigned,
-		     struct buffer *src, unsigned, unsigned bytes);
+size_t buffer_raw(struct buffer *, char **, position_t, size_t);
+size_t buffer_get(struct buffer *, void *, position_t, size_t);
+size_t buffer_delete(struct buffer *, position_t, size_t);
+size_t buffer_insert(struct buffer *, const void *, position_t, size_t);
+size_t buffer_move(struct buffer *dest, position_t,
+		   struct buffer *src, position_t, size_t);
 void buffer_snap(struct buffer *);
 
 /* do *not* use directly; this definition is here
@@ -21,26 +20,29 @@ void buffer_snap(struct buffer *);
  */
 struct buffer {
 	char *data;
-	unsigned allocated, payload, gap;
-	int fd;
+	size_t payload, mapped;
+	position_t gap;
+	fd_t fd;
 	char *path;
 };
 
-INLINE unsigned buffer_bytes(struct buffer *buffer)
+INLINE size_t buffer_bytes(struct buffer *buffer)
 {
 	return buffer ? buffer->payload : 0;
 }
 
-INLINE unsigned buffer_gap_bytes(struct buffer *buffer)
+INLINE size_t buffer_gap_bytes(struct buffer *buffer)
 {
-	return buffer->allocated - buffer->payload;
+	return buffer->mapped - buffer->payload;
 }
 
-INLINE int buffer_byte(struct buffer *buffer, unsigned offset)
+INLINE int buffer_byte(struct buffer *buffer, size_t offset)
 {
 	if (!buffer || offset >= buffer->payload)
 		return -1;
 	if (offset >= buffer->gap)
 		offset += buffer_gap_bytes(buffer);
-	return offset[(unsigned char *) buffer->data];
+	return offset[(Byte_t *) buffer->data];
 }
+
+#endif

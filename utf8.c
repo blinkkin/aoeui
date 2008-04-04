@@ -1,6 +1,9 @@
+#include <stddef.h>
+#include <unistd.h>
+#include "types.h"
 #include "utf8.h"
 
-int utf8_out(char *out, unsigned unicode)
+size_t unicode_utf8(char *out, Unicode_t unicode)
 {
 	char *p = out;
 
@@ -19,7 +22,7 @@ int utf8_out(char *out, unsigned unicode)
 	return p - out;
 }
 
-unsigned char utf8_bytes[0x100] = {
+Byte_t utf8_bytes[0x100] = {
 	/* 00-7f are themselves */
 /*00*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 /*10*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -44,20 +47,20 @@ unsigned char utf8_bytes[0x100] = {
 	/* f0-f7 are first byte of four-byte (3+6+6+6=21 bits) */
 	/* f0 80-8f are noncanonical */
 /*f0*/	4, 4, 4, 4, 4, 4, 4, 4,
-	/* f8-fb are first byte of five-byte (2+6+6+6+6+6=26 bits) */
+	/* f8-fb are first byte of five-byte (2+6+6+6+6=26 bits) */
 	/* f8 80-87 are noncanonical */
 /*f8*/	5, 5, 5, 5,
-	/* fc-fd are first byte of six-byte (1+6+6+6+6+6+6=31 bits) */
+	/* fc-fd are first byte of six-byte (1+6+6+6+6+6=31 bits) */
 	/* fc 80-83 are noncanonical */
 /*fc*/	6, 6,
 	/* fe and ff are not part of valid UTF-8 so they stand alone */
 /*fe*/	1, 1
 };
 
-unsigned utf8_length(const char *in, unsigned max)
+size_t utf8_length(const char *in, size_t max)
 {
-	const unsigned char *p = (const unsigned char *) in;
-	int n = utf8_bytes[*p];
+	const Byte_t *p = (const Byte_t *) in;
+	size_t n = utf8_bytes[*p];
 
 	if (max > n)
 		max = n;
@@ -69,10 +72,10 @@ unsigned utf8_length(const char *in, unsigned max)
 	return max;
 }
 
-unsigned utf8_length_backwards(const char *in, unsigned max)
+size_t utf8_length_backwards(const char *in, size_t max)
 {
 	int n;
-	const unsigned char *p = (const unsigned char *) in;
+	const Byte_t *p = (const Byte_t *) in;
 
 	if ((*p & 0xc0) != 0x80)
 		return 1;
@@ -86,10 +89,10 @@ unsigned utf8_length_backwards(const char *in, unsigned max)
 	return 1;
 }
 
-unsigned utf8_unicode(const char *in, unsigned length)
+Unicode_t utf8_unicode(const char *in, size_t length)
 {
-	const unsigned char *p = (const unsigned char *) in;
-	unsigned unicode;
+	const Byte_t *p = (const Byte_t *) in;
+	Unicode_t unicode;
 
 	if (length <= 1 || length > 6)
 		return *p;

@@ -4,25 +4,31 @@
  *	This is the default command mode.
  */
 
-int is_asdfg;
+Boolean_t is_asdfg;
+
+static struct macro *default_macro, *function_key[FUNCTION_FKEYS+1];
 
 struct mode_default {
 	command command;
-	int variant, value, is_hex;
+	Boolean_t variant, is_hex;
+	int value;
 };
 
-static void command_handler(struct view *, unsigned);
+static void command_handler(struct view *, Unicode_t);
 
-static unsigned cut(struct view *view, int delete)
+
+static position_t cut(struct view *view, Boolean_t delete)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
-	unsigned offset;
-	int append;
-	int bytes = view_get_selection(view, &offset, &append);
+	position_t offset;
+	Boolean_t append;
+	size_t bytes = view_get_selection(view, &offset, &append);
+	int copies = mode->value ? mode->value : 1;
 
-	if (!mode->variant)
+	if (!mode->variant || mode->value)
 		clip_init(0);
-	clip(0, view, offset, bytes, append);
+	while (copies--)
+		clip(0, view, offset, bytes, append);
 	if (delete)
 		view_delete(view, offset, bytes);
 	locus_set(view, MARK, UNSET);
@@ -32,7 +38,7 @@ static unsigned cut(struct view *view, int delete)
 static void paste(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
-	unsigned cursor = locus_get(view, CURSOR);
+	position_t cursor = locus_get(view, CURSOR);
 	clip_paste(view, cursor, mode->value);
 	locus_set(view, MARK, /*old*/ cursor);
 }
@@ -41,7 +47,8 @@ static void forward_lines(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
-	unsigned cursor = locus_get(view, CURSOR);
+	position_t cursor = locus_get(view, CURSOR);
+
 	if (!count)
 		cursor = find_paragraph_end(view, cursor);
 	else
@@ -54,7 +61,8 @@ static void backward_lines(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
-	unsigned cursor = locus_get(view, CURSOR);
+	position_t cursor = locus_get(view, CURSOR);
+
 	if (!count)
 		cursor = find_paragraph_start(view, cursor);
 	else
@@ -67,8 +75,9 @@ static void forward_chars(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
-	unsigned cursor = locus_get(view, CURSOR), next;
-	while (count-- && view_char(view, cursor, &next) >= 0)
+	position_t cursor = locus_get(view, CURSOR), next;
+
+	while (count-- && IS_UNICODE(view_char(view, cursor, &next)))
 		cursor = next;
 	locus_set(view, CURSOR, cursor);
 }
@@ -77,41 +86,43 @@ static void backward_chars(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
 	unsigned count = mode->variant ? mode->value : 1;
-	unsigned cursor = locus_get(view, CURSOR);
+	position_t cursor = locus_get(view, CURSOR);
+
 	while (count-- && cursor)
 		view_char_prior(view, cursor, &cursor);
 	locus_set(view, CURSOR, cursor);
 }
 
-static int funckey(struct view *view, int Fk)
+static Boolean_t funckey(struct view *view, int Fk)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
-	if (Fk > FUNCTION_KEYS)
-		return 0;
+
+	if (Fk > FUNCTION_FKEYS)
+		return FALSE;
 	if (mode->variant && !mode->value) {
 		macro_end_recording(CONTROL('@'));
 		macro_free(function_key[Fk]);
 		function_key[Fk] = macro_record();
-		return 1;
+		return TRUE;
 	}
 	return macro_play(function_key[Fk], mode->value);
 }
 
-static void command_handler(struct view *view, unsigned ch0)
+static void command_handler(struct view *view, Unicode_t ch0)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
-	unsigned ch = ch0;
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned mark = locus_get(view, MARK);
-	unsigned offset;
+	Unicode_t ch = ch0;
+	position_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
+	position_t offset;
 	char buf[8];
-	int ok = 1, literal_unicode = 0;
+	Boolean_t ok = TRUE, literal_unicode = FALSE;
 	struct view *new_view;
 	char *select;
 
 	/* Backspace always deletes the character before cursor. */
 	if (ch == 0x7f /*BCK*/) {
-delete:		if (view_char_prior(view, cursor, &mark) >= 0)
+delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			view_delete(view, mark, cursor-mark);
 		else
 			window_beep(view);
@@ -119,41 +130,41 @@ delete:		if (view_char_prior(view, cursor, &mark) >= 0)
 	}
 
 	/* Decode function-key sequences */
-	if (DISPLAY_IS_FKEY(ch)) {
+	if (IS_FUNCTION_KEY(ch)) {
 		switch (ch) {
-		case DISPLAY_UP:
+		case FUNCTION_UP:
 			backward_lines(view);
 			break;
-		case DISPLAY_DOWN:
+		case FUNCTION_DOWN:
 			forward_lines(view);
 			break;
-		case DISPLAY_LEFT:
+		case FUNCTION_LEFT:
 			backward_chars(view);
 			break;
-		case DISPLAY_RIGHT:
+		case FUNCTION_RIGHT:
 			forward_chars(view);
 			break;
-		case DISPLAY_PGUP:
+		case FUNCTION_PGUP:
 			window_page_up(view);
 			break;
-		case DISPLAY_PGDOWN:
+		case FUNCTION_PGDOWN:
 			window_page_down(view);
 			break;
-		case DISPLAY_HOME:
+		case FUNCTION_HOME:
 			locus_set(view, CURSOR, 0);
 			break;
-		case DISPLAY_END:
+		case FUNCTION_END:
 			locus_set(view, CURSOR, view->bytes);
 			break;
-		case DISPLAY_INSERT:
+		case FUNCTION_INSERT:
 			paste(view);
 			break;
-		case DISPLAY_DELETE:
+		case FUNCTION_DELETE:
 			goto delete;
 		default:
-			if (ch < DISPLAY_F1 ||
-			    !funckey(view, ch - DISPLAY_F1 + 1))
-				ok = 0;
+			if (ch < FUNCTION_F(1) ||
+			    !funckey(view, ch - FUNCTION_F(1) + 1))
+				ok = FALSE;
 		}
 		goto done;
 	}
@@ -199,7 +210,7 @@ delete:		if (view_char_prior(view, cursor, &mark) >= 0)
 						locus_set(new_view, MARK, mark);
 					window_activate(new_view);
 				} else
-					ok = 0;
+					ok = FALSE;
 				goto done;
 			case ';':
 				window_after(view, text_new(), -1);
@@ -223,7 +234,7 @@ delete:		if (view_char_prior(view, cursor, &mark) >= 0)
 				else {
 					mark = view_unfold(view, cursor);
 					if ((signed) mark < 0)
-						window_beep(view);
+						view_unfold_all(view);
 					else
 						locus_set(view, MARK, mark);
 				}
@@ -244,7 +255,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			buf[0] = ch;
 			view_insert(view, buf, cursor, 1);
 		} else
-			view_insert(view, buf, cursor, utf8_out(buf, ch));
+			view_insert(view, buf, cursor, unicode_utf8(buf, ch));
 		if (mark == cursor)
 			locus_set(view, MARK, /*old*/ cursor);
 		else if (ch == '\n')
@@ -280,9 +291,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'B': /* exchange clip buffer and selection, if any, else paste */
 		if (mark != UNSET) {
-			int outbytes = view_get_selection(view, &offset, NULL);
+			size_t outbytes = view_get_selection(view, &offset, NULL);
 			unsigned reg = mode->value;
-			int inbytes = clip_paste(view, offset + outbytes, reg);
+			size_t inbytes = clip_paste(view, offset + outbytes, reg);
 			clip_init(reg);
 			clip(reg, view, offset, outbytes, 0);
 			view_delete(view, offset, outbytes);
@@ -297,13 +308,12 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case 'D': /* [select whitespace] / cut [pre/appending] */
 		if (mark == UNSET && mode->variant) {
 			locus_set(view, MARK, find_nonspace(view, cursor));
-			while ((ch = view_char_prior(view, cursor, &offset))
-					>= 0 &&
+			while (IS_UNICODE(ch = view_char_prior(view, cursor, &offset)) &&
 			       isspace(ch))
 				cursor = offset;
 			locus_set(view, CURSOR, cursor);
 		} else
-			cut(view, 1);
+			cut(view, TRUE);
 		break;
 	case 'E':
 		if (mark == UNSET)
@@ -319,7 +329,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			mode_child(view);
 		break;
 	case 'F': /* copy [pre/appending] */
-		cut(view, 0);
+		cut(view, FALSE);
 		break;
 	case 'G':
 		backward_lines(view);
@@ -383,11 +393,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case 'O': /* macro end/execute [start] */
 		if (mode->variant && !mode->value) {
 			macro_end_recording(CONTROL('@'));
-			macro_free(view->local_macro);
-			view->local_macro = macro_record();
+			macro_free(default_macro);
+			default_macro = macro_record();
 		} else if (!macro_end_recording(ch0) &&
-			   !macro_play(view->local_macro,
-				       mode->value))
+			   !macro_play(default_macro, mode->value))
 			window_beep(view);
 		break;
 	case 'P': /* select other window [closing current] */
@@ -429,8 +438,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		forward_chars(view);
 		break;
 	case 'U': /* undo [redo] */
-		offset = (mode->variant ? text_redo :
-					  text_undo)(view->text);
+		offset = (mode->variant ? text_redo : text_undo)(view->text);
 		if ((offset -= view->start) <= view->bytes)
 			locus_set(view, CURSOR, offset);
 		locus_set(view, MARK, UNSET);
@@ -465,7 +473,7 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 				new_view = NULL;
 			} else
 				ok = !!(new_view = view_open(select));
-			allocate(select, 0);
+			RELEASE(select);
 			if (ok)
 				view_delete_selection(view);
 			if (new_view)
@@ -474,9 +482,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		break;
 	case 'Y': /* split window [vertically] */
 		if (mark != UNSET) {
-			unsigned offset = mark < cursor ? mark : cursor;
-			unsigned bytes = mark < cursor ? cursor - mark :
-					 mark - cursor;
+			position_t offset = mark < cursor ? mark : cursor;
+			size_t bytes = mark < cursor ? cursor - mark :
+				       mark - cursor;
 			new_view = view_selection(view, offset, bytes);
 		} else
 			new_view = view_next(view);
@@ -510,10 +518,10 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case '^': /* literal [; unicode] */
 		if (mode->value) {
 			ch = mode->value;
-			literal_unicode = 1;
+			literal_unicode = TRUE;
 			goto self_insert;
 		}
-		if ((signed) (ch = macro_getch()) >= 0) {
+		if (IS_UNICODE(ch = macro_getch())) {
 			if (ch >= '@' && ch <= '_')
 				ch = CONTROL(ch);
 			else if (ch >= 'a' && ch <= 'z')
@@ -522,14 +530,15 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 				ch = 0x7f;
 			goto self_insert;
 		}
-		ok = 0;
+		ok = FALSE;
 		break;
 	default:
-		ok = 0;
+		ok = FALSE;
 		break;
 	}
 
-done:	mode->variant = mode->value = mode->is_hex = 0;
+done:	mode->variant = mode->is_hex = FALSE;
+	mode->value = 0;
 	if (!ok)
 		window_beep(view);
 }

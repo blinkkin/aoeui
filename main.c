@@ -45,6 +45,7 @@ int main(int argc, char *const *argv)
 {
 	int ch, value;
 	struct view *view;
+	Unicode_t unicode;
 
 	errno = 0;
 	if (tcgetattr(1, &original_termios))
@@ -72,10 +73,10 @@ int main(int argc, char *const *argv)
 				message("bad tab stop setting: %s", optarg);
 			break;
 		case 'u':
-			utf8_mode = 1;
+			utf8_mode = UTF8_YES;
 			break;
 		case 'U':
-			utf8_mode = 0;
+			utf8_mode = UTF8_NO;
 			break;
 		default:
 			die("unknown flag -%c", ch);
@@ -86,8 +87,10 @@ int main(int argc, char *const *argv)
 
 	/* Main loop */
 	while ((view = window_current_view()) &&
-	       (ch = macro_getch()) >= 0)
-		view->mode->command(view, ch);
+	       ((unicode = macro_getch()),
+		!IS_ERROR_CODE(unicode)))
+		view->mode->command(view, unicode);
 
-	return EXIT_SUCCESS;
+	die("error in input");
+	return EXIT_FAILURE;
 }

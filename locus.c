@@ -8,31 +8,31 @@
 
 #define DELETED (UNSET-1)
 
-unsigned locus_create(struct view *view, unsigned offset)
+locus_t locus_create(struct view *view, position_t offset)
 {
-	unsigned locus;
+	locus_t locus;
 
 	for (locus = 0; locus < view->loci; locus++)
 		if (view->locus[locus] == DELETED)
 			break;
 	if (locus == view->loci) {
-		view->locus = allocate(view->locus,
-				       (locus+1) * sizeof *view->locus);
+		view->locus = reallocate(view->locus,
+					 (locus+1) * sizeof *view->locus);
 		view->loci++;
 	}
 	locus_set(view, locus, offset);
 	return locus;
 }
 
-void locus_destroy(struct view *view, unsigned locus)
+void locus_destroy(struct view *view, locus_t locus)
 {
 	if (locus < view->loci)
 		view->locus[locus] = DELETED;
 }
 
-unsigned locus_get(struct view *view, unsigned locus)
+position_t locus_get(struct view *view, locus_t locus)
 {
-	unsigned offset;
+	position_t offset;
 
 	if (!view || locus >= view->loci)
 		return UNSET;
@@ -46,21 +46,23 @@ unsigned locus_get(struct view *view, unsigned locus)
 	return offset;
 }
 
-unsigned locus_set(struct view *view, unsigned locus, unsigned offset)
+position_t locus_set(struct view *view, locus_t locus, position_t offset)
 {
 	if (offset != UNSET && offset > view->bytes)
 		offset = view->bytes;
-	return view->locus[locus] = offset;
+	if (locus < view->loci)
+		view->locus[locus] = offset;
+	return offset;
 }
 
-void loci_adjust(struct view *view, unsigned offset, int delta)
+void loci_adjust(struct view *view, position_t offset, int delta)
 {
-	unsigned j;
+	int j;
 
 	if (delta < 0) {
-		unsigned limit = offset - delta;
+		position_t limit = offset - delta;
 		for (j = 0; j < view->loci; j++) {
-			unsigned locus = view->locus[j];
+			position_t locus = view->locus[j];
 			if (locus == DELETED || locus == UNSET)
 				continue;
 			if (limit <= locus)
@@ -71,7 +73,7 @@ void loci_adjust(struct view *view, unsigned offset, int delta)
 		}
 	} else
 		for (j = 0; j < view->loci; j++) {
-			unsigned locus = view->locus[j];
+			position_t locus = view->locus[j];
 			if (locus == DELETED || locus == UNSET)
 				continue;
 			if (offset <= locus)

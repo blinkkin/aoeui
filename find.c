@@ -2,71 +2,78 @@
 
 /* Routines that scan characters in views */
 
-unsigned find_line_start(struct view *view, unsigned offset)
+position_t find_line_start(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0 &&
+	Unicode_t ch;
+	position_t prev;
+
+	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev)) &&
 	       ch != '\n')
 		offset = prev;
 	return offset;
 }
 
-unsigned find_line_end(struct view *view, unsigned offset)
+position_t find_line_end(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned next;
-	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	Unicode_t ch;
+	position_t next;
+
+	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
 	       ch != '\n')
 		offset = next;
 	return offset;
 }
 
-unsigned find_paragraph_start(struct view *view, unsigned offset)
+position_t find_paragraph_start(struct view *view, position_t offset)
 {
-	int ch, nch = -1, nnch = -1;
-	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
-		if (ch == '\n' && nch == '\n' && nnch >= 0)
+	Unicode_t ch, nch = UNICODE_BAD, nnch = UNICODE_BAD;
+	position_t prev;
+
+	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
+		if (ch == '\n' && nch == '\n' && IS_UNICODE(nnch))
 			return offset + 1;
 		offset = prev, nnch = nch, nch = ch;
 	}
 	return offset;
 }
 
-unsigned find_paragraph_end(struct view *view, unsigned offset)
+position_t find_paragraph_end(struct view *view, position_t offset)
 {
-	int ch, pch = -1, ppch = -1;
-	unsigned next;
-	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	Unicode_t ch, pch = UNICODE_BAD, ppch = UNICODE_BAD;
+	position_t next;
+
+	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
 	       (ch == '\n' || pch != '\n' || ppch != '\n'))
 		offset = next, ppch = pch, pch = ch;
 	return offset;
 }
 
-unsigned find_space(struct view *view, unsigned offset)
+position_t find_space(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned next;
-	while ((ch = view_char(view, offset, &next)) >= 0 &&
+	Unicode_t ch;
+	position_t next;
+
+	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
 	       !isspace(ch))
 		offset = next;
 	return offset;
 }
 
-unsigned find_nonspace(struct view *view, unsigned offset)
+position_t find_nonspace(struct view *view, position_t offset)
 {
-	unsigned next;
+	position_t next;
+
 	while (isspace(view_char(view, offset, &next)))
 		offset = next;
 	return offset;
 }
 
-unsigned find_word_start(struct view *view, unsigned offset)
+position_t find_word_start(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
+	Unicode_t ch;
+	position_t prev;
+
+	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
 		offset = prev;
 		if (!isspace(ch))
 			break;
@@ -76,22 +83,24 @@ unsigned find_word_start(struct view *view, unsigned offset)
 	return offset;
 }
 
-unsigned find_word_end(struct view *view, unsigned offset)
+position_t find_word_end(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned next;
+	Unicode_t ch;
+	position_t next;
+
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)
+	for (; IS_UNICODE(ch = view_char(view, offset, &next)); offset = next)
 		if (!is_wordch(ch))
 			break;
 	return offset;
 }
 
-unsigned find_id_start(struct view *view, unsigned offset)
+position_t find_id_start(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned prev;
-	while ((ch = view_char_prior(view, offset, &prev)) >= 0) {
+	Unicode_t ch;
+	position_t prev;
+
+	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
 		offset = prev;
 		if (!isspace(ch))
 			break;
@@ -102,25 +111,27 @@ unsigned find_id_start(struct view *view, unsigned offset)
 	return offset;
 }
 
-unsigned find_id_end(struct view *view, unsigned offset)
+position_t find_id_end(struct view *view, position_t offset)
 {
-	int ch;
-	unsigned next;
+	Unicode_t ch;
+	position_t next;
+
 	offset = find_nonspace(view, offset)+1;
-	for (; (ch = view_char(view, offset, &next)) >= 0; offset = next)
+	for (; IS_UNICODE(ch = view_char(view, offset, &next)); offset = next)
 		if (!(is_idch(ch) ||
 		      ch == ':' && view_char(view, next, &next) == ':'))
 			break;
 	return offset;
 }
 
-unsigned find_sentence_start(struct view *view, unsigned offset)
+position_t find_sentence_start(struct view *view, position_t offset)
 {
-	unsigned prev;
-	int ch, next = view_char_prior(view, offset, &prev);
-	if (next < 0)
+	position_t prev;
+	Unicode_t ch, next = view_char_prior(view, offset, &prev);
+
+	if (!IS_UNICODE(next))
 		return offset;
-	while ((ch = view_char_prior(view, offset = prev, &prev)) >= 0 &&
+	while (IS_UNICODE(ch = view_char_prior(view, offset = prev, &prev)) &&
 	       ch != '.' && ch != ',' && ch != ';' && ch != ':' &&
 	       ch != '!' && ch != '?' &&
 	       ch != '(' && ch != '[' && ch != '{' &&
@@ -129,13 +140,14 @@ unsigned find_sentence_start(struct view *view, unsigned offset)
 	return offset;
 }
 
-unsigned find_sentence_end(struct view *view, unsigned offset)
+position_t find_sentence_end(struct view *view, position_t offset)
 {
-	unsigned next;
-	int ch, last = view_char(view, offset, &next);
-	if (last < 0)
+	position_t next;
+	Unicode_t ch, last = view_char(view, offset, &next);
+
+	if (!IS_UNICODE(last))
 		return offset;
-	while ((ch = view_char(view, offset = next, &next)) >= 0 &&
+	while (IS_UNICODE(ch = view_char(view, offset = next, &next)) &&
 	       ch != '.' && ch != ',' && ch != ';' && ch != ':' &&
 	       ch != '!' && ch != '?' &&
 	       ch != ')' && ch != ']' && ch != '}' &&
@@ -144,12 +156,12 @@ unsigned find_sentence_end(struct view *view, unsigned offset)
 	return offset;
 }
 
-int find_corresponding_bracket(struct view *view, unsigned offset)
+sposition_t find_corresponding_bracket(struct view *view, position_t offset)
 {
 	static signed char peer[0x100], updown[0x100];
-	unsigned next;
-	int ch = view_char(view, offset, &next);
-	unsigned char stack[32];
+	position_t next;
+	Unicode_t ch = view_char(view, offset, &next);
+	Byte_t stack[32];
 	int stackptr = 0, dir;
 
 	if (!peer['(']) {
@@ -160,10 +172,10 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 		updown[')'] = updown[']'] = updown['}'] = -1;
 	}
 
-	if ((unsigned) ch >= 0x100 || !(dir = updown[ch])) {
-		unsigned back = offset, ahead, next = offset;
-		while ((ch = view_char_prior(view, back, &back)) >= 0) {
-			if (ch >= 0x100)
+	if (ch >= sizeof updown || !(dir = updown[ch])) {
+		position_t back = offset, ahead, next = offset;
+		while (IS_UNICODE(ch = view_char_prior(view, back, &back))) {
+			if (ch >= sizeof updown)
 				continue;
 			if (updown[ch] < 0)
 				if (stackptr == sizeof stack)
@@ -174,10 +186,10 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 				 (!stackptr || ch != peer[stack[--stackptr]]))
 				break;
 		}
-		if (ch < 0)
+		if (!IS_UNICODE(ch))
 			back = offset+1;
-		while ((ch = view_char(view, ahead = next, &next)) >= 0) {
-			if (ch >= 0x100)
+		while (IS_UNICODE(ch = view_char(view, ahead = next, &next))) {
+			if (ch >= sizeof updown)
 				continue;
 			if (updown[ch] > 0)
 				if (stackptr == sizeof stack)
@@ -189,9 +201,9 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 				break;
 		}
 		if (back < offset &&
-		    (offset - back <= ahead - offset || ch < 0))
+		    (offset - back <= ahead - offset || !IS_UNICODE(ch)))
 			return back;
-		return ch >= 0 ? ahead : -1;
+		return IS_UNICODE(ch) ? ahead : -1;
 	}
 
 	stack[stackptr++] = ch;
@@ -200,7 +212,7 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 	while (stackptr) {
 		ch = (dir > 0 ? view_char : view_char_prior)
 			(view, offset, &next);
-		if (ch < 0)
+		if (ch >= sizeof updown)
 			return -1;
 		if (updown[ch] == dir) {
 			if (stackptr == sizeof stack)
@@ -216,9 +228,10 @@ int find_corresponding_bracket(struct view *view, unsigned offset)
 	return offset;
 }
 
-unsigned find_line_number(struct view *view, unsigned line)
+position_t find_line_number(struct view *view, unsigned line)
 {
-	unsigned offset;
+	position_t offset;
+
 	for (offset = 0;
 	     offset < view->bytes;
 	     offset = find_line_end(view, offset) + 1)
@@ -227,15 +240,16 @@ unsigned find_line_number(struct view *view, unsigned line)
 	return offset;
 }
 
-unsigned find_row_bytes(struct view *view, unsigned offset0,
-			unsigned column, unsigned columns)
+position_t find_row_bytes(struct view *view, position_t offset0,
+			  unsigned column, unsigned columns)
 {
-	unsigned offset = offset0, next;
+	position_t offset = offset0, next;
 	unsigned tabstop = view->text->tabstop;
-	int ch = 0, charcols;
+	Unicode_t ch = 0;
+	int charcols;
 
 	while (column < columns) {
-		if ((ch = view_char(view, offset, &next)) < 0)
+		if (!IS_UNICODE(ch = view_char(view, offset, &next)))
 			break;
 		if (ch == '\n') {
 			offset = next;
@@ -255,15 +269,15 @@ unsigned find_row_bytes(struct view *view, unsigned offset0,
 	return offset - offset0;
 }
 
-unsigned find_column(unsigned *row, struct view *view, unsigned linestart,
-		     unsigned offset, unsigned column, unsigned columns)
+position_t find_column(unsigned *row, struct view *view, position_t linestart,
+		       position_t offset, unsigned column, unsigned columns)
 {
 	unsigned tabstop = view->text->tabstop;
-	unsigned at, next;
+	position_t at, next;
 
 	for (at = linestart; at < offset; at = next) {
-		int ch = view_char(view, at, &next);
-		if (ch < 0)
+		Unicode_t ch = view_char(view, at, &next);
+		if (!IS_UNICODE(ch))
 			break;
 		if (ch == '\n') {
 			if (row)
@@ -281,12 +295,14 @@ unsigned find_column(unsigned *row, struct view *view, unsigned linestart,
 	return column;
 }
 
-int find_string(struct view *view, const char *string, unsigned offset)
+sposition_t find_string(struct view *view, const char *string,
+			position_t offset)
 {
-	const unsigned char *ustring = (const unsigned char *) string;
+	const Byte_t *ustring = (const Byte_t *) string;
 	unsigned first = *ustring, j;
-	int ch;
-	for (; (ch = view_byte(view, offset)) >= 0; offset++) {
+	Unicode_t ch;
+
+	for (; IS_UNICODE(ch = view_byte(view, offset)); offset++) {
 		if (ch != first)
 			continue;
 		for (j = 1; (ch = ustring[j]); j++)

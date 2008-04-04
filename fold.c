@@ -1,9 +1,10 @@
 #include "all.h"
 
-void view_fold(struct view *view, unsigned cursor, unsigned mark)
+void view_fold(struct view *view, position_t cursor, position_t mark)
 {
-	unsigned bytes = mark - cursor;
+	size_t bytes = mark - cursor;
 	char buf[8];
+
 	if (mark < cursor)
 		bytes = -bytes, cursor = mark;
 	if (cursor > view->bytes)
@@ -12,15 +13,17 @@ void view_fold(struct view *view, unsigned cursor, unsigned mark)
 		bytes = view->bytes - cursor;
 	if (!bytes)
 		return;
-	view_insert(view, buf, cursor + bytes, utf8_out(buf, FOLD_END+bytes));
-	view_insert(view, buf, cursor, utf8_out(buf, FOLD_START+bytes));
+	view_insert(view, buf, cursor + bytes, unicode_utf8(buf, FOLD_END+bytes));
+	view_insert(view, buf, cursor, unicode_utf8(buf, FOLD_START+bytes));
 	view->text->flags |= TEXT_FOLDED;
 }
 
-int view_unfold(struct view *view, unsigned offset)
+sposition_t view_unfold(struct view *view, position_t offset)
 {
-	unsigned next, fbytes, next2;
-	int ch = view_unicode(view, offset, &next);
+	position_t next, next2;
+	size_t fbytes;
+	Unicode_t ch = view_unicode(view, offset, &next);
+
 	if (ch < FOLD_START || ch >= FOLD_END)
 		return -1;
 	fbytes = FOLDED_BYTES(ch);
@@ -34,20 +37,21 @@ int view_unfold(struct view *view, unsigned offset)
 
 void view_unfold_selection(struct view *view)
 {
-	unsigned offset = locus_get(view, CURSOR);
-	unsigned end = locus_get(view, MARK);
+	position_t offset = locus_get(view, CURSOR);
+	position_t end = locus_get(view, MARK);
 
 	if (end == UNSET)
 		return;
 	if (end < offset) {
-		unsigned t = end;
+		position_t t = end;
 		end = offset;
 		offset = t;
 	}
 
 	while (offset < end) {
-		unsigned next, next2, fbytes;
-		int ch = view_unicode(view, offset, &next);
+		position_t next, next2;
+		size_t fbytes;
+		Unicode_t ch = view_unicode(view, offset, &next);
 		if (ch < FOLD_START || ch >= FOLD_END) {
 			offset = next;
 			continue;
@@ -64,10 +68,10 @@ void view_unfold_selection(struct view *view)
 	}
 }
 
-static unsigned indentation(struct view *view, unsigned offset)
+static int indentation(struct view *view, position_t offset)
 {
 	unsigned indent = 0, tabstop = view->text->tabstop;
-	int ch;
+	Unicode_t ch;
 	tabstop |= !tabstop;
 	for (;;)
 		if ((ch = view_char(view, offset, &offset)) == ' ')
@@ -83,10 +87,12 @@ static unsigned indentation(struct view *view, unsigned offset)
 
 static unsigned max_indentation(struct view *view)
 {
-	unsigned offset, maxindent = 0, next;
+	position_t offset, next;
+	int maxindent = 0;
+
 	for (offset = 0; offset < view->bytes; offset = next) {
-		unsigned indent = indentation(view, offset);
-		if ((signed) indent > 0 && indent > maxindent)
+		int indent = indentation(view, offset);
+		if (indent > maxindent)
 			maxindent = indent;
 		next = find_line_end(view, offset) + 1;
 	}
@@ -96,10 +102,11 @@ static unsigned max_indentation(struct view *view)
 void view_fold_indented(struct view *view, unsigned minindent)
 {
 	unsigned maxindent;
+
 	minindent |= !minindent;
 	while ((maxindent = max_indentation(view)) >= minindent) {
-		unsigned offset, next;
-		int start = -1;
+		position_t offset, next;
+		sposition_t start = -1;
 		for (offset = 0; offset < view->bytes; offset = next) {
 			next = find_line_end(view, offset) + 1;
 			if (indentation(view, offset) < maxindent) {
@@ -117,8 +124,10 @@ void view_fold_indented(struct view *view, unsigned minindent)
 
 void view_unfold_all(struct view *view)
 {
-	unsigned offset, next;
-	for (offset = 0; view_unicode(view, offset, &next) >= 0; offset = next)
+	position_t offset, next;
+	for (offset = 0;
+	     IS_UNICODE(view_unicode(view, offset, &next));
+	     offset = next)
 		if (view_unfold(view, offset) >= 0)
 			next = offset;
 }

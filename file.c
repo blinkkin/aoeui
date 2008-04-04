@@ -3,13 +3,13 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-int utf8_mode = 2; /* auto */
+enum utf8_mode utf8_mode = UTF8_AUTO;
 
-static int old_fashioned_read(struct text *text)
+static ssize_t old_fashioned_read(struct text *text)
 {
 	char *raw;
-	int got, total = 0;
-	unsigned max;
+	ssize_t got, total = 0;
+	size_t max;
 #define CHUNK 1024
 
 	do {
@@ -32,8 +32,8 @@ static int old_fashioned_read(struct text *text)
 static char *fix_path(const char *path)
 {
 	char *fpath;
-	int freepath = 0;
-	int pathlen;
+	Boolean_t freepath = FALSE;
+	size_t pathlen;
 
 	if (!path)
 		return NULL;
@@ -49,33 +49,33 @@ static char *fix_path(const char *path)
 			;
 		if (!pathlen)
 			return NULL;
-		apath = allocate(NULL, pathlen+1);
+		apath = allocate(pathlen+1);
 		memcpy(apath, path, pathlen);
 		apath[pathlen] = '\0';
 		path = apath;
-		freepath = 1;
+		freepath = TRUE;
 	}
 	if (*path != '/') {
-		char *cwdbuf = allocate(NULL, 1024);
+		char *cwdbuf = allocate(1024);
 		char *cwd = getcwd(cwdbuf, 1024);
-		char *apath = allocate(NULL, strlen(cwd) + pathlen + 2);
+		char *apath = allocate(strlen(cwd) + pathlen + 2);
 		sprintf(apath, "%s/%s", cwd, path);
 		if (freepath)
-			allocate(path, 0);
-		allocate(cwdbuf, 0);
+			RELEASE(path);
+		RELEASE(cwdbuf);
 		path = apath;
-		freepath = 1;
+		freepath = TRUE;
 	}
 	fpath = strdup(path);
 	if (freepath)
-		allocate(path, 0);
+		RELEASE(path);
 	return fpath;
 }
 
-static void clean_mmap(struct text *text, unsigned bytes, int flags)
+static void clean_mmap(struct text *text, size_t bytes, int flags)
 {
 	void *p;
-	unsigned pagesize = getpagesize();
+	size_t pagesize = getpagesize();
 	unsigned pages = (bytes + pagesize - 1) / pagesize;
 
 	if (text->clean)
@@ -102,17 +102,20 @@ static void grab_mtime(struct text *text)
 static void scan(struct view *view)
 {
 	char *raw, scratch[8];
-	unsigned bytes = view_raw(view, &raw, 0, getpagesize());
-	unsigned at, chlen, ch, check, lastch = 0, crnl = 0, nl = 0;
-	unsigned chop = bytes < view->bytes ? 8 : 0;
+	position_t at;
+	size_t bytes = view_raw(view, &raw, 0, getpagesize());
+	size_t chop = bytes < view->bytes ? 8 : 0;
+	size_t chlen, check;
+	Unicode_t ch, lastch = 0;
+	int crnl = 0, nl = 0;
 
-	if (!utf8_mode)
+	if (utf8_mode == UTF8_NO)
 		view->text->flags |= TEXT_NO_UTF8;
-	else if (utf8_mode == 2 /*auto*/)
+	else if (utf8_mode == UTF8_AUTO)
 		for (at = 0; at + chop < bytes; at += chlen) {
 			chlen = utf8_length(raw + at, bytes - at);
 			ch = utf8_unicode(raw + at, chlen);
-			check = utf8_out(scratch, ch);
+			check = unicode_utf8(scratch, ch);
 			if (chlen != check) {
 				view->text->flags |= TEXT_NO_UTF8;
 				break;
@@ -196,11 +199,11 @@ struct view *view_open(const char *path0)
 fail:	view_close(view);
 	view = NULL;
 
-done:	allocate(path, 0);
+done:	RELEASE(path);
 	return view;
 }
 
-static int try_dir(char *path, const char *dir, const struct tm *gmt)
+static fd_t try_dir(char *path, const char *dir, const struct tm *gmt)
 {
 	struct stat statbuf;
 
@@ -227,7 +230,7 @@ struct view *text_new(void)
 	const char *me, *home;
 	time_t now = time(NULL);
 	struct tm *gmt = gmtime(&now);
-	int fd = -1;
+	fd_t fd = -1;
 	struct view *view;
 
 	if ((home = getenv("HOME"))) {
@@ -258,25 +261,25 @@ struct view *text_new(void)
 	return view;
 }
 
-int text_rename(struct text *text, const char *path0)
+Boolean_t text_rename(struct text *text, const char *path0)
 {
 	char *path = fix_path(path0);
 	struct text *b;
 	struct view *view;
-	int fd;
+	fd_t fd;
 
 	if (!path)
-		return 0;
+		return FALSE;
 	for (b = text; b; b = b->next)
 		if (b->path && !strcmp(b->path, path))
-			return 0;
+			return FALSE;
 
 	errno = 0;
 	if ((fd = open(path, O_CREAT|O_RDWR,
 			S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)) < 0) {
 		message("can't create %s", path);
-		allocate(path, 0);
-		return 0;
+		RELEASE(path);
+		return FALSE;
 	}
 
 	if (text->flags & TEXT_CREATED) {
@@ -295,11 +298,11 @@ int text_rename(struct text *text, const char *path0)
 	}
 	text->fd = fd;
 	grab_mtime(text);
-	allocate(text->path, 0);
+	RELEASE(text->path);
 	text->path = path;
 	for (view = text->views; view; view = view->next)
 		view_name(view);
-	return 1;
+	return TRUE;
 }
 
 void text_dirty(struct text *text)
@@ -319,7 +322,7 @@ void text_dirty(struct text *text)
 static void save_original(struct text *text)
 {
 	char *save_path;
-	int fd;
+	fd_t fd;
 
 	if (!text->clean ||
 	    !text->path ||
@@ -328,7 +331,7 @@ static void save_original(struct text *text)
 			   TEXT_EDITOR))
 		return;
 
-	save_path = allocate(NULL, strlen(text->path)+2);
+	save_path = allocate(strlen(text->path)+2);
 	sprintf(save_path, "%s~", text->path);
 	errno = 0;
 	fd = creat(save_path, S_IRUSR|S_IWUSR);
@@ -339,11 +342,11 @@ static void save_original(struct text *text)
 		write(fd, text->clean, text->clean_bytes);
 		close(fd);
 	}
-	allocate(save_path, 0);
+	RELEASE(save_path);
 	text->flags |= TEXT_SAVED_ORIGINAL;
 }
 
-int text_is_dirty(struct text *text)
+Boolean_t text_is_dirty(struct text *text)
 {
 	return	text->preserved != text->dirties &&
 		text->fd >= 0 &&
@@ -353,7 +356,7 @@ int text_is_dirty(struct text *text)
 void text_preserve(struct text *text)
 {
 	char *raw;
-	unsigned bytes;
+	size_t bytes;
 	struct stat statbuf;
 
 	if (text->preserved == text->dirties || text->fd < 0 || !text->buffer)

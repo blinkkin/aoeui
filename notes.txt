@@ -35,27 +35,27 @@ Command characters
 *  TAB	tab / tab completion [align; set tab stop]
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection
-  ^F	/ copy [pre/append]
+  ^F	/ copy [pre/append; replicate]
   ^G	backward to line start [paragraph start; multiple lines]
   ^C	forward to line end [paragraph end; multiple lines]
   ^R	backward screen(s) [beginning of view]
   ^L	forward screen(s) [end of view]
-  ^/	(^_) incremental search mode [regexp]
+  ^/	(^_)
 * ^?	(BCK) delete character before cursor
 * ^+	-- larger font
   ^\	[quit without saving]
 * ^A	synonym for ^/(^_)
-  ^O	macro end, local macro execute [local macro start; repeat]
+  ^O	macro end, macro execute [macro start; repeat]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
 * ^I	(TAB)
-  ^D	cut char [select whitespace] / cut [pre/append]
+  ^D	cut char [select whitespace] / cut [pre/append; replicate]
   ^H	backward char(s)
   ^T	forward char(s)
   ^N	backward word(s) [sentence]
   ^S	forward word(s) [sentence]
 * ^-	-- smaller font
-* ^_	(^/)
+* ^_	(^/) incremental search mode [regexp]
 *  ENT	(^M) newline [open line]
   ^ENT	(^J) newline and alignment
   ^Q	suspend editor [quit]

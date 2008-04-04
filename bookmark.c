@@ -3,14 +3,15 @@
 static struct bookmark {
 	unsigned id;
 	struct view *view;
-	unsigned locus[2];
+	locus_t locus[2];
 	struct bookmark *next;
 } *bookmarks;
 
 void bookmark_set(unsigned id, struct view *view,
-		  unsigned cursor, unsigned mark)
+		  position_t cursor, position_t mark)
 {
-	struct bookmark *bm = allocate(NULL, sizeof *bm);
+	struct bookmark *bm = allocate0(sizeof *bm);
+
 	bookmark_unset(id);
 	bm->id = id;
 	bm->view = view;
@@ -20,8 +21,8 @@ void bookmark_set(unsigned id, struct view *view,
 	bookmarks = bm;
 }
 
-int bookmark_get(struct view **view, unsigned *cursor, unsigned *mark,
-		 unsigned id)
+Boolean_t bookmark_get(struct view **view, position_t *cursor, position_t *mark,
+		       unsigned id)
 {
 	struct bookmark *bm;
 	for (bm = bookmarks; bm; bm = bm->next)
@@ -31,16 +32,17 @@ int bookmark_get(struct view **view, unsigned *cursor, unsigned *mark,
 			if (*cursor == UNSET)
 				*cursor = 0;
 			*mark = locus_get(bm->view, bm->locus[1]);
-			return 1;
+			return TRUE;
 		}
 	*view = NULL;
 	*cursor = *mark = 0;
-	return 0;
+	return FALSE;
 }
 
 void bookmark_unset(unsigned id)
 {
 	struct bookmark *bm, *prev = NULL;
+
 	for (bm = bookmarks; bm; bm = bm->next)
 		if (bm->id == id) {
 			locus_destroy(bm->view, bm->locus[0]);
@@ -56,6 +58,7 @@ void bookmark_unset(unsigned id)
 void bookmark_unset_view(struct view *view)
 {
 	struct bookmark *bm, *prev = NULL, *next;
+
 	for (bm = bookmarks; bm; bm = next) {
 		next = bm->next;
 		if (bm->view != view) {

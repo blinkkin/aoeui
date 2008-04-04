@@ -1,58 +1,64 @@
+#ifndef UTIL_H
+#define UTIL_H
+
 /* Utilities */
 
 struct view;
 
 /* find.c */
-unsigned find_line_start(struct view *, unsigned offset);
-unsigned find_line_end(struct view *, unsigned offset);
-unsigned find_paragraph_start(struct view *, unsigned offset);
-unsigned find_paragraph_end(struct view *, unsigned offset);
-unsigned find_space(struct view *, unsigned offset);
-unsigned find_nonspace(struct view *, unsigned offset);
-unsigned find_word_start(struct view *, unsigned offset);
-unsigned find_word_end(struct view *, unsigned offset);
-unsigned find_id_start(struct view *, unsigned offset);
-unsigned find_id_end(struct view *, unsigned offset);
-unsigned find_sentence_start(struct view *, unsigned offset);
-unsigned find_sentence_end(struct view *, unsigned offset);
-int find_corresponding_bracket(struct view *, unsigned offset);
-unsigned find_line_number(struct view *, unsigned line);
-unsigned find_row_bytes(struct view *, unsigned offset,
+position_t find_line_start(struct view *, position_t);
+position_t find_line_end(struct view *, position_t);
+position_t find_paragraph_start(struct view *, position_t);
+position_t find_paragraph_end(struct view *, position_t);
+position_t find_space(struct view *, position_t);
+position_t find_nonspace(struct view *, position_t);
+position_t find_word_start(struct view *, position_t);
+position_t find_word_end(struct view *, position_t);
+position_t find_id_start(struct view *, position_t);
+position_t find_id_end(struct view *, position_t);
+position_t find_sentence_start(struct view *, position_t);
+position_t find_sentence_end(struct view *, position_t);
+sposition_t find_corresponding_bracket(struct view *, position_t);
+position_t find_line_number(struct view *, unsigned line);
+position_t find_row_bytes(struct view *, position_t,
 			unsigned column, unsigned columns);
-unsigned find_column(unsigned *row, struct view *, unsigned linestart,
-		     unsigned offset, unsigned start_column, unsigned columns);
-int find_string(struct view *, const char *, unsigned offset);
+position_t find_column(unsigned *row, struct view *, position_t linestart,
+		       position_t offset, unsigned start_column,
+		       unsigned columns);
+sposition_t find_string(struct view *, const char *, position_t);
 
 void find_tag(struct view *);	/* tags.c */
 
-int view_vprintf(struct view *, const char *, va_list);
-int view_printf(struct view *, const char *, ...);
-unsigned view_get_selection(struct view *, unsigned *offset, int *append);
-char *view_extract(struct view *, unsigned offset, unsigned bytes);
+ssize_t view_vprintf(struct view *, const char *, va_list);
+ssize_t view_printf(struct view *, const char *, ...);
+size_t view_get_selection(struct view *, position_t *offset, Boolean_t *append);
+char *view_extract(struct view *, position_t, unsigned bytes);
 char *view_extract_selection(struct view *);
-unsigned view_delete_selection(struct view *);
+size_t view_delete_selection(struct view *);
 struct view *view_next(struct view *);
 
-int view_unicode(struct view *view, unsigned offset, unsigned *length);
-int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev);
-int view_char(struct view *view, unsigned offset, unsigned *length);
-int view_char_prior(struct view *view, unsigned offset, unsigned *prev);
+Unicode_t view_unicode(struct view *, position_t, size_t *);
+Unicode_t view_unicode_prior(struct view *, position_t, position_t *prev);
+Unicode_t view_char(struct view *, position_t, size_t *);
+Unicode_t view_char_prior(struct view *, position_t, position_t *prev);
 
-INLINE int is_wordch(int ch)
+INLINE Boolean_t is_wordch(Unicode_t ch)
 {
 	return ch > 0x100 && ch < FOLD_START || isalnum(ch);
 }
 
-INLINE int is_idch(int ch)
+INLINE Boolean_t is_idch(Unicode_t ch)
 {
 	return ch == '_' || is_wordch(ch);
 }
 
-INLINE unsigned char_columns(unsigned ch, unsigned column, unsigned tabstop)
+INLINE unsigned char_columns(Unicode_t ch, unsigned column, unsigned tabstop)
 {
 	if (ch == '\t')
 		return tabstop - column % tabstop;
-	if (ch < ' ' || ch == 0x7f || ch >= FOLD_START)
+	if (ch < ' ' || ch == 0x7f || IS_FOLDED(ch))
 		return 2; /* ^X or folded <> */
 	return 1;
 }
+
+#endif

@@ -11,8 +11,8 @@
  */
 
 struct text *text_list;
-int default_tab_stop = 8; /* dammit */
-int no_tabs;
+unsigned default_tab_stop = 8; /* dispute this if you like being wrong */
+Boolean_t no_tabs;
 
 struct view *view_find(const char *name)
 {
@@ -37,7 +37,7 @@ void view_name(struct view *view)
 	if (!name)
 		name = "";
 	len = strlen(name);
-	new = allocate(NULL, len + 8);
+	new = allocate(len + 8);
 	if (view->text->flags & TEXT_EDITOR) {
 		memcpy(new, name, len+1);
 		p = new + len;
@@ -64,7 +64,7 @@ void view_name(struct view *view)
 				break;
 		}
 
-	allocate(view->name, 0);
+	RELEASE(view->name);
 	view->name = new;
 }
 
@@ -72,7 +72,7 @@ struct view *view_create(struct text *text)
 {
 	struct view *view = allocate0(sizeof *view);
 	view->loci = DEFAULT_LOCI;
-	view->locus = allocate(NULL, view->loci * sizeof *view->locus);
+	view->locus = allocate(view->loci * sizeof *view->locus);
 	memset(view->locus, UNSET, view->loci * sizeof *view->locus);
 	view->locus[CURSOR] = 0;
 	view->text = text;
@@ -81,7 +81,8 @@ struct view *view_create(struct text *text)
 	view->bytes = text->buffer ? buffer_bytes(text->buffer) :
 			text->clean ? text->clean_bytes :0;
 	view->mode = mode_default();
-	view->shell_std_in = view->shell_out_locus = -1;
+	view->shell_std_in = -1;
+	view->shell_out_locus = NO_LOCUS;
 	view_name(view);
 	return view;
 }
@@ -123,8 +124,8 @@ static void text_close(struct text *text)
 		close(text->fd);
 	if (text->flags & (TEXT_SCRATCH | TEXT_CREATED))
 		unlink(text->path);
-	allocate(text->path, 0);
-	allocate(text, 0);
+	RELEASE(text->path);
+	RELEASE(text);
 }
 
 void view_close(struct view *view)
@@ -149,13 +150,12 @@ void view_close(struct view *view)
 				break;
 			}
 
-	allocate(view->name, 0);
-	allocate(view->last_search, 0);
-	macro_free(view->local_macro);
-	allocate(view, 0);
+	RELEASE(view->name);
+	RELEASE(view);
 }
 
-struct view *view_selection(struct view *current, unsigned offset, unsigned bytes)
+struct view *view_selection(struct view *current, position_t offset,
+			    size_t bytes)
 {
 	struct view *view;
 
@@ -173,7 +173,7 @@ struct view *view_selection(struct view *current, unsigned offset, unsigned byte
 	return view;
 }
 
-void text_adjust_loci(struct text *text, unsigned offset, int delta)
+void text_adjust_loci(struct text *text, position_t offset, int delta)
 {
 	struct view *view;
 
@@ -181,19 +181,19 @@ void text_adjust_loci(struct text *text, unsigned offset, int delta)
 		return;
 
 	if (delta < 0) {
-		unsigned limit = offset - delta;
+		position_t limit = offset - delta;
 		for (view = text->views; view; view = view->next)
 			if (limit < view->start)
 				view->start += delta;
 			else if (offset < view->start) {
-				unsigned loss = limit - view->start;
+				size_t loss = limit - view->start;
 				if (loss > view->bytes)
 					loss = view->bytes;
 				view->start = offset;
 				view->bytes -= loss;
 				loci_adjust(view, 0, -loss);
 			} else if (offset < view->start + view->bytes) {
-				unsigned loss = view->start + view->bytes -
+				size_t loss = view->start + view->bytes -
 						offset;
 				if (loss > -delta)
 					loss = -delta;
@@ -210,7 +210,7 @@ void text_adjust_loci(struct text *text, unsigned offset, int delta)
 			}
 }
 
-unsigned view_get(struct view *view, void *out, unsigned offset, unsigned bytes)
+size_t view_get(struct view *view, void *out, position_t offset, size_t bytes)
 {
 	struct text *text = view->text;
 	offset += view->start;
@@ -224,8 +224,7 @@ unsigned view_get(struct view *view, void *out, unsigned offset, unsigned bytes)
 	return bytes;
 }
 
-unsigned view_raw(struct view *view, char **out, unsigned offset,
-		  unsigned bytes)
+size_t view_raw(struct view *view, char **out, position_t offset, size_t bytes)
 {
 	struct text *text = view->text;
 	offset += view->start;
@@ -239,13 +238,13 @@ unsigned view_raw(struct view *view, char **out, unsigned offset,
 	return bytes;
 }
 
-unsigned view_delete(struct view *view, unsigned offset, unsigned bytes)
+size_t view_delete(struct view *view, position_t offset, size_t bytes)
 {
 	return text_delete(view->text, view->start + offset, bytes);
 }
 
-unsigned view_insert(struct view *view, const void *in,
-		     unsigned offset, int bytes)
+size_t view_insert(struct view *view, const void *in,
+		   position_t offset, ssize_t bytes)
 {
 	if (bytes < 0)
 		bytes = in ? strlen(in) : 0;

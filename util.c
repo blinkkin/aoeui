@@ -1,13 +1,13 @@
 #include "all.h"
 
-int view_vprintf(struct view *view, const char *msg, va_list ap)
+ssize_t view_vprintf(struct view *view, const char *msg, va_list ap)
 {
 	char buff[1024];
 	vsnprintf(buff, sizeof buff, msg, ap);
 	return view_insert(view, buff, view->bytes, -1);
 }
 
-int view_printf(struct view *view, const char *msg, ...)
+ssize_t view_printf(struct view *view, const char *msg, ...)
 {
 	va_list ap;
 	int result;
@@ -18,10 +18,12 @@ int view_printf(struct view *view, const char *msg, ...)
 	return result;
 }
 
-unsigned view_get_selection(struct view *view, unsigned *offset, int *append)
+size_t view_get_selection(struct view *view, position_t *offset,
+			  Boolean_t *append)
 {
-	unsigned cursor = locus_get(view, CURSOR);
-	unsigned mark = locus_get(view, MARK);
+	position_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
+
 	if (mark == UNSET)
 		mark = cursor + (cursor < view->bytes);
 	if (append)
@@ -31,7 +33,7 @@ unsigned view_get_selection(struct view *view, unsigned *offset, int *append)
 	return mark - (*offset = cursor);
 }
 
-char *view_extract(struct view *view, unsigned offset, unsigned bytes)
+char *view_extract(struct view *view, position_t offset, unsigned bytes)
 {
 	char *str;
 
@@ -43,22 +45,22 @@ char *view_extract(struct view *view, unsigned offset, unsigned bytes)
 		bytes = view->bytes - offset;
 	if (!bytes)
 		return NULL;
-	str = allocate(NULL, bytes+1);
+	str = allocate(bytes+1);
 	str[view_get(view, str, offset, bytes)] = '\0';
 	return str;
 }
 
 char *view_extract_selection(struct view *view)
 {
-	unsigned offset;
-	unsigned bytes = view_get_selection(view, &offset, NULL);
+	position_t offset;
+	size_t bytes = view_get_selection(view, &offset, NULL);
 	return view_extract(view, offset, bytes);
 }
 
-unsigned view_delete_selection(struct view *view)
+size_t view_delete_selection(struct view *view)
 {
-	unsigned offset;
-	unsigned bytes = view_get_selection(view, &offset, NULL);
+	position_t offset;
+	size_t bytes = view_get_selection(view, &offset, NULL);
 	view_delete(view, offset, bytes);
 	locus_set(view, MARK, UNSET);
 	return bytes;
@@ -78,13 +80,15 @@ struct view *view_next(struct view *view)
 	return new == view ? text_new() : new;
 }
 
-int view_unicode(struct view *view, unsigned offset, unsigned *next)
+Unicode_t view_unicode(struct view *view, position_t offset, position_t *next)
 {
-	int ch = view_byte(view, offset);
+	Unicode_t ch = view_byte(view, offset);
 	char *raw;
-	unsigned length;
+	size_t length;
 
-	if (ch < 0x80 || view->text->flags & TEXT_NO_UTF8) {
+	if (!IS_UNICODE(ch) ||
+	    ch < 0x80 ||
+	    view->text->flags & TEXT_NO_UTF8) {
 		if (ch == '\r' &&
 		    view->text->flags & TEXT_CRNL &&
 		    view_byte(view, offset + 1) == '\n') {
@@ -93,7 +97,7 @@ int view_unicode(struct view *view, unsigned offset, unsigned *next)
 			return '\n';
 		}
 		if (next)
-			*next = offset + (ch >= 0);
+			*next = offset + IS_UNICODE(ch);
 		return ch;
 	}
 
@@ -104,14 +108,17 @@ int view_unicode(struct view *view, unsigned offset, unsigned *next)
 	return utf8_unicode(raw, length);
 }
 
-int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev)
+Unicode_t view_unicode_prior(struct view *view, position_t offset,
+			     position_t *prev)
 {
-	int ch = -1;
+	Unicode_t ch = UNICODE_BAD;
 	char *raw;
 
 	if (offset) {
 		ch = view_byte(view, --offset);
-		if (ch >= 0x80 && !(view->text->flags & TEXT_NO_UTF8)) {
+		if (IS_UNICODE(ch) &&
+		    ch >= 0x80 &&
+		    !(view->text->flags & TEXT_NO_UTF8)) {
 			unsigned at = offset >= 7 ? offset-7 : 0;
 			view_raw(view, &raw, at, offset-at+1);
 			offset -= utf8_length_backwards(raw+offset-at,
@@ -128,15 +135,17 @@ int view_unicode_prior(struct view *view, unsigned offset, unsigned *prev)
 	return ch;
 }
 
-int view_char(struct view *view, unsigned offset, unsigned *next)
+Unicode_t view_char(struct view *view, position_t offset, position_t *next)
 {
-	unsigned next0;
-	int ch = view_unicode(view, offset, &next0);
+	position_t next0;
+	Unicode_t ch = view_unicode(view, offset, &next0);
+
 	if (!next)
 		return ch;
 	*next = next0;
-	if (ch >= FOLD_START && ch < FOLD_END) {
-		unsigned fbytes = FOLDED_BYTES(ch), next2;
+	if (IS_FOLDED(ch)) {
+		size_t fbytes = FOLDED_BYTES(ch);
+		position_t next2;
 		if (view_unicode(view, next0 + fbytes, &next2) ==
 		    FOLD_END + fbytes)
 			*next = next2;
@@ -144,16 +153,17 @@ int view_char(struct view *view, unsigned offset, unsigned *next)
 	return ch;
 }
 
-int view_char_prior(struct view *view, unsigned offset, unsigned *prev)
+Unicode_t view_char_prior(struct view *view, position_t offset,
+			  position_t *prev)
 {
-	int ch = view_unicode_prior(view, offset, &offset), ch0;
-	unsigned fbytes, offset0;
+	Unicode_t ch = view_unicode_prior(view, offset, &offset), ch0;
+	size_t fbytes;
+	position_t offset0;
 
 	if (ch >= FOLD_END &&
 	    (fbytes = FOLDED_BYTES(ch)) <= offset &&
-	    (ch0 = view_unicode_prior(view, offset - fbytes,
-				      &offset0)) >= FOLD_START &&
-	    ch0 < FOLD_END &&
+	    IS_FOLDED(ch0 = view_unicode_prior(view, offset - fbytes,
+					       &offset0)) &&
 	    FOLDED_BYTES(ch0) == fbytes) {
 		ch = ch0;
 		offset = offset0;

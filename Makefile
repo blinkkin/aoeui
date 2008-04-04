@@ -1,4 +1,4 @@
-VERSION = 1.1.1
+VERSION = 1.1.2
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
@@ -17,7 +17,7 @@ CFLAGS += -Wall -Wno-parentheses \
 # CTAGS = exuberant-ctags
 CTAGS = ctags
 
-default: aoeui
+default: aoeui aoeui.1 asdfg.1
 aoeui: $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)

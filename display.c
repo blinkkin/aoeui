@@ -49,22 +49,22 @@
 
 
 struct cell {
-	unsigned unicode;
+	Unicode_t unicode;
 	rgba_t fgrgba, bgrgba;
 };
 
 struct display {
 	unsigned rows, columns;
 	unsigned cursor_row, cursor_column;
-	unsigned size_changed;
+	Boolean_t size_changed;
 	rgba_t fgrgba, bgrgba;
 	unsigned at_row, at_column;
 	struct cell *image;
 	struct display *next;
-	unsigned char inbuf[INBUF_SIZE];
+	Byte_t inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
-	unsigned inbuf_bytes, outbuf_bytes;
-	int is_xterm;
+	size_t inbuf_bytes, outbuf_bytes;
+	Boolean_t is_xterm;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
 };
@@ -73,10 +73,10 @@ static struct display *display_list;
 static void (*old_sigwinch)(int, siginfo_t *, void *);
 
 
-static void emit(struct display *display, const char *str, unsigned bytes)
+static void emit(struct display *display, const char *str, size_t bytes)
 {
-	unsigned wrote;
-	int chunk;
+	size_t wrote;
+	ssize_t chunk;
 
 	for (wrote = 0; wrote < bytes; wrote += chunk) {
 		errno = 0;
@@ -95,7 +95,7 @@ static void flush(struct display *display)
 	display->outbuf_bytes = 0;
 }
 
-static void out(struct display *display, const char *str, unsigned bytes)
+static void out(struct display *display, const char *str, size_t bytes)
 {
 	if (display->outbuf_bytes + bytes > sizeof display->outbuf)
 		flush(display);
@@ -166,7 +166,7 @@ static unsigned color_delta(rgba_t rgba1, rgba_t rgba2)
 	if (rgba1 >> 8 == rgba2 >> 8)
 		return 0;
 	for (j = 8; j < 32; j += 8) {
-		unsigned char c1 = rgba1 >> j, c2 = rgba2 >> j;
+		Byte_t c1 = rgba1 >> j, c2 = rgba2 >> j;
 		int cd = c1 - c2;
 		delta *= (cd < 0 ? -cd : cd) + 1;
 	}
@@ -178,7 +178,7 @@ static rgba_t color_mean(rgba_t rgba1, rgba_t rgba2)
 	rgba_t mean = 0;
 	unsigned j;
 	for (j = 0; j < 32; j += 8) {
-		unsigned char c1 = rgba1 >> j, c2 = rgba2 >> j;
+		Byte_t c1 = rgba1 >> j, c2 = rgba2 >> j;
 		mean |= c1 + c2 >> 1 << j;
 	}
 	return mean;
@@ -259,7 +259,7 @@ static void foreground_color(struct display *display, rgba_t rgba)
 }
 
 void display_put(struct display *display, unsigned row, unsigned column,
-		 unsigned unicode, rgba_t fgrgba, rgba_t bgrgba)
+		 Unicode_t unicode, rgba_t fgrgba, rgba_t bgrgba)
 {
 	char buf[8];
 	struct cell *cell;
@@ -275,7 +275,7 @@ void display_put(struct display *display, unsigned row, unsigned column,
 		background_color(display, bgrgba);
 		if (unicode != ' ')
 			foreground_color(display, fgrgba);
-		out(display, buf, utf8_out(buf, unicode));
+		out(display, buf, unicode_utf8(buf, unicode));
 		display->at_column++;
 		cell->unicode = unicode;
 		cell->bgrgba = bgrgba;
@@ -284,7 +284,7 @@ void display_put(struct display *display, unsigned row, unsigned column,
 }
 
 static void fill(struct display *display, unsigned row, unsigned column,
-		 unsigned columns, unsigned code, rgba_t fgrgba,
+		 unsigned columns, Unicode_t code, rgba_t fgrgba,
 		 rgba_t bgrgba)
 {
 	struct cell *cell = &display->image[row * display->columns +
@@ -300,7 +300,7 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 		   unsigned rows, unsigned columns,
 		   rgba_t fgrgba, rgba_t bgrgba)
 {
-	unsigned r, c;
+	int r, c;
 
 	if (row >= display->rows || column >= display->columns)
 		return;
@@ -403,11 +403,12 @@ void display_delete_chars(struct display *display, unsigned row,
 	     ' ', fgrgba, bgrgba);
 }
 
-static int validate(struct display *display, unsigned row, unsigned column,
-		    unsigned *rows, unsigned *columns, unsigned *lines)
+static Boolean_t validate(struct display *display, unsigned row,
+			  unsigned column, unsigned *rows, unsigned *columns,
+			  unsigned *lines)
 {
 	if (row >= display->rows || column >= display->columns)
-		return 0;
+		return FALSE;
 	if (row + *rows > display->rows)
 		*rows = display->rows - row;
 	if (*lines > *rows)
@@ -536,8 +537,8 @@ static struct cell *resize(struct display *display, struct cell *old,
 			   unsigned new_rows, unsigned new_columns)
 {
 	unsigned cells = new_rows * new_columns;
-	unsigned bytes = cells * sizeof(struct cell);
-	struct cell *new = allocate(NULL, bytes);
+	size_t bytes = cells * sizeof(struct cell);
+	struct cell *new = allocate(bytes);
 	unsigned min_rows = new_rows < old_rows ? new_rows : old_rows;
 	unsigned min_columns = new_columns < old_columns ?
 				new_columns : old_columns;
@@ -570,7 +571,7 @@ static struct cell *resize(struct display *display, struct cell *old,
 		}
 	}
 
-	allocate(old, 0);
+	RELEASE(old);
 	return new;
 }
 
@@ -587,7 +588,7 @@ static void set_geometry(struct display *display,
 				rows, columns);
 	display->rows = rows;
 	display->columns = columns;
-	display->size_changed = 1;
+	display->size_changed = TRUE;
 	display_cursor(display, display->cursor_row, display->cursor_column);
 }
 
@@ -630,13 +631,12 @@ void display_get_geometry(struct display *display,
 {
 	*rows = display->rows;
 	*columns = display->columns;
-	display->size_changed = 0;
+	display->size_changed = FALSE;
 }
 
 void display_reset(struct display *display)
 {
-	allocate(display->image, 0);
-	display->image = NULL;
+	RELEASE(display->image);
 	display->cursor_row = display->cursor_column = 0;
 	display->at_row = display->at_column = 0;
 	if (display->is_xterm) {
@@ -651,8 +651,8 @@ void display_reset(struct display *display)
 	if (!display->is_xterm)
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
-	display->fgrgba = 1;
-	display->bgrgba = ~0;
+	display->fgrgba = DEFAULT_FGRGBA;
+	display->bgrgba = DEFAULT_BGRGBA;
 	geometry(display);
 	display_sync(display);
 }
@@ -715,8 +715,8 @@ void display_end(struct display *display)
 		return;
 
 	display_title(display, NULL);
-	set_color(display, ~0 /*default*/, BG_COLOR);
-	set_color(display, ~0 /*default*/, FG_COLOR);
+	set_color(display, DEFAULT_FGRGBA, BG_COLOR);
+	set_color(display, DEFAULT_BGRGBA, FG_COLOR);
 	if (display->is_xterm)
 		outs(display, XTERM_REGSCREEN);
 	else
@@ -725,7 +725,7 @@ void display_end(struct display *display)
 
 	tcsetattr(1, TCSADRAIN, &original_termios);
 
-	allocate(display->image, 0);
+	RELEASE(display->image);
 
 	for (d = display_list; d; prev = d, d = d->next)
 		if (d == display) {
@@ -736,7 +736,7 @@ void display_end(struct display *display)
 			break;
 		}
 
-	allocate(display, 0);
+	RELEASE(display);
 }
 
 void display_title(struct display *display, const char *title)
@@ -761,25 +761,25 @@ void display_beep(struct display *display)
 	display_sync(display);
 }
 
-int display_getch(struct display *display, int block)
+Unicode_t display_getch(struct display *display, Boolean_t block)
 {
-	unsigned char *p;
-	int key;
+	Byte_t *p;
+	Unicode_t key;
 	unsigned used, vals, val[16];
 
-#define SET_GEOMETRY DISPLAY_FKEY(-1)
+#define SET_GEOMETRY FUNCTION_F(99)
 
 	if (!display)
-		return DISPLAY_EOF;
+		return ERROR_EOF;
 
 again:	if (display->size_changed)
-		return DISPLAY_CHANGED;
+		return ERROR_CHANGED;
 	display_sync(display);
 	if (display->inbuf_bytes >= sizeof display->inbuf - 1)
 		;
 	else if (!multiplexor(block)) {
 		if (!display->inbuf_bytes)
-			return DISPLAY_NONE;
+			return ERROR_EMPTY;
 	} else {
 		int n;
 		do {
@@ -789,9 +789,9 @@ again:	if (display->size_changed)
 					display->inbuf_bytes);
 		} while (n < 0 && (errno == EAGAIN || errno == EINTR));
 		if (!n)
-			return DISPLAY_EOF;
+			return ERROR_EOF;
 		if (n < 0)
-			return DISPLAY_ERR;
+			return ERROR_INPUT;
 		display->inbuf[display->inbuf_bytes += n] = '\0';
 	}
 
@@ -800,7 +800,7 @@ again:	if (display->size_changed)
 		if (utf8_bytes[*p] > display->inbuf_bytes) {
 			if (block)
 				goto again;
-			return DISPLAY_NONE;
+			return ERROR_EMPTY;
 		}
 		used = utf8_length((char *) p, display->inbuf_bytes);
 		key = utf8_unicode((char *) p, used);
@@ -835,39 +835,39 @@ again:	if (display->size_changed)
 			if (!val)
 				break;
 			switch (val[0]) {
-			case  2: key = DISPLAY_INSERT;	break;
-			case  3: key = DISPLAY_DELETE;	break;
-			case  5: key = DISPLAY_PGUP;	break;
-			case  6: key = DISPLAY_PGDOWN;	break;
-			case 15: key = DISPLAY_F5;	break;
-			case 17: key = DISPLAY_F6;	break;
-			case 18: key = DISPLAY_F7;	break;
-			case 19: key = DISPLAY_F8;	break;
-			case 20: key = DISPLAY_F9;	break;
-			case 21: key = DISPLAY_F10;	break;
-	/*pmk?*/	case 22: key = DISPLAY_F11;	break;
-			case 24: key = DISPLAY_F12;	break;
+			case  2: key = FUNCTION_INSERT;	break;
+			case  3: key = FUNCTION_DELETE;	break;
+			case  5: key = FUNCTION_PGUP;	break;
+			case  6: key = FUNCTION_PGDOWN;	break;
+			case 15: key = FUNCTION_F(5);	break;
+			case 17: key = FUNCTION_F(6);	break;
+			case 18: key = FUNCTION_F(7);	break;
+			case 19: key = FUNCTION_F(8);	break;
+			case 20: key = FUNCTION_F(9);	break;
+			case 21: key = FUNCTION_F(10);	break;
+	/*pmk?*/	case 22: key = FUNCTION_F(11);	break;
+			case 24: key = FUNCTION_F(12);	break;
 			}
 			break;
-		case 'A': key = DISPLAY_UP;	break;
-		case 'B': key = DISPLAY_DOWN;	break;
-		case 'C': key = DISPLAY_RIGHT;	break;
-		case 'D': key = DISPLAY_LEFT;	break;
+		case 'A': key = FUNCTION_UP;	break;
+		case 'B': key = FUNCTION_DOWN;	break;
+		case 'C': key = FUNCTION_RIGHT;	break;
+		case 'D': key = FUNCTION_LEFT;	break;
 		case '\0': /* truncated escape sequence; get more */
 			if (!block)
-				return DISPLAY_NONE;
+				return ERROR_EMPTY;
 			goto again;
 		}
 		break;
 
 	case 'O':
 		switch (*(p += 2)) {
-		case 'H': key = DISPLAY_HOME;	break;
-		case 'F': key = DISPLAY_END;	break;
-		case 'P': key = DISPLAY_F1;	break;
-		case 'Q': key = DISPLAY_F2;	break;
-		case 'R': key = DISPLAY_F3;	break;
-		case 'S': key = DISPLAY_F4;	break;
+		case 'H': key = FUNCTION_HOME;	break;
+		case 'F': key = FUNCTION_END;	break;
+		case 'P': key = FUNCTION_F(1);	break;
+		case 'Q': key = FUNCTION_F(2);	break;
+		case 'R': key = FUNCTION_F(3);	break;
+		case 'S': key = FUNCTION_F(4);	break;
 		}
 		break;
 
@@ -896,7 +896,7 @@ again:	if (display->size_changed)
 		goto again;
 	case '\0': /* truncated escape sequence; get more */
 		if (!block)
-			return DISPLAY_NONE;
+			return ERROR_EMPTY;
 		goto again;
 	default:
 		if (p[1] >= 'a' && p[1] <= 'z')

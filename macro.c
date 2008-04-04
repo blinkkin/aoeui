@@ -1,11 +1,11 @@
 #include "all.h"
 
 struct macro {
-	int start, bytes, at, repeat;
+	position_t start, at;
+	size_t bytes;
+	int repeat;
 	struct macro *next, *suspended;
 };
-
-struct macro *function_key[FUNCTION_KEYS+1];
 
 static struct buffer *macbuf;
 static struct macro *macros;
@@ -22,17 +22,17 @@ struct macro *macro_record(void)
 	return macros = recording = new;
 }
 
-int macro_end_recording(unsigned chop)
+Boolean_t macro_end_recording(Unicode_t chop)
 {
 	char *raw;
-	unsigned n;
+	size_t n;
 
 	if (!recording)
-		return 0;
+		return FALSE;
 	n = buffer_raw(macbuf, &raw, recording->start,
 		       recording->bytes);
 	while (n) {
-		unsigned lastlen = utf8_length_backwards(raw+n-1, n);
+		size_t lastlen = utf8_length_backwards(raw+n-1, n);
 		n -= lastlen;
 		if (utf8_unicode(raw+n, lastlen) == chop)
 			break;
@@ -41,25 +41,25 @@ int macro_end_recording(unsigned chop)
 	recording->bytes = n;
 	recording->at = recording->bytes; /* not playing */
 	recording = NULL;
-	return 1;
+	return TRUE;
 }
 
-static int macro_is_playing(struct macro *macro)
+static Boolean_t macro_is_playing(struct macro *macro)
 {
 	return macro && macro->at < macro->bytes;
 }
 
-int macro_play(struct macro *macro, int repeat)
+Boolean_t macro_play(struct macro *macro, int repeat)
 {
 	if (!macro ||
 	    macro_is_playing(macro) ||
 	    !macro->bytes)
-		return 0;
+		return FALSE;
 	macro->suspended = playing;
 	macro->at = 0;
 	macro->repeat = repeat;
 	playing = macro;
-	return 1;
+	return TRUE;
 }
 
 void macros_abort(void)
@@ -88,17 +88,17 @@ void macro_free(struct macro *macro)
 			mac->start -= macro->bytes;
 	}
 	buffer_delete(macbuf, macro->start, macro->bytes);
-	allocate(macro, 0);
+	RELEASE(macro);
 }
 
-int macro_getch(void)
+Unicode_t macro_getch(void)
 {
-	int ch;
+	Unicode_t ch;
 
 	if (playing) {
 		char *p;
-		unsigned n = buffer_raw(macbuf, &p, playing->start + playing->at,
-					playing->bytes - playing->at);
+		size_t n = buffer_raw(macbuf, &p, playing->start + playing->at,
+				      playing->bytes - playing->at);
 		ch = utf8_unicode(p, n = utf8_length(p, n));
 		if ((playing->at += n) == playing->bytes)
 			if (playing->repeat-- > 0)
@@ -107,9 +107,9 @@ int macro_getch(void)
 				playing = playing->suspended;
 	} else {
 		ch = window_getch();
-		if (ch >= 0 && recording) {
+		if (!IS_ERROR_CODE(ch) && recording) {
 			char buf[8];
-			int n = utf8_out(buf, ch);
+			size_t n = unicode_utf8(buf, ch);
 			buffer_insert(macbuf, buf,
 				      recording->start + recording->bytes,
 				      n);

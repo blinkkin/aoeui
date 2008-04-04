@@ -1,4 +1,4 @@
-/* All sources #include this file. */
+/* All editor sources #include this file. */
 
 /* Standard and system headers */
 #define _GNU_SOURCE /* for mremap */
@@ -24,12 +24,14 @@
 # endif
 #endif
 
+#include "types.h"
+
 /* Module headers */
+#include "utf8.h"
 #include "buffer.h"
 #include "mode.h"
-#include "text.h"
 #include "locus.h"
-#include "utf8.h"
+#include "text.h"
 #include "window.h"
 #include "util.h"
 #include "clip.h"
@@ -38,11 +40,16 @@
 
 /* Miscellaneous declarations and prototypes that didn't fit elsewhere */
 extern struct termios original_termios;
-void *allocate(const void *, unsigned bytes);	/* mem.c */
-void *allocate0(unsigned bytes);
-void depart(int);				/* die.c */
+
+void *reallocate(const void *, size_t);		/* mem.c */
+#define allocate(sz) (reallocate(NULL, (sz)))
+void *allocate0(size_t);
+#define RELEASE(p) (reallocate((p), 0), (p) = NULL)
+
+void depart(int exit_status);			/* die.c */
 void die(const char *, ...);
 void message(const char *, ...);
-int child(int *stdfd, unsigned stdfds, const char *argv[]);	/* child.c */
-int multiplexor(int block);
-void multiplex_write(int fd, const char *, int bytes, int retain);
+
+int child(fd_t *stdfd, unsigned stdfds, const char *argv[]);	/* child.c */
+Boolean_t multiplexor(Boolean_t block);
+void multiplex_write(fd_t fd, const char *, ssize_t bytes, Boolean_t retain);

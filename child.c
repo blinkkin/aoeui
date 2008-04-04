@@ -14,57 +14,62 @@
 
 static struct stream *streams;
 
-typedef int (*activity)(struct stream *, char *received, int bytes);
+typedef Boolean_t (*activity)(struct stream *, char *received, ssize_t bytes);
 
 struct stream {
 	struct stream *next;
-	int fd, retain;
+	fd_t fd;
+	Boolean_t retain;
 	activity activity;
 	struct view *view;
-	int locus;
+	locus_t locus;
 	const char *data;
-	unsigned bytes, writ;
+	size_t bytes, writ;
 };
 
-static int insertion_activity(struct stream *stream, char *received, int bytes)
+static Boolean_t insertion_activity(struct stream *stream,
+				    char *received, ssize_t bytes)
 {
-	unsigned offset;
+	position_t offset;
 	if (bytes <= 0)
-		return 0;
+		return FALSE;
 	offset = locus_get(stream->view, stream->locus);
 	if (offset == UNSET)
-		return 0;
+		return FALSE;
 	view_insert(stream->view, received, offset, bytes);
 	locus_set(stream->view, stream->locus, offset + bytes);
-	return 1;
+	return TRUE;
 }
 
-static int shell_output_activity(struct stream *stream, char *received,
-				 int bytes)
+static Boolean_t shell_output_activity(struct stream *stream, char *received,
+				       ssize_t bytes)
 {
-	unsigned offset;
+	position_t offset;
+
 	if (bytes <= 0)
-		return 0;
+		return FALSE;
 	offset = locus_get(stream->view, stream->view->shell_out_locus);
 	if (offset == UNSET)
 		offset = stream->view->bytes;
 	view_insert(stream->view, received, offset, bytes);
 	locus_set(stream->view, stream->view->shell_out_locus, offset + bytes);
-	return 1;
+	return TRUE;
 }
 
-static int error_activity(struct stream *stream, char *received, int bytes)
+static Boolean_t error_activity(struct stream *stream, char *received,
+				ssize_t bytes)
 {
 	if (bytes <= 0)
-		return 0;
+		return FALSE;
 	received[bytes] = '\0';
 	message("%s", received);
-	return 1;
+	return TRUE;
 }
 
-static int out_activity(struct stream *stream, char *x, int bytes)
+static Boolean_t out_activity(struct stream *stream, char *x, ssize_t bytes)
 {
-	int chunk = stream->bytes - stream->writ;
+	ssize_t chunk = stream->bytes - stream->writ;
+
 	if (chunk <= 0)
 		return 0;
 	do {
@@ -75,7 +80,7 @@ static int out_activity(struct stream *stream, char *x, int bytes)
 
 	if (bytes < 0 && errno == EPIPE) {
 		message("write failed (child terminated?)");
-		return 0;
+		return FALSE;
 	}
 	if (bytes <= 0)
 		die("write of %d bytes failed", chunk);
@@ -83,10 +88,11 @@ static int out_activity(struct stream *stream, char *x, int bytes)
 	return bytes > 0;
 }
 
-static struct stream *stream_create(int fd)
+static struct stream *stream_create(fd_t fd)
 {
 	struct stream *stream = allocate0(sizeof *stream);
 	stream->fd = fd;
+	stream->locus = NO_LOCUS;
 	if (!streams)
 		streams = stream;
 	else {
@@ -102,20 +108,22 @@ static void stream_destroy(struct stream *stream, struct stream *prev)
 {
 	if (!stream->retain)
 		close(stream->fd);
-	if (stream->view && stream->locus >= 0)
+	if (stream->view)
 		locus_destroy(stream->view, stream->locus);
 	if (prev)
 		prev->next = stream->next;
 	else
 		streams = stream->next;
-	allocate(stream->data, 0);
-	allocate(stream, 0);
+	RELEASE(stream->data);
+	RELEASE(stream);
 }
 
-int multiplexor(int block)
+Boolean_t multiplexor(Boolean_t block)
 {
 	struct timeval tv, *tvp = NULL;
-	int j, maxfd, bytes;
+	int j;
+	fd_t maxfd = 0;
+	ssize_t bytes;
 	struct stream *stream, *prev, *next;
 	fd_set fds[3];
 	char *rdbuff = NULL;
@@ -124,7 +132,6 @@ int multiplexor(int block)
 		FD_ZERO(&fds[j]);
 	FD_SET(0, &fds[0]);
 	FD_SET(0, &fds[2]);
-	maxfd = 0;
 	for (stream = streams; stream; stream = stream->next) {
 		FD_SET(stream->fd, &fds[!!stream->data]);
 		FD_SET(stream->fd, &fds[2]);
@@ -151,7 +158,7 @@ int multiplexor(int block)
 			bytes = 0;
 		else {
 			if (!rdbuff)
-				rdbuff = allocate(NULL, 1024);
+				rdbuff = allocate(1024);
 			errno = 0;
 			bytes = read(stream->fd, rdbuff, 1023);
 		}
@@ -161,7 +168,7 @@ int multiplexor(int block)
 			stream_destroy(stream, prev);
 	}
 
-	allocate(rdbuff, 0);
+	RELEASE(rdbuff);
 	return FD_ISSET(0, &fds[0]) || FD_ISSET(0, &fds[2]);
 };
 
@@ -173,10 +180,8 @@ static void child_close(struct view *view)
 		close(view->shell_std_in);
 		view->shell_std_in = -1;
 	}
-	if (view->shell_out_locus >= 0) {
-		locus_destroy(view, view->shell_out_locus);
-		view->shell_out_locus = -1;
-	}
+	locus_destroy(view, view->shell_out_locus);
+	view->shell_out_locus = NO_LOCUS;
 }
 
 void demultiplex_view(struct view *view)
@@ -192,7 +197,7 @@ void demultiplex_view(struct view *view)
 	child_close(view);
 }
 
-void multiplex_write(int fd, const char *data, int bytes, int retain)
+void multiplex_write(fd_t fd, const char *data, ssize_t bytes, Boolean_t retain)
 {
 	struct stream *stream;
 
@@ -210,17 +215,16 @@ void multiplex_write(int fd, const char *data, int bytes, int retain)
 	stream->bytes = bytes;
 }
 
-static void newline(int fd)
+static void newline(fd_t fd)
 {
-	char *str = allocate(NULL, 2);
-	strcpy(str, "\n");
-	multiplex_write(fd, str, 1, 1 /*retain*/);
+	multiplex_write(fd, strdup("\n"), 1, TRUE /*retain*/);
 }
 
-int child(int *stdfd, unsigned stdfds, const char *argv[])
+int child(fd_t *stdfd, unsigned stdfds, const char *argv[])
 {
-	int pipefd[3][2];
-	int j, k, pid;
+	fd_t pipefd[3][2];
+	int j, k;
+	pid_t pid;
 
 	if (stdfds > 3)
 		stdfds = 3;
@@ -273,8 +277,9 @@ void mode_child(struct view *view)
 {
 	char *command = view_extract_selection(view);
 	char *wrbuff = NULL;
-	unsigned cursor, to_write;
-	int stdfd[3];
+	position_t cursor;
+	size_t to_write;
+	fd_t stdfd[3];
 	const char *argv[4];
 	struct stream *std_out, *std_err;
 	const char *shell = getenv("SHELL");
@@ -287,7 +292,7 @@ void mode_child(struct view *view)
 	if (view->shell_std_in >= 0) {
 		locus_set(view, MARK, UNSET);
 		multiplex_write(view->shell_std_in, command, strlen(command),
-				1 /*retain*/);
+				TRUE /*retain*/);
 		newline(view->shell_std_in);
 		return;
 	}
@@ -323,7 +328,7 @@ void mode_child(struct view *view)
 	if (!child(stdfd, 3, argv))
 		return;
 
-	multiplex_write(stdfd[0], wrbuff, to_write, 0 /*retain*/);
+	multiplex_write(stdfd[0], wrbuff, to_write, FALSE /*don't retain*/);
 	std_out = stream_create(stdfd[1]);
 	std_out->activity = insertion_activity;
 	std_out->view = view;
@@ -334,7 +339,7 @@ void mode_child(struct view *view)
 
 void mode_shell_pipe(struct view *view)
 {
-	int stdfd[3];
+	fd_t stdfd[3];
 	const char *argv[4];
 	struct stream *output;
 	const char *shell = getenv("SHELL");
@@ -373,7 +378,7 @@ void shell_command(struct view *view)
 	command = view_extract(view, offset, cursor - offset);
 	if (command)
 		multiplex_write(view->shell_std_in, command,
-				-1, 1 /*retain*/);
+				-1, TRUE /*retain*/);
 	locus_set(view, view->shell_out_locus, view->bytes);
 	locus_set(view, CURSOR, view->bytes);
 }
