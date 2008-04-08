@@ -18,6 +18,7 @@ void window_page_down(struct view *);
 void window_beep(struct view *);
 Unicode_t window_getch(void);
 struct view *window_current_view(void);
+unsigned window_columns(struct window *);
 void windows_end(void);
 
 #endif

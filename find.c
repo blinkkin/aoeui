@@ -48,6 +48,64 @@ position_t find_paragraph_end(struct view *view, position_t offset)
 	return offset;
 }
 
+static void updown_goal(struct view *view, position_t at)
+{
+	if (at == view->goal.cursor)
+		;
+	else if (view_byte(view, at) == '\n')
+		view->goal.row = ~0;
+	else {
+		view->goal.row = 0;
+		view->goal.column = find_column(&view->goal.row, view,
+						find_line_start(view, at),
+						at, 0);
+	}
+}
+
+static position_t same_column(struct view *view, position_t at, position_t fail)
+{
+	unsigned r = 0, c = 0;
+	unsigned tabstop = view->text->tabstop;
+	unsigned columns = window_columns(view->window);
+	position_t next;
+
+	for (; r < view->goal.row || c < view->goal.column; at = next) {
+		Unicode_t ch;
+		ch = view_char(view, at, &next);
+		if (!IS_UNICODE(ch) || ch == '\n') {
+			at = fail;
+			break;
+		}
+		if ((c += char_columns(ch, c, tabstop)) > view->goal.column &&
+		    r == view->goal.row)
+			break;
+		if (c > columns)
+			r++, c = char_columns(ch, 0, tabstop);
+	}
+	return view->goal.cursor = at;
+}
+
+position_t find_line_up(struct view *view, position_t at)
+{
+	position_t linestart = find_line_start(view, at);
+
+	updown_goal(view, at);
+	if (!linestart)
+		return 0;
+	return same_column(view, find_line_start(view, linestart-1),
+			   linestart-1);
+}
+
+position_t find_line_down(struct view *view, position_t at)
+{
+	position_t nextstart = find_line_end(view, at) + 1;
+
+	updown_goal(view, at);
+	if (nextstart >= view->bytes)
+		return view->bytes;
+	return same_column(view, nextstart, find_line_end(view, nextstart));
+}
+
 position_t find_space(struct view *view, position_t offset)
 {
 	Unicode_t ch;
@@ -269,13 +327,14 @@ position_t find_row_bytes(struct view *view, position_t offset0,
 	return offset - offset0;
 }
 
-position_t find_column(unsigned *row, struct view *view, position_t linestart,
-		       position_t offset, unsigned column, unsigned columns)
+unsigned find_column(unsigned *row, struct view *view, position_t at,
+		     position_t offset, unsigned column)
 {
 	unsigned tabstop = view->text->tabstop;
-	position_t at, next;
+	unsigned columns = window_columns(view->window);
+	position_t next;
 
-	for (at = linestart; at < offset; at = next) {
+	for (; at < offset; at = next) {
 		Unicode_t ch = view_char(view, at, &next);
 		if (!IS_UNICODE(ch))
 			break;

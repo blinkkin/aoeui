@@ -57,6 +57,17 @@ static void forward_lines(struct view *view)
 	locus_set(view, CURSOR, cursor);
 }
 
+static void down_lines(struct view *view)
+{
+	struct mode_default *mode = (struct mode_default *) view->mode;
+	unsigned count = mode->variant ? mode->value : 1;
+	position_t cursor = locus_get(view, CURSOR);
+
+	while (count-- && cursor < view->bytes)
+		cursor = find_line_down(view, cursor);
+	locus_set(view, CURSOR, cursor);
+}
+
 static void backward_lines(struct view *view)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
@@ -68,6 +79,17 @@ static void backward_lines(struct view *view)
 	else
 		while (count-- && cursor)
 			cursor = find_line_start(view, cursor-1);
+	locus_set(view, CURSOR, cursor);
+}
+
+static void up_lines(struct view *view)
+{
+	struct mode_default *mode = (struct mode_default *) view->mode;
+	unsigned count = mode->variant ? mode->value : 1;
+	position_t cursor = locus_get(view, CURSOR);
+
+	while (count-- && cursor)
+		cursor = find_line_up(view, cursor);
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -131,12 +153,17 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 
 	/* Decode function-key sequences */
 	if (IS_FUNCTION_KEY(ch)) {
+
+		/* Forget the up/down goal column if not moving up/down */
+		if (ch != FUNCTION_UP && ch != FUNCTION_DOWN)
+			view->goal.cursor = UNSET;
+
 		switch (ch) {
-		case FUNCTION_UP:
-			backward_lines(view);
-			break;
 		case FUNCTION_DOWN:
-			forward_lines(view);
+			down_lines(view);
+			break;
+		case FUNCTION_UP:
+			up_lines(view);
 			break;
 		case FUNCTION_LEFT:
 			backward_chars(view);
@@ -179,6 +206,8 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 	 */
 
 	if (ch >= ' ' /*0x20*/) {
+
+		view->goal.cursor = UNSET;
 
 		if (mode->variant) {
 			if (mode->is_hex && isxdigit(ch)) {
@@ -278,6 +307,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		};
 		ch = asdfg_to_aoeui[ch-'A'];
 	}
+
+	if (ch != 'G' && ch != 'C')
+		view->goal.cursor = UNSET;
 
 	switch (ch) {
 	case '@': /* (^Space) */

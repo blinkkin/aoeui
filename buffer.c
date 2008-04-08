@@ -16,6 +16,12 @@
  *	to enlarge it (when bytes are to be deleted) or to add new
  *	bytes to its boundaries.
  *
+ *	The gap comprises all of the free space in a buffer.
+ *	Since the cost of moving data does not depend on the
+ *	distance by which it is moved, there is no point to
+ *	using any gap size other than the full amount of unused
+ *	storage.
+ *
  *	Buffers are represented by pages mmap'ed from the file's
  *	temporary# file, or anonymous storage for things that aren't
  *	file texts.
@@ -23,6 +29,7 @@
  *	Besides being used to hold the content of files, buffers
  *	are used for cut/copied text (the "clip buffer"), macros,
  *	and for undo histories.
+
  */
 
 struct buffer *buffer_create(char *path)

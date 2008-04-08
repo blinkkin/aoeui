@@ -1,11 +1,11 @@
-Dvorak keyboard layout
+The Dvorak Simplified Keyboard layout
 
        ESC FFFFF FFFFF DEL
 	 ` 12345 67890 [] BCK
        TAB ',.py fgcrl /= \
-       CLK AoeuI dhtns -  ENT
+       CTL AoeuI dhtns -  ENT
        SHF ;qJkx bMwvz SHF
-       CTL ALT SPC ALT CTL arrows
+       LCK ALT SPC ALT CTL arrows
 
 Commands are denoted here in these notes by ^, which signifies use
 of Control, Alt, or a leading Escape before a key.  (Some Control

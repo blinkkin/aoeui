@@ -39,6 +39,10 @@ struct view {
 	locus_t shell_out_locus;
 	struct mode *mode;
 	fd_t shell_std_in;
+	struct goal_column {
+		position_t cursor;
+		unsigned row, column;
+	} goal;
 };
 
 extern struct text *text_list;

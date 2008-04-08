@@ -83,11 +83,11 @@ are used for.
 A
 .I text
 is a sequence of characters to be viewed or edited, such as a file.
-If not ASCII, the editor will automatically determine whether it is
+If it is not ASCII, the editor will automatically determine whether it is
 encoded in legal UTF-8 and do the right thing.
 The editor can also automatically detect DOS-style line endings.
 .P
-.A
+A
 .I view
 comprises all or part of a text.
 A text in the editor has at least one view, and possibly more.
@@ -141,7 +141,7 @@ indicates a dirty text (meaning one that needs saving, not one
 unfit for young persons).
 .SH COMMANDS
 .B AOEUI
-understands the arrow keys, page up and page down keys, and Delete
+understands the arrow, page up and down, and Delete keys
 on your keyboard, so you can actually just use it like a dumb
 notepad with no mouse if you don't want to read any further than
 the next section, which tells you how to leave the editor.

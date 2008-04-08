@@ -10,6 +10,8 @@ position_t find_line_start(struct view *, position_t);
 position_t find_line_end(struct view *, position_t);
 position_t find_paragraph_start(struct view *, position_t);
 position_t find_paragraph_end(struct view *, position_t);
+position_t find_line_up(struct view *, position_t);
+position_t find_line_down(struct view *, position_t);
 position_t find_space(struct view *, position_t);
 position_t find_nonspace(struct view *, position_t);
 position_t find_word_start(struct view *, position_t);
@@ -22,9 +24,8 @@ sposition_t find_corresponding_bracket(struct view *, position_t);
 position_t find_line_number(struct view *, unsigned line);
 position_t find_row_bytes(struct view *, position_t,
 			unsigned column, unsigned columns);
-position_t find_column(unsigned *row, struct view *, position_t linestart,
-		       position_t offset, unsigned start_column,
-		       unsigned columns);
+unsigned find_column(unsigned *row, struct view *, position_t linestart,
+		     position_t offset, unsigned start_column);
 sposition_t find_string(struct view *, const char *, position_t);
 
 void find_tag(struct view *);	/* tags.c */

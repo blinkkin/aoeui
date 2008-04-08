@@ -330,7 +330,7 @@ static position_t focus(struct window *window)
 		start += find_row_bytes(view, start, 0, window->columns);
 
 done:	window->cursor_column = find_column(&above, view, cursorrow,
-					    cursor, 0, window->columns);
+					    cursor, 0);
 	window->cursor_row = above;
 	new_start(view, start);
 	return start;
@@ -491,11 +491,11 @@ void window_hint_deleting(struct window *window, position_t offset, size_t bytes
 	}
 	if (!bytes || view_char(view, offset, NULL) >= FOLD_START)
 		return;
-	column = find_column(&row, view, at, offset, 0, window->columns);
+	column = find_column(&row, view, at, offset, 0);
 	if (row >= window->rows)
 		return;
 	end_column = find_column(&lines, view, offset,
-				 offset + bytes, column, window->columns);
+				 offset + bytes, column);
 	if (!lines) {
 		unsigned old = find_row_bytes(view, offset,
 					      column, window->columns);
@@ -535,11 +535,11 @@ void window_hint_inserted(struct window *window, position_t offset, size_t bytes
 	}
 	if (!bytes || view_char(view, offset, NULL) >= FOLD_START)
 		return;
-	column = find_column(&row, view, at, offset, 0, window->columns);
+	column = find_column(&row, view, at, offset, 0);
 	if (row >= window->rows)
 		return;
 	end_column = find_column(&lines, view, offset,
-				 offset + bytes, column, window->columns);
+				 offset + bytes, column);
 	if (!lines) {
 		size_t old = find_row_bytes(view, offset + bytes,
 					    end_column, window->columns);
@@ -707,4 +707,9 @@ Unicode_t window_getch(void)
 		repaint();
 		block = TRUE;
 	}
+}
+
+unsigned window_columns(struct window *window)
+{
+	return window ? window->columns : 80;
 }
