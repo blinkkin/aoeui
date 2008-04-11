@@ -56,7 +56,7 @@ clean:
 	rm -f *.o core gmon.out screenlog.*
 clobber: clean
 	rm -f aoeui TAGS aoeui.1 asdfg.1 aoeui.1.gz asdfg.1.gz \
-		aoeui.1.html asdfg.1.html
+		aoeui.1.html asdfg.1.html unicode
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless

@@ -266,14 +266,19 @@ numeric argument.
 is not a control character)
 looks an identifier up the identifier in the
 .B TAGS
-file, which is automatically loaded into the editor if it is
-not already present, and if the identifier is found therein,
-the corresponding file name and line number are sought.
+files, which are sought in the same directory as the current view and
+then all of its parents, until one is found that contains the
+identifier.
+A new little window is opened for each of the identifier's entries
+in the TAGS file.
+.P
 The
 .B TAGS
-file should be generated with the
+files should be generated with the
 .B ctags
-utility and its
+or
+.B exuberant-ctags
+utilities and their
 .B -x
 output format.
 If there is a selection, it is deleted from the view and its entire contents
@@ -760,18 +765,20 @@ is running, and may be useful in recovery if the editor
 is killed.
 .TP
 .B TAGS
-is read in by the
+is found and read in by the
 .B ^Space'
-command, if not already present, to supply the tags that are
-scanned.  It should contain the output of
-.B "ctags -x"
-.IR files .
+command to supply the tags that are scanned.
+The search for
+.B TAGS
+begins in the same directory as the current view's text and
+proceeds up through its parents.
 .TP
 .B $HOME/.aoeui
 holds any new "anonymous" texts created during editing sessions.
 .SH "SEE ALSO"
 .BR cmd(`asdfg',`aoeui') (1),
 .BR ctags (1),
+.BR exuberant-ctags (1),
 .BR regex (7)
 .P
 Helpful commands to use with

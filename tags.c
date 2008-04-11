@@ -17,57 +17,91 @@ static char *extract_id(struct view *view)
 	return id;
 }
 
-void find_tag(struct view *view)
+static struct view *find_TAGS(struct view *view, struct view *tags)
 {
-	struct view *tags = view_find("TAGS"), *new_view;
-	char *id, *this;
-	position_t first, last, at, wordstart, wordend, line;
-	int cmp;
+	const char *currpath = (tags ? tags : view)->text->path;
+	char *path = allocate(strlen(currpath) + 8);
+	char *slash;
 
-	if (!tags) {
-		tags = view_open("TAGS");
-		if (tags->text->flags & TEXT_CREATED) {
-			message("Please load a TAGS file.");
+	strcpy(path, currpath);
+	if (tags) {
+		view_close(tags);
+		slash = strrchr(path, '/');
+		if (slash)
+			*slash = '\0';
+	}
+	for (; (slash = strrchr(path, '/')); *slash = '\0') {
+		strcpy(slash+1, "TAGS");
+		if (!access(path, R_OK)) {
+			tags = view_open(path);
+			if (tags && !(tags->text->flags & TEXT_CREATED)) {
+				RELEASE(path);
+				return tags;
+			}
 			view_close(tags);
-			return;
 		}
 	}
-	if (locus_get(view, MARK) != UNSET) {
-		id = view_extract_selection(view);
-		view_delete_selection(view);
-	} else
-		id = extract_id(view);
-	if (!id) {
-		window_beep(view);
-		return;
-	}
+	RELEASE(path);
+	return NULL;
+}
 
-	first = 0;
-	last = tags->bytes;
+static sposition_t find_id_in_TAGS(struct view *tags, const char *id)
+{
+	position_t first = 0;
+	position_t last = tags->bytes;
+	position_t at, wordstart, wordend;
+	sposition_t result = -1;
+	char *this;
+	int cmp;
+
 	while (first < last) {
 		at = find_line_start(tags, first + last >> 1);
 		if (at < first)
 			at = find_line_end(tags, at) + 1;
 		if (at >= last)
-			goto done;
+			break;
 		wordstart = find_nonspace(tags, at);
 		wordend = find_space(tags, wordstart);
-		this = view_extract(tags, at, wordend - wordstart);
+		this = view_extract(tags, wordstart, wordend - wordstart);
 		if (!this)
-			goto done;
+			break;
 		cmp = strcmp(id, this);
 		RELEASE(this);
 		if (!cmp)
-			break;
-		if (cmp < 0)
+			result = wordend;
+		if (cmp <= 0)
 			last = at;
 		else
 			first = find_line_end(tags, at) + 1;
 	}
-	if (first >= last)
-		goto done;
+	return result;	/* failure */
+}
 
-	RELEASE(id);
+static sposition_t find_next_id_in_TAGS(struct view *tags, const char *id,
+					position_t prevend)
+{
+	position_t wordstart = find_nonspace(tags,
+					     find_line_end(tags, prevend) + 1);
+	position_t wordend = find_space(tags, wordstart);
+	char *this = view_extract(tags, wordstart, wordend - wordstart);
+	int cmp;
+
+	if (!this)
+		return -1;
+	cmp = strcmp(id, this);
+	RELEASE(this);
+	return cmp ? -1 : wordend;
+}
+
+static struct view *show_tag(struct view *tags, sposition_t wordend)
+{
+	position_t wordstart;
+	char *this, *path, *slash;
+	int line;
+	struct view *view;
+
+	if (wordend < 0)
+		return NULL;
 	wordstart = find_nonspace(tags, wordend); /* line number */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
@@ -79,7 +113,7 @@ void find_tag(struct view *view)
 		this = view_extract(tags, wordstart, wordend - wordstart);
 		if (!isdigit(*this)) {
 			RELEASE(this);
-			goto done;
+			return NULL;
 		}
 	}
 	line = atoi(this);
@@ -87,18 +121,71 @@ void find_tag(struct view *view)
 	wordstart = find_nonspace(tags, wordend); /* file name */
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
-	new_view = view_open(this);
-	RELEASE(this);
-	if (new_view->text->flags & TEXT_CREATED) {
-		view_close(new_view);
-		goto done;
-	}
-	locus_set(new_view, CURSOR, find_line_number(new_view, line));
-	locus_set(new_view, MARK, UNSET);
-	window_below(view, new_view, 4);
-	return;
 
-done:	errno = 0;
+	path = allocate(strlen(tags->text->path) + strlen(this) + 8);
+	strcpy(path, tags->text->path);
+	if (!(slash = strrchr(path, '/')))
+		*(slash = path + strlen(path)) = '/';
+	strcpy(slash + 1, this);
+	RELEASE(this);
+
+	view = view_open(path);
+	RELEASE(path);
+	if (view->text->flags & TEXT_CREATED) {
+		view_close(view);
+		return FALSE;
+	}
+	locus_set(view, CURSOR, find_line_number(view, line));
+	locus_set(view, MARK, UNSET);
+	return view;
+}
+
+static Boolean_t show_tags(struct view *tags, struct view *view,
+			   const char *id)
+{
+	sposition_t wordend = find_id_in_TAGS(tags, id);
+	struct view *new_view = show_tag(tags, wordend);
+
+	if (!new_view)
+		return FALSE;
+
+	window_below(view, new_view, 4);
+	while ((wordend = find_next_id_in_TAGS(tags, id, wordend)) >= 0)
+		if ((new_view = show_tag(tags, wordend)))
+			window_below(view, new_view, 4);
+	return TRUE;
+}
+
+void find_tag(struct view *view)
+{
+	struct view *tags = NULL;
+	char *id;
+
+	if (locus_get(view, MARK) != UNSET) {
+		id = view_extract_selection(view);
+		view_delete_selection(view);
+	} else
+		id = extract_id(view);
+	if (!id) {
+		window_beep(view);
+		return;
+	}
+
+	if (!(tags = find_TAGS(view, NULL))) {
+		message("No readable TAGS file found.");
+		RELEASE(id);
+		return;
+	}
+
+	do {
+		if (show_tags(tags, view, id)) {
+			view_close(tags);
+			RELEASE(id);
+			return;
+		}
+	} while ((tags = find_TAGS(view, tags)));
+
+	errno = 0;
 	message("couldn't find tag %s", id);
 	RELEASE(id);
 }

@@ -5,6 +5,26 @@
 
 enum utf8_mode utf8_mode = UTF8_AUTO;
 
+const char *path_format(const char *path)
+{
+	char *cwdbuf, *cwd;
+	const char *slash;
+
+	if (!path || *path != '/')
+		return path;
+	cwdbuf = allocate(1024);
+	cwd = getcwd(cwdbuf, 1024);
+	while ((slash = strchr(path, '/')) &&
+	       !strncmp(cwd, path, slash - path)) {
+		cwd += slash++ - path;
+		if (*cwd && *cwd++ != '/')
+			break;
+		path = slash;
+	}
+	RELEASE(cwdbuf);
+	return path;
+}
+
 static ssize_t old_fashioned_read(struct text *text)
 {
 	char *raw;
@@ -18,7 +38,8 @@ static ssize_t old_fashioned_read(struct text *text)
 		errno = 0;
 		got = read(text->fd, raw, max);
 		if (got < 0) {
-			message("error reading %s", text->path);
+			message("%s: can't read",
+				path_format(text->path));
 			buffer_delete(text->buffer, 0, total + CHUNK);
 			return -1;
 		}
@@ -156,20 +177,20 @@ struct view *view_open(const char *path0)
 	errno = 0;
 	if (stat(path, &statbuf)) {
 		if (errno != ENOENT) {
-			message("can't stat %s", path);
+			message("%s: can't stat", path_format(path));
 			goto fail;
 		}
 		errno = 0;
 		text->fd = open(path, O_CREAT|O_TRUNC|O_RDWR,
 				S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 		if (text->fd < 0) {
-			message("can't create %s", path);
+			message("%s: can't create", path_format(path));
 			goto fail;
 		}
 		text->flags |= TEXT_CREATED;
 	} else {
 		if (!S_ISREG(statbuf.st_mode)) {
-			message("%s is not a regular file", path);
+			message("%s: not a regular file", path_format(path));
 			goto fail;
 		}
 		text->fd = open(path, O_RDWR);
@@ -178,7 +199,7 @@ struct view *view_open(const char *path0)
 			text->flags |= TEXT_RDONLY;
 			text->fd = open(path, O_RDONLY);
 			if (text->fd < 0) {
-				message("can't open %s", path);
+				message("%s: can't open", path_format(path));
 				goto fail;
 			}
 		}
@@ -277,7 +298,7 @@ Boolean_t text_rename(struct text *text, const char *path0)
 	errno = 0;
 	if ((fd = open(path, O_CREAT|O_RDWR,
 			S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)) < 0) {
-		message("can't create %s", path);
+		message("%s: can't create", path_format(path));
 		RELEASE(path);
 		return FALSE;
 	}
@@ -308,8 +329,8 @@ Boolean_t text_rename(struct text *text, const char *path0)
 void text_dirty(struct text *text)
 {
 	if (text->path && !text->dirties && text->flags & TEXT_RDONLY)
-		message("%s is a read-only file, changes will not be saved.",
-			text->path);
+		message("%s: read-only, changes won't be saved.",
+			path_format(text->path));
 	text->dirties++;
 	if (!text->buffer) {
 		text->buffer = buffer_create(text->fd >= 0 ? text->path : NULL);
@@ -336,8 +357,7 @@ static void save_original(struct text *text)
 	errno = 0;
 	fd = creat(save_path, S_IRUSR|S_IWUSR);
 	if (fd < 0)
-		message("can't save copy of original file to %s",
-			save_path);
+		message("%s: can't save original text", path_format(save_path));
 	else {
 		write(fd, text->clean, text->clean_bytes);
 		close(fd);
@@ -381,9 +401,9 @@ void text_preserve(struct text *text)
 	    text->path &&
 	    !fstat(text->fd, &statbuf) &&
 	    text->mtime < statbuf.st_mtime)
-		message("%s has been modified since it was read into the "
-			"editor, and those changes may have been overwritten.",
-			text->path);
+		message("%s: modified since read into the "
+			"editor, changes may have been overwritten.",
+			path_format(text->path));
 
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 	ftruncate(text->fd, bytes);

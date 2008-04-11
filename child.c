@@ -347,7 +347,9 @@ void mode_shell_pipe(struct view *view)
 
 	argv[ai++] = shell ? shell : "/bin/sh";
 	argv[ai++] = "--noediting";
+#if 0
 	argv[ai++] = "-l";
+#endif
 #ifndef __APPLE__
 	argv[ai++] = "-i";
 #endif

@@ -1,3 +1,4 @@
+04-11 pmk: multiple TAGS files in directory hierarchy, multiple hits
 04-07 pmk: true UP and DOWN arrow movement keys
 04-04 pmk: make default ^O macro a global value, not per-view
 04-04 pmk: make last search match a global string, not per-view

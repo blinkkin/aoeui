@@ -28,6 +28,8 @@ unsigned find_column(unsigned *row, struct view *, position_t linestart,
 		     position_t offset, unsigned start_column);
 sposition_t find_string(struct view *, const char *, position_t);
 
+const char *path_format(const char *);	/* file.c */
+
 void find_tag(struct view *);	/* tags.c */
 
 ssize_t view_vprintf(struct view *, const char *, va_list);

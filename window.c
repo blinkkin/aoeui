@@ -134,8 +134,15 @@ void window_destroy(struct window *window)
 		locus_destroy(window->view, window->start);
 		window->view->window = NULL;
 	}
-	if (window == active_window)
-		activate(window_list);
+	if (window == active_window) {
+		wp = window_list;
+		if (previous) {
+			wp = previous;
+			if (wp->next)
+				wp = wp->next;
+		}
+		activate(wp);
+	}
 	RELEASE(window);
 }
 

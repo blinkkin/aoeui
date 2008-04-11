@@ -131,11 +131,11 @@ static void text_close(struct text *text)
 void view_close(struct view *view)
 {
 	struct view *vp, *prev = NULL;
-	struct text *text = view->text;
+	struct text *text;
 
 	if (!view)
 		return;
-
+	text = view->text;
 	window_destroy(view->window);
 	demultiplex_view(view);
 	bookmark_unset_view(view);
