@@ -853,6 +853,8 @@ again:	if (display->size_changed)
 		case 'B': key = FUNCTION_DOWN;	break;
 		case 'C': key = FUNCTION_RIGHT;	break;
 		case 'D': key = FUNCTION_LEFT;	break;
+		case 'F': key = FUNCTION_END;	break;
+		case 'H': key = FUNCTION_HOME;	break;
 		case '\0': /* truncated escape sequence; get more */
 			if (!block)
 				return ERROR_EMPTY;

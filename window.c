@@ -214,7 +214,7 @@ struct window *window_below(struct view *above, struct view *view,
 	window->column = old->column;
 	window->columns = old->columns;
 	window->row = old->row + (old->rows -= (window->rows = rows));
-	return activate(window);
+	return window;
 }
 
 struct window *window_replace(struct view *old, struct view *new)
@@ -346,6 +346,8 @@ done:	window->cursor_column = find_column(&above, view, cursorrow,
 static Boolean_t lame_space(struct view *view, position_t offset, unsigned look)
 {
 	int all_spaces_lame = look > 1 && !no_tabs;
+	if (view->shell_std_in >= 0)
+		return FALSE;
 	while (look--) {
 		Unicode_t ch = view_char(view, offset, &offset);
 		if (!IS_UNICODE(ch) || ch == '\n' || ch == '\t')
@@ -359,6 +361,8 @@ static Boolean_t lame_space(struct view *view, position_t offset, unsigned look)
 static Boolean_t lame_tab(struct view *view, position_t offset)
 {
 	Unicode_t ch;
+	if (view->shell_std_in >= 0)
+		return FALSE;
 	if (no_tabs)
 		return TRUE;
 	for (;
@@ -372,9 +376,9 @@ static Boolean_t lame_tab(struct view *view, position_t offset)
 static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 			unsigned column,
 			position_t at, position_t cursor, position_t mark,
-			unsigned *brackets)
+			unsigned *brackets, rgba_t fgrgba)
 {
-	rgba_t fgrgba = window->fgrgba, bgrgba = window->bgrgba;
+	rgba_t bgrgba = window->bgrgba;
 	unsigned tabstop = window->view->text->tabstop;
 
 	if (ch == '\n')
@@ -470,11 +474,27 @@ static void paint(struct window *window)
 	at = focus(window);
 	for (row = 0; row < window->rows; row++) {
 
-		position_t limit = at + find_row_bytes(view, at, 0, window->columns);
-		for (column = 0; at < limit; at = next)
-			column = paintch(window, view_char(view, at, &next),
-					 row, column, at, cursor, mark,
-					 &brackets);
+		position_t limit = at + find_row_bytes(view, at, 0,
+						       window->columns);
+		rgba_t fgrgba = window->fgrgba;
+		Boolean_t keywords = view->text->keywords &&
+				     (fgrgba == DEFAULT_FGRGBA ||
+				      !fgrgba);
+		Boolean_t look_for_keyword = keywords;
+
+		for (column = 0; at < limit; at = next) {
+			Unicode_t ch = view_char(view, at, &next);
+			if (!is_idch(ch) && ch != '#') {
+				fgrgba = window->fgrgba;
+				look_for_keyword = keywords;
+			} else if (look_for_keyword && is_keyword(view, at))
+				fgrgba = 0x0000ff00;
+			else
+				look_for_keyword = FALSE;
+			column = paintch(window, ch, row, column, at,
+					 cursor, mark, &brackets,
+					 fgrgba);
+		}
 
 		display_erase(display, window->row + row,
 			      window->column + column, 1,
@@ -670,12 +690,13 @@ static void window_colors(void)
 
 	for (window = window_list; window; window = window->next)
 		window->bgrgba = 0;
-	active_window->fgrgba = DEFAULT_FGRGBA;
-	active_window->bgrgba = DEFAULT_BGRGBA;
+	j = active_window != window_list || active_window->next;
+	active_window->fgrgba = colors[j][0];
+	active_window->bgrgba = colors[j][1];
 	for (window = window_list; window; window = window->next) {
 		if (window->bgrgba)
 			continue;
-		for (j = 0; colors[j][1]; j++) {
+		for (j = 1; colors[j][1]; j++) {
 			for (w = window_list; w; w = w->next)
 				if (w != window &&
 				    w->bgrgba == colors[j][1] &&

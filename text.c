@@ -90,10 +90,13 @@ struct view *view_create(struct text *text)
 struct view *text_create(const char *path, unsigned flags)
 {
 	struct text *text = allocate0(sizeof *text), *prev, *bp;
+
 	text->tabstop = default_tab_stop;
 	text->fd = -1;
 	text->flags = flags;
 	text->path = strdup(path);
+	keyword_init(text);
+
 	for (prev = NULL, bp = text_list; bp; prev = bp, bp = bp->next)
 		;
 	if (prev)

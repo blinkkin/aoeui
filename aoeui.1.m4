@@ -37,6 +37,9 @@ since original texts are memory-mapped from files and not
 duplicated in memory until they are about to be modified.
 .SH OPTIONS
 .TP
+.B -k
+Disable keyword highlighting.
+.TP
 .B -s
 Use spaces, not tabs, for automatic indentation.
 .TP
@@ -66,7 +69,7 @@ Further, since
 ships will full sources and the rights to modify it,
 users can customize it directly.
 .P
-The editor has no syntax highlighting modes, apart from
+The editor has only basic syntax highlighting of C and C++ keywords with
 subtle color cues that help match up parentheses, brackets,
 and braces.
 .P

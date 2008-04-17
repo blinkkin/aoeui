@@ -367,7 +367,7 @@ void mode_shell_pipe(struct view *view)
 
 void shell_command(struct view *view)
 {
-	unsigned offset, cursor, linestart;
+	position_t offset, cursor, linestart;
 	char *command;
 
 	if (view->shell_std_in < 0)

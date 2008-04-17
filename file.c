@@ -53,7 +53,7 @@ static ssize_t old_fashioned_read(struct text *text)
 static char *fix_path(const char *path)
 {
 	char *fpath;
-	Boolean_t freepath = FALSE;
+	const char *freepath = NULL, *home;
 	size_t pathlen;
 
 	if (!path)
@@ -73,23 +73,24 @@ static char *fix_path(const char *path)
 		apath = allocate(pathlen+1);
 		memcpy(apath, path, pathlen);
 		apath[pathlen] = '\0';
-		path = apath;
-		freepath = TRUE;
+		freepath = path = apath;
 	}
-	if (*path != '/') {
+	if (!strncmp(path, "~/", 2) && (home = getenv("HOME"))) {
+		char *apath = allocate(strlen(home) + pathlen);
+		sprintf(apath, "%s%s", home, path + 1);
+		RELEASE(freepath);
+		freepath = path = apath;
+	} else if (*path != '/') {
 		char *cwdbuf = allocate(1024);
 		char *cwd = getcwd(cwdbuf, 1024);
 		char *apath = allocate(strlen(cwd) + pathlen + 2);
 		sprintf(apath, "%s/%s", cwd, path);
-		if (freepath)
-			RELEASE(path);
+		RELEASE(freepath);
 		RELEASE(cwdbuf);
-		path = apath;
-		freepath = TRUE;
+		freepath = path = apath;
 	}
 	fpath = strdup(path);
-	if (freepath)
-		RELEASE(path);
+	RELEASE(freepath);
 	return fpath;
 }
 
@@ -321,6 +322,7 @@ Boolean_t text_rename(struct text *text, const char *path0)
 	grab_mtime(text);
 	RELEASE(text->path);
 	text->path = path;
+	keyword_init(text);
 	for (view = text->views; view; view = view->next)
 		view_name(view);
 	return TRUE;

@@ -54,16 +54,19 @@ int main(int argc, char *const *argv)
 
 	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
 
-	while ((ch = getopt(argc, argv, "dqst:uU")) >= 0)
+	while ((ch = getopt(argc, argv, "dkqst:uU")) >= 0)
 		switch (ch) {
 		case 'd':
-			is_asdfg = 0;
+			is_asdfg = FALSE;
+			break;
+		case 'k':
+			no_keywords = TRUE;
 			break;
 		case 'q':
-			is_asdfg = 1;
+			is_asdfg = TRUE;
 			break;
 		case 's':
-			no_tabs = 1;
+			no_tabs = TRUE;
 			break;
 		case 't':
 			value = atoi(optarg);
@@ -79,7 +82,7 @@ int main(int argc, char *const *argv)
 			utf8_mode = UTF8_NO;
 			break;
 		default:
-			die("unknown flag -%c", ch);
+			die("unknown flag");
 		}
 
 	for (; optind < argc; optind++)

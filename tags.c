@@ -93,12 +93,14 @@ static sposition_t find_next_id_in_TAGS(struct view *tags, const char *id,
 	return cmp ? -1 : wordend;
 }
 
-static struct view *show_tag(struct view *tags, sposition_t wordend)
+static struct view *show_tag(struct view *tags, sposition_t wordend,
+			     const char *id)
 {
-	position_t wordstart;
+	position_t wordstart, linestart;
 	char *this, *path, *slash;
 	int line;
 	struct view *view;
+	sposition_t at;
 
 	if (wordend < 0)
 		return NULL;
@@ -135,8 +137,15 @@ static struct view *show_tag(struct view *tags, sposition_t wordend)
 		view_close(view);
 		return FALSE;
 	}
-	locus_set(view, CURSOR, find_line_number(view, line));
-	locus_set(view, MARK, UNSET);
+	linestart = find_line_number(view, line);
+	at = find_string(view, id, linestart);
+	if (at >= 0) {
+		locus_set(view, CURSOR, at);
+		locus_set(view, MARK, at + strlen(id));
+	} else {
+		locus_set(view, CURSOR, linestart);
+		locus_set(view, MARK, UNSET);
+	}
 	return view;
 }
 
@@ -144,15 +153,17 @@ static Boolean_t show_tags(struct view *tags, struct view *view,
 			   const char *id)
 {
 	sposition_t wordend = find_id_in_TAGS(tags, id);
-	struct view *new_view = show_tag(tags, wordend);
+	struct view *new_view = show_tag(tags, wordend, id);
+	struct view *top_view;
 
 	if (!new_view)
 		return FALSE;
 
-	window_below(view, new_view, 4);
+	window_below(view, top_view = new_view, 4);
 	while ((wordend = find_next_id_in_TAGS(tags, id, wordend)) >= 0)
-		if ((new_view = show_tag(tags, wordend)))
-			window_below(view, new_view, 4);
+		if ((new_view = show_tag(tags, wordend, id)))
+			window_below(view, top_view = new_view, 4);
+	window_activate(top_view);
 	return TRUE;
 }
 

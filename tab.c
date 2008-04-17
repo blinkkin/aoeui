@@ -6,10 +6,23 @@
 
 static char *path_complete(const char *string)
 {
-	size_t length = strlen(string);
-	char *new = allocate(length + NAME_MAX), *p;
+	const char *home;
+	size_t length;
+	char *new = NULL, *p;
 	DIR *dir;
+	char *freestring = NULL;
 
+	while (isspace(*string))
+		string++;
+	if (!strncmp(string, "~/", 2) &&
+	    (home = getenv("HOME"))) {
+		freestring = allocate(strlen(home) + strlen(string));
+		sprintf(freestring, "%s%s", home, string+1);
+		string = freestring;
+	}
+
+	length = strlen(string);
+	new = allocate(length + NAME_MAX);
 	memcpy(new, string, length+1);
 	p = strrchr(new, '/');
 	if (p) {
@@ -48,10 +61,12 @@ static char *path_complete(const char *string)
 		new[length+best_len] = '\0';
 		closedir(dir);
 		if (best_len)
-			return new;
+			goto done;
 	}
-	RELEASE(new);
-	return NULL;
+
+	RELEASE(new);		/* sets new = NULL */
+done:	RELEASE(freestring);
+	return new;
 }
 
 static char *word_complete(const char *string)
@@ -182,7 +197,7 @@ void align(struct view *view)
 	position_t cursor = locus_get(view, CURSOR);
 	position_t lnstart0 = find_line_start(view, cursor);
 	position_t nonspace0, lnstart, offset, next;
-	Unicode_t ch, last = UNICODE_BAD;
+	Unicode_t ch, last = UNICODE_BAD, firstch;
 	char *indentation;
 	unsigned indent = 0, spaces = 0, indent_bytes;
 	unsigned tabstop = view->text->tabstop;
@@ -193,9 +208,9 @@ void align(struct view *view)
 	tabstop |= !tabstop;
 
 	for (nonspace0 = lnstart0;
-	     IS_UNICODE(ch = view_char(view, nonspace0, &next));
+	     IS_UNICODE(firstch = view_char(view, nonspace0, &next));
 	     nonspace0 = next)
-		if (ch == '\n' || ch != ' ' && ch != '\t')
+		if (firstch == '\n' || firstch != ' ' && firstch != '\t')
 			break;
 	lnstart = find_line_start(view, lnstart0-1);
 	while (lnstart && view_char(view, lnstart, NULL) == '\n')
@@ -233,8 +248,17 @@ void align(struct view *view)
 		indent = stack[0];
 	else {
 		indent = stack[stackptr-1];
-		if (stackptr <= 2 && (last == '{' || last == ')'))
+		if (stackptr > 2)
+			;
+		else if (last == '{' || last == ')' || last == ':')
 			indent += tabstop;
+		else if (indent >= tabstop) {
+			offset = lnstart;
+			do ch = view_char_prior(view, offset, &offset);
+			while (ch == ' ' || ch == '\t' || ch == '\n');
+			if (ch == ')' || firstch == '}')
+				indent -= tabstop;
+		}
 	}
 
 	if (no_tabs) {

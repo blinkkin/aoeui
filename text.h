@@ -16,6 +16,7 @@ struct text {
 	unsigned preserved;		/* "dirties" at last save */
 	time_t mtime;
 	unsigned tabstop;
+	struct keywords *keywords;
 	unsigned flags;
 #define TEXT_SAVED_ORIGINAL 0x001
 #define TEXT_RDONLY 0x002
@@ -45,9 +46,15 @@ struct view {
 	} goal;
 };
 
+struct keywords {
+	int count;
+	const char **word;
+};
+
 extern struct text *text_list;
 extern unsigned default_tab_stop;
 extern Boolean_t no_tabs;
+extern Boolean_t no_keywords;
 extern enum utf8_mode { UTF8_NO, UTF8_YES, UTF8_AUTO } utf8_mode;
 
 /* text.c */

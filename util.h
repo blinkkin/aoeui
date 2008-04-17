@@ -45,6 +45,9 @@ Unicode_t view_unicode_prior(struct view *, position_t, position_t *prev);
 Unicode_t view_char(struct view *, position_t, size_t *);
 Unicode_t view_char_prior(struct view *, position_t, position_t *prev);
 
+void keyword_init(struct text *);			/* keyword.c */
+Boolean_t is_keyword(struct view *, position_t);
+
 INLINE Boolean_t is_wordch(Unicode_t ch)
 {
 	return ch > 0x100 && ch < FOLD_START || isalnum(ch);

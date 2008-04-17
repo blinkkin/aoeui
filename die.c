@@ -40,6 +40,7 @@ void die(const char *msg, ...)
 	va_end(ap);
 	if (err)
 		fprintf(stderr, ": %s", strerror(err));
+	fputc('\n', stderr);
 	depart(EXIT_FAILURE);
 }
 
