@@ -33,31 +33,36 @@ static const char *Cpp_keyword_list[] = {
 static struct file_keywords {
 	const char *suffix;
 	struct keywords keywords;
+	const char *brackets;
 } kwmap [] = {
-	{ ".c", KW(C) },
-	{ ".C", KW(C) },
-	{ ".cc", KW(Cpp) },
-	{ ".cpp", KW(Cpp) },
-	{ ".cxx", KW(Cpp) },
-	{ ".h", KW(Cpp) },
+	{ ".c", KW(C), "()[]{}" },
+	{ ".C", KW(C), "()[]{}" },
+	{ ".cc", KW(Cpp), "()[]{}" },
+	{ ".cpp", KW(Cpp), "()[]{}" },
+	{ ".cxx", KW(Cpp), "()[]{}" },
+	{ ".h", KW(Cpp), "()[]{}" },
+	{ ".html", { 0, NULL }, "<>" },
 	{ }
 };
 
 void keyword_init(struct text *text)
 {
-	size_t pathlen = strlen(text->path);
-	int j;
-
-	if (!no_keywords)
+	if (text->path) {
+		size_t pathlen = strlen(text->path);
+		int j;
 		for (j = 0; kwmap[j].suffix; j++) {
 			size_t suffixlen = strlen(kwmap[j].suffix);
 			if (pathlen > suffixlen &&
 			    !strcmp(text->path + pathlen - suffixlen,
 				    kwmap[j].suffix)) {
-				text->keywords = &kwmap[j].keywords;
+				text->brackets = kwmap[j].brackets;
+				if (!no_keywords)
+					text->keywords = &kwmap[j].keywords;
 				return;
 			}
 		}
+	}
+	text->brackets = "()[]{}";
 	text->keywords = NULL;
 }
 

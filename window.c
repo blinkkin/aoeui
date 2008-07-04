@@ -380,6 +380,7 @@ static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 {
 	rgba_t bgrgba = window->bgrgba;
 	unsigned tabstop = window->view->text->tabstop;
+	const char *brack = window->view->text->brackets;
 
 	if (ch == '\n')
 		return column;
@@ -423,13 +424,15 @@ static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 		   lame_space(window->view, at + 1,
 			      tabstop-1 - column % tabstop))
 		bgrgba = 0xff00ff00;
-	else if ((ch == '(' || ch == '[' || ch == '{') &&
-		 (*brackets)++ & 1 ||
-		 (ch == ')' || ch == ']' || ch == '}') &&
-		 --*brackets & 1)
-		fgrgba = 0x0000ff00;
 	else if (!IS_UNICODE(ch))
 		ch = ' ', bgrgba = 0xff00ff00;
+	else if (brack)
+		for (; *brack; brack += 2)
+			if (ch == brack[0] && (*brackets)++ & 1 ||
+			    ch == brack[1] && --*brackets & 1) {
+				fgrgba = 0x0000ff00;
+				break;
+			}
 
 	display_put(display, window->row + row, window->column + column++,
 		    ch, fgrgba, bgrgba);
@@ -678,13 +681,13 @@ static void window_colors(void)
 	static rgba_t colors[][2] = {
 		{ DEFAULT_FGRGBA, DEFAULT_BGRGBA },
 		{ 0x00000000, 0x7f7f7f00 },
-		{ 0x0000ff00, 0x7f7f0000 },
-		{ 0xff00ff00, 0x007f0000 },
-		{ 0xffff0000, 0x00007f00 },
 		{ 0x00000000, 0xffffff00 },
 		{ 0x0000ff00, 0xffff0000 },
-		{ 0xff00ff00, 0x00ff0000 },
-		{ 0xffff0000, 0x0000ff00 },
+		{ 0x0000ff00, 0x7f7f0000 },
+		{ 0x00ff0000, 0xff00ff00 },
+		{ 0x00ff0000, 0x7f007f00 },
+		{ 0xff000000, 0x007f7f00 },
+		{ 0xff000000, 0x00ffff00 },
 		{ }
 	};
 

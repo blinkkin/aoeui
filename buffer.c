@@ -169,14 +169,18 @@ done:
 size_t buffer_raw(struct buffer *buffer, char **out,
 		  position_t offset, size_t bytes)
 {
-	if (!buffer)
+	if (!buffer) {
+		*out = NULL;
 		return 0;
+	}
 	if (offset >= buffer->payload)
 		offset = buffer->payload;
 	if (offset + bytes > buffer->payload)
 		bytes = buffer->payload - offset;
-	if (!bytes)
+	if (!bytes) {
+		*out = NULL;
 		return 0;
+	}
 
 	if (offset < buffer->gap && offset + bytes > buffer->gap)
 		place_gap(buffer, offset + bytes);

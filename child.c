@@ -1,4 +1,10 @@
 #include "all.h"
+#ifdef __APPLE__
+# include <util.h>
+#else
+# include <pty.h>
+#endif
+#include <sys/ioctl.h>
 
 /*
  *	Handle the ^E command, which runs the shell command pipeline
@@ -45,14 +51,42 @@ static Boolean_t shell_output_activity(struct stream *stream, char *received,
 				       ssize_t bytes)
 {
 	position_t offset;
+	struct view *view = stream->view;
+	locus_t locus = view->shell_out_locus;
 
 	if (bytes <= 0)
 		return FALSE;
-	offset = locus_get(stream->view, stream->view->shell_out_locus);
+	offset = locus_get(view, locus);
 	if (offset == UNSET)
-		offset = stream->view->bytes;
-	view_insert(stream->view, received, offset, bytes);
-	locus_set(stream->view, stream->view->shell_out_locus, offset + bytes);
+		offset = view->bytes;
+	else
+		offset++;
+	locus_set(view, locus, offset);
+
+	while (bytes--) {
+		char ch = *received++;
+		switch (ch) {
+		case '\r':
+#if 0
+			offset = find_line_start(view, offset);
+#endif
+			break;
+		case CONTROL('H'):
+#if 0
+			if (offset)
+				view_delete(view, --offset, 1);
+#endif
+			break;
+		case '\n':
+			offset = locus_get(view, locus);
+			/* fall-through */
+		default:
+			view_insert(view, &ch, offset++, 1);
+		}
+	}
+
+	offset = locus_get(view, locus);
+	locus_set(view, locus, offset - !!offset);
 	return TRUE;
 }
 
@@ -78,7 +112,7 @@ static Boolean_t out_activity(struct stream *stream, char *x, ssize_t bytes)
 			      chunk);
 	} while (bytes < 0 && (errno == EAGAIN || errno == EINTR));
 
-	if (bytes < 0 && errno == EPIPE) {
+	if (bytes < 0 && (errno == EPIPE || errno == EIO)) {
 		message("write failed (child terminated?)");
 		return FALSE;
 	}
@@ -91,6 +125,7 @@ static Boolean_t out_activity(struct stream *stream, char *x, ssize_t bytes)
 static struct stream *stream_create(fd_t fd)
 {
 	struct stream *stream = allocate0(sizeof *stream);
+
 	stream->fd = fd;
 	stream->locus = NO_LOCUS;
 	if (!streams)
@@ -174,11 +209,13 @@ Boolean_t multiplexor(Boolean_t block)
 
 static void child_close(struct view *view)
 {
-	if (!view)
-		return;
 	if (view->shell_std_in >= 0) {
 		close(view->shell_std_in);
 		view->shell_std_in = -1;
+	}
+	if (view->shell_pg >= 0) {
+		killpg(view->shell_pg, SIGHUP);
+		view->shell_pg = -1;
 	}
 	locus_destroy(view, view->shell_out_locus);
 	view->shell_out_locus = NO_LOCUS;
@@ -187,6 +224,7 @@ static void child_close(struct view *view)
 void demultiplex_view(struct view *view)
 {
 	struct stream *stream, *prev = NULL, *next;
+
 	for (stream = streams; stream; stream = next) {
 		next = stream->next;
 		if (stream->view == view)
@@ -215,62 +253,104 @@ void multiplex_write(fd_t fd, const char *data, ssize_t bytes, Boolean_t retain)
 	stream->bytes = bytes;
 }
 
-static void newline(fd_t fd)
+static void single_write(fd_t fd, Unicode_t ch)
 {
-	multiplex_write(fd, strdup("\n"), 1, TRUE /*retain*/);
+	char buf[8];
+	size_t len = unicode_utf8(buf, ch);
+	char *single = allocate(len);
+
+	memcpy(single, buf, len);
+	multiplex_write(fd, single, len, TRUE /*retain*/);
 }
 
-int child(fd_t *stdfd, unsigned stdfds, const char *argv[])
+static Boolean_t pipes(fd_t fd[3][2], unsigned stdfds)
 {
-	fd_t pipefd[3][2];
 	int j, k;
-	pid_t pid;
+	static Boolean_t use_ptys = TRUE;
 
-	if (stdfds > 3)
-		stdfds = 3;
+	/* pipe(2) creates two file descriptors: [0] read,   [1] write;
+	 * this code transposes some to produce: [0] parent, [1] child
+	 */
+
+	if (stdfds == 2 && use_ptys)  {
+		struct termios termios = original_termios;
+		termios.c_oflag &= ~ONLCR;
+		termios.c_lflag &= ~(ECHO|ECHOE| ECHOKE);
+		termios.c_lflag |= ECHOK;
+		errno = 0;
+		if (!openpty(&fd[0][0], &fd[0][1], NULL, &termios, NULL)) {
+			for (j = 1; j < 3; j++)
+				for (k = 0; k < 2; k++)
+					fd[j][k] = dup(fd[0][k]);
+			return TRUE;
+		}
+		message("could not create pty");
+		use_ptys = FALSE;
+	}
+
+	/* use pipes */
 	errno = 0;
-	for (j = 0; j < stdfds; j++)
-		if (pipe(pipefd[j])) {
+	for (j = 0; j < stdfds; j++) {
+		if (pipe(fd[j])) {
 			message("could not create pipes");
 			return 0;
 		}
-	for (; j < 3; j++)
-		for (k = 0; k < 2; k++)
-			pipefd[j][k] = dup(pipefd[j-1][k]);
+	}
+	j = fd[0][0], fd[0][0] = fd[0][1], fd[0][1] = j;
+	return TRUE;
+}
+
+static pid_t child(fd_t stdfd[3][2], unsigned stdfds, const char *argv[])
+{
+	int j;
+	pid_t pid;
+
+	if (!pipes(stdfd, stdfds))
+		return -1;
 	fflush(NULL);
 	errno = 0;
 	if ((pid = fork()) < 0) {
 		message("could not fork");
-		return 0;
-	}
-	if (!pid) {
-		for (j = 0; j < 3; j++) {
-			errno = 0;
-			if (dup2(pipefd[j][!!j], j) != j) {
-				fprintf(stderr, "dup2(%d,%d) "
-					"failed: %s\n",
-					pipefd[j][!!j], j,
-					strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			for (k = 0; k < 2; k++)
-				close(pipefd[j][k]);
-		}
-		setenv("PS1", geteuid() ? "# " : "$ ", 1);
-		unsetenv("LS_COLORS");
-		unsetenv("TERM");
-		errno = 0;
-		execvp(argv[0], (char *const *) argv);
-		fprintf(stderr, "could not execute %s: %s\n",
-			argv[0], strerror(errno));
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
+	if (pid)
+		return pid;	/* parent */
+
+	/* child */
 	for (j = 0; j < 3; j++) {
-		stdfd[j] = pipefd[j][!j];
-		close(pipefd[j][!!j]);
+		close(stdfd[j][0]);
+		errno = 0;
+		if (dup2(stdfd[j][1], j) != j) {
+			fprintf(stderr, "dup2(%d,%d) failed: %s\n",
+				stdfd[j][1], j, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		close(stdfd[j][1]);
 	}
-	return stdfds;
+
+	if (isatty(0)) {
+		pid = setsid();		/* new session */
+		ioctl(0, TIOCSCTTY);	/* set controlling terminal */
+		ioctl(0, TIOCSPGRP, &pid); /* set process group */
+	}
+	setenv("TERM", "network", TRUE);
+	unsetenv("LS_COLORS");
+
+	errno = 0;
+	execvp(argv[0], (char *const *) argv);
+
+	fprintf(stderr, "could not execute %s: %s\n",
+		argv[0], strerror(errno));
+	exit(EXIT_FAILURE);
+}
+
+static const char *shell_name(void)
+{
+	const char *shell = getenv("SHELL");
+	if (access(shell, X_OK))
+		shell = "/bin/sh";
+	return shell;
 }
 
 void mode_child(struct view *view)
@@ -279,10 +359,10 @@ void mode_child(struct view *view)
 	char *wrbuff = NULL;
 	position_t cursor;
 	size_t to_write;
-	fd_t stdfd[3];
+	fd_t stdfd[3][2];
 	const char *argv[4];
 	struct stream *std_out, *std_err;
-	const char *shell = getenv("SHELL");
+	int j;
 
 	if (!command) {
 		window_beep(view);
@@ -293,7 +373,7 @@ void mode_child(struct view *view)
 		locus_set(view, MARK, UNSET);
 		multiplex_write(view->shell_std_in, command, strlen(command),
 				TRUE /*retain*/);
-		newline(view->shell_std_in);
+		single_write(view->shell_std_in, '\n');
 		return;
 	}
 
@@ -321,66 +401,72 @@ void mode_child(struct view *view)
 		view_delete_selection(view);
 	}
 
-	argv[0] = shell ? shell : "/bin/sh";
+	argv[0] = shell_name();
 	argv[1] = "-c";
 	argv[2] = command;
 	argv[3] = NULL;
-	if (!child(stdfd, 3, argv))
+	if (child(stdfd, 3, argv) < 0)
 		return;
 
-	multiplex_write(stdfd[0], wrbuff, to_write, FALSE /*don't retain*/);
-	std_out = stream_create(stdfd[1]);
+	for (j = 0; j < 3; j++)
+		close(stdfd[j][1]);
+
+	multiplex_write(stdfd[0][0], wrbuff, to_write, FALSE /*don't retain*/);
+	std_out = stream_create(stdfd[1][0]);
 	std_out->activity = insertion_activity;
 	std_out->view = view;
 	std_out->locus = locus_create(view, cursor);
-	std_err = stream_create(stdfd[2]);
+	std_err = stream_create(stdfd[2][0]);
 	std_err->activity = error_activity;
 }
 
 void mode_shell_pipe(struct view *view)
 {
-	fd_t stdfd[3];
-	const char *argv[4];
+	fd_t stdfd[3][2];
+	const char *shell, *p, *argv[8];
 	struct stream *output;
-	const char *shell = getenv("SHELL");
-	int ai = 0;
+	int j, ai = 0;
+	pid_t pg;
 
-	argv[ai++] = shell ? shell : "/bin/sh";
-	argv[ai++] = "--noediting";
-#if 0
-	argv[ai++] = "-l";
-#endif
-#ifndef __APPLE__
-	argv[ai++] = "-i";
-#endif
+	argv[ai++] = shell = shell_name();
+	if ((p = strrchr(shell, '/')) && !strcmp(p+1, "bash"))
+		argv[ai++] = "--noediting";
 	argv[ai++] = NULL;
-	if (!child(stdfd, 2, argv))
+
+	if ((pg = child(stdfd, 2, argv)) < 0)
 		return;
+
+	close(stdfd[2][0]);
+	for (j = 0; j < 3; j++)
+		close(stdfd[j][1]);
+
 	child_close(view);
-	view->shell_std_in = stdfd[0];
 	view->shell_out_locus = locus_create(view, locus_get(view, CURSOR));
-	output = stream_create(stdfd[1]);
+	view->shell_pg = pg;
+	output = stream_create(stdfd[1][0]);
 	output->activity = shell_output_activity;
 	output->view = view;
-	close(stdfd[2]);
+	view->shell_std_in = stdfd[0][0];
 }
 
-void shell_command(struct view *view)
+void shell_command(struct view *view, Unicode_t ch)
 {
-	position_t offset, cursor, linestart;
+	position_t offset, linestart, cursor;
 	char *command;
 
-	if (view->shell_std_in < 0)
+	if (ch >= ' ' || ch == '\t')
 		return;
+
 	cursor = locus_get(view, CURSOR);
 	linestart = cursor ? find_line_start(view, cursor-1) : 0;
-	offset = locus_get(view, view->shell_out_locus);
+	offset = locus_get(view, view->shell_out_locus) + 1;
 	if (offset < linestart || offset >= cursor)
 		offset = linestart;
 	command = view_extract(view, offset, cursor - offset);
 	if (command)
 		multiplex_write(view->shell_std_in, command,
 				-1, TRUE /*retain*/);
-	locus_set(view, view->shell_out_locus, view->bytes);
+	locus_set(view, view->shell_out_locus,
+		  view->bytes ? view->bytes-1 : UNSET);
 	locus_set(view, CURSOR, view->bytes);
 }

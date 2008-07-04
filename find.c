@@ -216,18 +216,23 @@ position_t find_sentence_end(struct view *view, position_t offset)
 
 sposition_t find_corresponding_bracket(struct view *view, position_t offset)
 {
-	static signed char peer[0x100], updown[0x100];
+	static signed char peer[256], updown[256];
+	const char *p = view->text->brackets;
 	position_t next;
 	Unicode_t ch = view_char(view, offset, &next);
 	Byte_t stack[32];
 	int stackptr = 0, dir;
 
-	if (!peer['(']) {
-		peer['('] = ')', peer[')'] = '(';
-		peer['['] = ']', peer[']'] = '[';
-		peer['{'] = '}', peer['}'] = '{';
-		updown['('] = updown['['] = updown['{'] = 1;
-		updown[')'] = updown[']'] = updown['}'] = -1;
+	if (!p)
+		return -1;
+	memset(peer, 0, sizeof peer);
+	memset(updown, 0, sizeof updown);
+	for (; *p; p += 2) {
+		int L = (unsigned char) p[0], R = (unsigned char) p[1];
+		peer[L] = R;
+		peer[R] = L;
+		updown[L] = 1;
+		updown[R] = -1;
 	}
 
 	if (ch >= sizeof updown || !(dir = updown[ch])) {

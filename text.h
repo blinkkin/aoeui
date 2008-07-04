@@ -17,6 +17,7 @@ struct text {
 	time_t mtime;
 	unsigned tabstop;
 	struct keywords *keywords;
+	const char *brackets;
 	unsigned flags;
 #define TEXT_SAVED_ORIGINAL 0x001
 #define TEXT_RDONLY 0x002
@@ -37,9 +38,10 @@ struct view {
 	size_t bytes;
 	unsigned loci;
 	position_t *locus;
-	locus_t shell_out_locus;
 	struct mode *mode;
 	fd_t shell_std_in;
+	locus_t shell_out_locus;
+	pid_t shell_pg;
 	struct goal_column {
 		position_t cursor;
 		unsigned row, column;
@@ -74,16 +76,20 @@ size_t view_insert(struct view *, const void *, position_t, ssize_t);
 /* Use only for raw bytes.  See util.h for general folded and Unicode
  * character access with view_char[_prior]().
  */
+INLINE Unicode_t text_byte(struct text *text, position_t offset)
+{
+	if (text->buffer)
+		return buffer_byte(text->buffer, offset);
+	if (text->clean)
+		return (Byte_t) text->clean[offset];
+	return UNICODE_BAD;
+}
+
 INLINE Unicode_t view_byte(struct view *view, position_t offset)
 {
 	if (offset >= view->bytes)
 		return UNICODE_BAD;
-	offset += view->start;
-	if (view->text->buffer)
-		return buffer_byte(view->text->buffer, offset);
-	if (view->text->clean)
-		return (Byte_t) view->text->clean[offset];
-	return UNICODE_BAD;
+	return text_byte(view->text, view->start + offset);
 }
 
 /* file.c */

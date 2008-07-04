@@ -287,8 +287,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			view_insert(view, buf, cursor, unicode_utf8(buf, ch));
 		if (mark == cursor)
 			locus_set(view, MARK, /*old*/ cursor);
-		else if (ch == '\n')
-			shell_command(view);
+		if (view->shell_std_in >= 0)
+			shell_command(view, ch);
 		goto done;
 	}
 
@@ -348,17 +348,15 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			cut(view, TRUE);
 		break;
 	case 'E':
-		if (mark == UNSET)
-			if (mode->variant)
-				demultiplex_view(view);
-			else if (view->shell_std_in < 0) {
-				new_view = text_new();
-				window_after(view, new_view, -1);
-				mode_shell_pipe(new_view);
-			} else
-				window_beep(view);
-		else
+		if (mark != UNSET)
 			mode_child(view);
+		else if (mode->variant)
+			demultiplex_view(view);
+		else {
+			new_view = text_new();
+			window_after(view, new_view, -1);
+			mode_shell_pipe(new_view);
+		}
 		break;
 	case 'F': /* copy [pre/appending] */
 		cut(view, FALSE);

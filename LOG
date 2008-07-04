@@ -1,3 +1,5 @@
+07-04 1.1.2 release
+04-18 pmk: shell mode via ptys
 04-16 pmk: basic keyword highlighting for C/C++
 04-11 pmk: multiple TAGS files in directory hierarchy, multiple hits
 04-07 pmk: true UP and DOWN arrow movement keys

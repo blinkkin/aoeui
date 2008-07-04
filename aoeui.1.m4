@@ -572,7 +572,7 @@ macro, which continues until the next
 or another macro recording.
 .TP
 .B ^SpaceF1-F12
-commences the recording of your keystrokes as a new global macro for a
+commences the recording of your keystrokes as a new macro for a
 function key.
 Note that
 .B F1

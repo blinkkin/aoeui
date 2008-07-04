@@ -50,6 +50,5 @@ void depart(int exit_status);			/* die.c */
 void die(const char *, ...);
 void message(const char *, ...);
 
-int child(fd_t *stdfd, unsigned stdfds, const char *argv[]);	/* child.c */
-Boolean_t multiplexor(Boolean_t block);
+Boolean_t multiplexor(Boolean_t block);		/* child.c */
 void multiplex_write(fd_t fd, const char *, ssize_t bytes, Boolean_t retain);

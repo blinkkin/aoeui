@@ -11,7 +11,7 @@
  */
 
 struct text *text_list;
-unsigned default_tab_stop = 8; /* dispute this if you like being wrong */
+unsigned default_tab_stop = 8; /* the only correct value :-) */
 Boolean_t no_tabs;
 
 struct view *view_find(const char *name)
@@ -82,6 +82,7 @@ struct view *view_create(struct text *text)
 			text->clean ? text->clean_bytes :0;
 	view->mode = mode_default();
 	view->shell_std_in = -1;
+	view->shell_pg = -1;
 	view->shell_out_locus = NO_LOCUS;
 	view_name(view);
 	return view;
@@ -213,10 +214,9 @@ void text_adjust_loci(struct text *text, position_t offset, int delta)
 			}
 }
 
-size_t view_get(struct view *view, void *out, position_t offset, size_t bytes)
+static size_t text_get(struct text *text, void *out, position_t offset,
+		       size_t bytes)
 {
-	struct text *text = view->text;
-	offset += view->start;
 	if (text->buffer)
 		return buffer_get(text->buffer, out, offset, bytes);
 	if (!text->clean || offset >= text->clean_bytes)
@@ -227,18 +227,39 @@ size_t view_get(struct view *view, void *out, position_t offset, size_t bytes)
 	return bytes;
 }
 
-size_t view_raw(struct view *view, char **out, position_t offset, size_t bytes)
+size_t view_get(struct view *view, void *out, position_t offset, size_t bytes)
 {
-	struct text *text = view->text;
-	offset += view->start;
+	if (offset >= view->bytes)
+		return 0;
+	if (offset + bytes > view->bytes)
+		bytes = view->bytes - offset;
+	return text_get(view->text, out, view->start + offset, bytes);
+}
+
+static size_t text_raw(struct text *text, char **out, position_t offset,
+		       size_t bytes)
+{
 	if (text->buffer)
 		return buffer_raw(text->buffer, out, offset, bytes);
-	if (!text->clean || offset >= text->clean_bytes)
+	if (!text->clean) {
+		*out = NULL;
 		return 0;
+	}
 	if (offset + bytes > text->clean_bytes)
 		bytes = text->clean_bytes - offset;
-	*out = text->clean + offset;
+	*out = bytes ? text->clean + offset : NULL;
 	return bytes;
+}
+
+size_t view_raw(struct view *view, char **out, position_t offset, size_t bytes)
+{
+	if (offset >= view->bytes) {
+		*out = NULL;
+		return 0;
+	}
+	if (offset + bytes > view->bytes)
+		bytes = view->bytes - offset;
+	return text_raw(view->text, out, view->start + offset, bytes);
 }
 
 size_t view_delete(struct view *view, position_t offset, size_t bytes)

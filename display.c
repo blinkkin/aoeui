@@ -393,10 +393,8 @@ void display_delete_chars(struct display *display, unsigned row,
 	moveto(display, row, column);
 	background_color(display, bgrgba);
 	outf(display, CTL_DELCOLS, chars);
-	if (column + columns != display->columns) {
-		moveto(display, row, column + columns - chars);
-		outf(display, CTL_INSCOLS, chars);
-	}
+	moveto(display, row, column + columns - chars);
+	outf(display, CTL_INSCOLS, chars);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell, cell + chars, (columns - chars) * sizeof *cell);
 	fill(display, row, column + columns - chars, chars,
