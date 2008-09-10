@@ -66,7 +66,7 @@ int main(int argc, char *const *argv)
 			is_asdfg = TRUE;
 			break;
 		case 's':
-			no_tabs = TRUE;
+			default_no_tabs = TRUE;
 			break;
 		case 't':
 			value = atoi(optarg);

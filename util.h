@@ -13,7 +13,9 @@ position_t find_paragraph_end(struct view *, position_t);
 position_t find_line_up(struct view *, position_t);
 position_t find_line_down(struct view *, position_t);
 position_t find_space(struct view *, position_t);
+position_t find_space_prior(struct view *, position_t);
 position_t find_nonspace(struct view *, position_t);
+position_t find_nonspace_prior(struct view *, position_t);
 position_t find_word_start(struct view *, position_t);
 position_t find_word_end(struct view *, position_t);
 position_t find_id_start(struct view *, position_t);
@@ -50,7 +52,7 @@ Boolean_t is_keyword(struct view *, position_t);
 
 INLINE Boolean_t is_wordch(Unicode_t ch)
 {
-	return ch > 0x100 && ch < FOLD_START || isalnum(ch);
+	return ch > 0x100 && ch < FOLD_START || IS_CODEPOINT(ch) && isalnum(ch);
 }
 
 INLINE Boolean_t is_idch(Unicode_t ch)

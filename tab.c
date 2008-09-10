@@ -144,8 +144,8 @@ Boolean_t tab_completion_command(struct view *view)
 	if (selection)
 		select = view_extract_selection(view);
 	else if (mark == UNSET &&
-		 (isalnum(ch = view_char_prior(view, cursor, NULL)) ||
-		  ch == '_')) {
+		 IS_CODEPOINT((ch = view_char_prior(view, cursor, NULL))) &&
+		 (isalnum(ch) || ch == '_')) {
 		mark = find_word_start(view, cursor);
 		if (mark < cursor)
 			select = view_extract(view, mark, cursor-mark);
@@ -172,7 +172,7 @@ void insert_tab(struct view *view)
 		view_delete(view, cursor, mark - cursor);
 		mark = UNSET;
 	}
-	if (no_tabs) {
+	if (view->text->flags & TEXT_NO_TABS) {
 		int tabstop = view->text->tabstop;
 		sposition_t offset = 0;
 		position_t at = find_line_start(view, cursor);
@@ -210,7 +210,9 @@ void align(struct view *view)
 	for (nonspace0 = lnstart0;
 	     IS_UNICODE(firstch = view_char(view, nonspace0, &next));
 	     nonspace0 = next)
-		if (firstch == '\n' || firstch != ' ' && firstch != '\t')
+		if (firstch == '\n' ||
+		    !IS_CODEPOINT(firstch) ||
+		    !isspace(firstch))
 			break;
 	lnstart = find_line_start(view, lnstart0-1);
 	while (lnstart && view_char(view, lnstart, NULL) == '\n')
@@ -225,6 +227,10 @@ void align(struct view *view)
 			spaces = 0;
 		} else
 			break;
+	if (spaces >= tabstop) {
+		indent += spaces / tabstop * tabstop;
+		spaces %= tabstop;
+	}
 	stack[stackptr++] = indent;
 	stack[stackptr++] = indent += spaces;
 
@@ -232,7 +238,7 @@ void align(struct view *view)
 		if (ch == '\n')
 			break;
 		indent++;
-		if (!isspace(ch))
+		if (!(IS_CODEPOINT(ch) && isspace(ch)))
 			last = ch;
 		if (ch == '(' || ch == '[') {
 			if ((unsigned) stackptr < 16)
@@ -261,7 +267,7 @@ void align(struct view *view)
 		}
 	}
 
-	if (no_tabs) {
+	if (view->text->flags & TEXT_NO_TABS) {
 		indent_bytes = indent;
 		indentation = allocate(indent_bytes);
 		memset(indentation, ' ', indent);

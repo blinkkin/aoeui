@@ -1,8 +1,17 @@
 #ifndef UTF8_H
 #define UTF8_H
 
+/*
+ * UTF-8 encoding is used to represent actual Unicode characters
+ * as well as the artificial values used as the delimiters of folded
+ * blocks.  One of these extended characters can be held in a Unicode_t
+ * and passes IS_UNICODE().  True Unicode code points also satisfy
+ * IS_CODEPOINT().
+ */
+
 #define UNICODE_BAD (1u << 31)
 #define IS_UNICODE(u) ((u) < UNICODE_BAD)
+#define IS_CODEPOINT(u) ((u) < 0x10000)
 
 /* Some non-Unicode code points are used to represent function keys
  * and input errors.

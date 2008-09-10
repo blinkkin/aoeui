@@ -1,4 +1,4 @@
-VERSION = 1.1.2
+VERSION = 1.2
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
@@ -12,7 +12,7 @@ CFLAGS += -Wall -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
 # -Werror
-# Some systems need:
+# Linux and perhaps other systems need:
 # LIBS = -lutil
 # BSD users may need -lcompat as well
 # CTAGS = exuberant-ctags

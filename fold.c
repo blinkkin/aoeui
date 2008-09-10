@@ -15,7 +15,7 @@ void view_fold(struct view *view, position_t cursor, position_t mark)
 		return;
 	view_insert(view, buf, cursor + bytes, unicode_utf8(buf, FOLD_END+bytes));
 	view_insert(view, buf, cursor, unicode_utf8(buf, FOLD_START+bytes));
-	view->text->flags |= TEXT_FOLDED;
+	view->text->foldings++;
 }
 
 sposition_t view_unfold(struct view *view, position_t offset)
@@ -32,6 +32,7 @@ sposition_t view_unfold(struct view *view, position_t offset)
 		return -1;
 	view_delete(view, next + fbytes, next2 - (next + fbytes));
 	view_delete(view, offset, next - offset);
+	view->text->foldings--;
 	return offset + fbytes;
 }
 
@@ -52,6 +53,8 @@ void view_unfold_selection(struct view *view)
 		position_t next, next2;
 		size_t fbytes;
 		Unicode_t ch = view_unicode(view, offset, &next);
+		if (!IS_UNICODE(ch))
+			break;
 		if (ch < FOLD_START || ch >= FOLD_END) {
 			offset = next;
 			continue;
@@ -64,6 +67,7 @@ void view_unfold_selection(struct view *view)
 		}
 		view_delete(view, next + fbytes, next2 - (next + fbytes));
 		view_delete(view, offset, next - offset);
+		view->text->foldings--;
 		offset += fbytes;
 	}
 }
@@ -125,19 +129,23 @@ void view_fold_indented(struct view *view, unsigned minindent)
 void view_unfold_all(struct view *view)
 {
 	position_t offset, next;
+	if (!view->text->foldings)
+		return;
 	for (offset = 0;
 	     IS_UNICODE(view_unicode(view, offset, &next));
 	     offset = next)
-		if (view_unfold(view, offset) >= 0)
+		if (view_unfold(view, offset) >= 0) {
+			if (!view->text->foldings)
+				break;
 			next = offset;
+		}
 }
 
 void text_unfold_all(struct text *text)
 {
 	struct view *view;
-	if (!(text->flags & TEXT_FOLDED))
+	if (!text->foldings)
 		return;
-	for (view = text->views; view; view = view->next)
-		view_unfold_all(view);
-	text->flags &= ~TEXT_FOLDED;
+	view_unfold_all(view = view_create(text));
+	view_close(view);
 }

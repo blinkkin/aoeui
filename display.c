@@ -67,6 +67,7 @@ struct display {
 	Boolean_t is_xterm;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
+	char *title;
 };
 
 static struct display *display_list;
@@ -739,8 +740,21 @@ void display_end(struct display *display)
 
 void display_title(struct display *display, const char *title)
 {
-	if (display->is_xterm)
+	if (display->is_xterm) {
+		if (title && !*title)
+			title = NULL;
+		if (!title && !display->title)
+			return;
+		if (!title)
+			RELEASE(display->title);
+		else if (display->title && !strcmp(title, display->title))
+			return;
+		if (title)
+			display->title = strdup(title);
+		else
+			title = "";
 		outf(display, XTERM_TITLE, title ? title : "");
+	}
 }
 
 void display_cursor(struct display *display, unsigned row, unsigned column)

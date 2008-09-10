@@ -12,7 +12,7 @@
 
 struct text *text_list;
 unsigned default_tab_stop = 8; /* the only correct value :-) */
-Boolean_t no_tabs;
+Boolean_t default_no_tabs;
 
 struct view *view_find(const char *name)
 {
@@ -92,6 +92,8 @@ struct view *text_create(const char *path, unsigned flags)
 {
 	struct text *text = allocate0(sizeof *text), *prev, *bp;
 
+	if (default_no_tabs)
+		flags |= TEXT_NO_TABS;
 	text->tabstop = default_tab_stop;
 	text->fd = -1;
 	text->flags = flags;

@@ -18,13 +18,14 @@ struct text {
 	unsigned tabstop;
 	struct keywords *keywords;
 	const char *brackets;
+	unsigned foldings;
 	unsigned flags;
 #define TEXT_SAVED_ORIGINAL 0x001
 #define TEXT_RDONLY 0x002
 #define TEXT_EDITOR 0x004
 #define TEXT_CREATED 0x008
 #define TEXT_SCRATCH 0x010
-#define TEXT_FOLDED 0x020
+#define TEXT_NO_TABS 0x020
 #define TEXT_NO_UTF8 0x040
 #define TEXT_CRNL 0x080
 };
@@ -55,7 +56,7 @@ struct keywords {
 
 extern struct text *text_list;
 extern unsigned default_tab_stop;
-extern Boolean_t no_tabs;
+extern Boolean_t default_no_tabs;
 extern Boolean_t no_keywords;
 extern enum utf8_mode { UTF8_NO, UTF8_YES, UTF8_AUTO } utf8_mode;
 

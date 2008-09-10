@@ -124,16 +124,22 @@ static struct view *show_tag(struct view *tags, sposition_t wordend,
 	wordend = find_space(tags, wordstart);
 	this = view_extract(tags, wordstart, wordend - wordstart);
 
-	path = allocate(strlen(tags->text->path) + strlen(this) + 8);
-	strcpy(path, tags->text->path);
-	if (!(slash = strrchr(path, '/')))
-		*(slash = path + strlen(path)) = '/';
-	strcpy(slash + 1, this);
-	RELEASE(this);
+	if (*this == '/')
+		path = this;
+	else {
+		path = allocate(strlen(tags->text->path) + strlen(this) + 8);
+		strcpy(path, tags->text->path);
+		if (!(slash = strrchr(path, '/')))
+			*(slash = path + strlen(path)) = '/';
+		strcpy(slash + 1, this);
+		RELEASE(this);
+	}
 
 	view = view_open(path);
+	if (!view)
+		message("Could not open %s from TAGS", path);
 	RELEASE(path);
-	if (view->text->flags & TEXT_CREATED) {
+	if (!view || view->text->flags & TEXT_CREATED) {
 		view_close(view);
 		return FALSE;
 	}

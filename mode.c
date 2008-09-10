@@ -130,6 +130,36 @@ static Boolean_t funckey(struct view *view, int Fk)
 	return macro_play(function_key[Fk], mode->value);
 }
 
+static position_t self_insert(struct view *view, Unicode_t ch,
+			      position_t mark, position_t old_cursor,
+			      Boolean_t literal_unicode)
+{
+	char cbuf[8];
+	position_t cursor = old_cursor;
+	if (mark != UNSET && mark > cursor) {
+		cursor = cut(view, 1);
+		mark = UNSET;
+	}
+	if (ch == '\n' && view->text->flags & TEXT_CRNL) {
+		view_insert(view, "\r\n", cursor, 2);
+		cursor += 2;
+	} else if (ch <= 0x100 &&
+		   (!literal_unicode ||
+		    view->text->flags & TEXT_NO_UTF8)) {
+		cbuf[0] = ch;
+		view_insert(view, cbuf, cursor++, 1);
+	} else {
+		size_t len = unicode_utf8(cbuf, ch);
+		view_insert(view, cbuf, cursor, len);
+		cursor += len;
+	}
+	if (mark == old_cursor)
+		locus_set(view, MARK, old_cursor);
+	if (view->shell_std_in >= 0)
+		shell_command(view, ch);
+	return cursor;
+}
+
 static void command_handler(struct view *view, Unicode_t ch0)
 {
 	struct mode_default *mode = (struct mode_default *) view->mode;
@@ -137,8 +167,7 @@ static void command_handler(struct view *view, Unicode_t ch0)
 	position_t cursor = locus_get(view, CURSOR);
 	position_t mark = locus_get(view, MARK);
 	position_t offset;
-	char buf[8];
-	Boolean_t ok = TRUE, literal_unicode = FALSE;
+	Boolean_t ok = TRUE;
 	struct view *new_view;
 	char *select;
 
@@ -271,24 +300,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			}
 		}
 
-		/* self insertion or replacement */
-self_insert:	if (mark != UNSET && mark > cursor) {
-			cursor = cut(view, 1);
-			mark = UNSET;
-		}
-		if (ch == '\n' && view->text->flags & TEXT_CRNL)
-			view_insert(view, "\r\n", cursor, 2);
-		else if (ch <= 0x100 &&
-			 (!literal_unicode ||
-			  view->text->flags & TEXT_NO_UTF8)) {
-			buf[0] = ch;
-			view_insert(view, buf, cursor, 1);
-		} else
-			view_insert(view, buf, cursor, unicode_utf8(buf, ch));
-		if (mark == cursor)
-			locus_set(view, MARK, /*old*/ cursor);
-		if (view->shell_std_in >= 0)
-			shell_command(view, ch);
+		self_insert(view, ch, mark, cursor, FALSE);
 		goto done;
 	}
 
@@ -308,7 +320,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		ch = asdfg_to_aoeui[ch-'A'];
 	}
 
-	if (ch != 'G' && ch != 'C')
+	if (ch != 'G' && ch != 'C' &&
+	    (ch != 'H' && ch != 'T' ||
+	     !mode->variant || mode->value))
 		view->goal.cursor = UNSET;
 
 	switch (ch) {
@@ -340,10 +354,8 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 	case 'D': /* [select whitespace] / cut [pre/appending] */
 		if (mark == UNSET && mode->variant) {
 			locus_set(view, MARK, find_nonspace(view, cursor));
-			while (IS_UNICODE(ch = view_char_prior(view, cursor, &offset)) &&
-			       isspace(ch))
-				cursor = offset;
-			locus_set(view, CURSOR, cursor);
+			locus_set(view, CURSOR,
+				  find_nonspace_prior(view, cursor));
 		} else
 			cut(view, TRUE);
 		break;
@@ -365,14 +377,20 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		backward_lines(view);
 		break;
 	case 'H':
-		backward_chars(view);
+		if (mode->variant && !mode->value) {
+			mode->variant = FALSE;
+			up_lines(view);
+		} else
+			backward_chars(view);
 		break;
 	case 'I': /* (TAB) tab / tab completion [align; set tab stop] */
 		if (!mode->variant) {
 			if (!tab_completion_command(view))
 				insert_tab(view);
 		} else if (mode->value)
-			if (mode->value >= 1 && mode->value <= 20)
+			if (mode->value == 1)
+				view->text->flags ^= TEXT_NO_TABS;
+			else if (mode->value > 1 && mode->value <= 20)
 				view->text->tabstop =
 					default_tab_stop = mode->value;
 			else
@@ -380,11 +398,16 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		else
 			align(view);
 		break;
-	case 'J': /* line feed: new line with alignment */
-		if (view->text->flags & TEXT_CRNL)
-			view_insert(view, "\r", cursor++, 1);
-		view_insert(view, "\n", cursor++, 1);
-		align(view);
+	case 'J':  /* line feed: new line [opened] */
+	case 'M': /* (ENTER) new line with alignment [opened] */
+		self_insert(view, '\n', mark, cursor, FALSE);
+		if (ch == 'M')
+			align(view);
+		if (mode->variant) {
+			locus_set(view, CURSOR, cursor);
+			if (ch == 'M')
+				align(view);
+		}
 		break;
 	case 'K': /* save all [single] */
 		if (mode->variant)
@@ -398,21 +421,9 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		else
 			window_page_down(view);
 		break;
-	case 'M': /* (ENT) new line [opened] */
-		if (mode->variant) {
-			if (view->text->flags & TEXT_CRNL)
-				view_insert(view, "\r\n", cursor, 2);
-			else
-				view_insert(view, "\n", cursor, 1);
-			locus_set(view, CURSOR, cursor);
-		} else {
-			ch = '\n';
-			goto self_insert;
-		}
-		break;
 	case 'N': /* backward word(s) [sentence] */
 		if (mode->value)
-			while (mode->value--)
+			while (mode->value-- && cursor)
 				cursor = find_word_start(view, cursor);
 		else if (mode->variant)
 			cursor = find_sentence_start(view, cursor);
@@ -465,7 +476,11 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 		locus_set(view, CURSOR, cursor);
 		break;
 	case 'T':
-		forward_chars(view);
+		if (mode->variant && !mode->value) {
+			mode->variant = FALSE;
+			down_lines(view);
+		} else
+			forward_chars(view);
 		break;
 	case 'U': /* undo [redo] */
 		offset = (mode->variant ? text_redo : text_undo)(view->text);
@@ -546,21 +561,18 @@ self_insert:	if (mark != UNSET && mark > cursor) {
 			locus_set(view, CURSOR, cursor);
 		break;
 	case '^': /* literal [; unicode] */
-		if (mode->value) {
-			ch = mode->value;
-			literal_unicode = TRUE;
-			goto self_insert;
-		}
-		if (IS_UNICODE(ch = macro_getch())) {
+		if (mode->value)
+			self_insert(view, mode->value, mark, cursor, TRUE);
+		else if (IS_UNICODE(ch = macro_getch())) {
 			if (ch >= '@' && ch <= '_')
 				ch = CONTROL(ch);
 			else if (ch >= 'a' && ch <= 'z')
 				ch = CONTROL(ch-'a'+'A');
 			else if (ch == '?')
 				ch = 0x7f;
-			goto self_insert;
-		}
-		ok = FALSE;
+			self_insert(view, ch, mark, cursor, FALSE);
+		} else
+			ok = FALSE;
 		break;
 	default:
 		ok = FALSE;

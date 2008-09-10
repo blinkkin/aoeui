@@ -3,7 +3,7 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "April 3, 2008"
+.TH AOEUI 1 "September 9, 2008"
 .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
@@ -193,6 +193,12 @@ moves the cursor backward by characters.
 .B ^cmd(T,H)
 moves the cursor forward by characters.
 .TP
+.B ^Space^cmd(H,G)
+moves the cursor up a line on the screen.
+.TP
+.B ^Space^cmd(T,H)
+moves the cursor down a line on the screen.
+.TP
 .B ^cmd(N,K)
 moves the cursor backward by words.
 .TP
@@ -340,7 +346,7 @@ first cut to the clip buffer, so that the new text replaces it.
 .B ^^
 (that's Control-Shift-6, the caret character, on most keyboards,
 and ^6 will probably also work)
-inserts an untypeable control character into the text.
+inserts an otherwise untypeable control character into the text.
 The very next key to be pressed is either taken literally,
 if it is a control character, or converted to a control character
 if it is not, and inserted.
@@ -377,18 +383,33 @@ with a single TAB character.
 (or
 .BR ^Space^I )
 will align the current line to the indentation of the previous one.
-With a numeric argument between 1 and 20, it will set the tab stop pitch.
+This is equivalent to
+.B ^Space^cmd(D,X)
+.BR Enter .
+With a numeric argument of 1, it toggles the text's use of tab characters
+for indentation.
+With a numeric argument between 2 and 20, it will set the tab stop pitch.
 .TP
-.B ^J
+.B Enter
 (or
-.B ^Enter
-under good terminal emulators)
+.BR ^M )
 inserts a new line into the text with automatic indentation.
 .TP
 .B ^SpaceEnter
 (or
 .BR ^Space^M )
-opens up a new line after the current one.
+opens up a new line after the current one, with automatic indentation.
+.TP
+.B ^J
+(or
+.B ^Enter
+under some good terminal emulators)
+inserts a new line into the text without any automatic indentation.
+.TP
+.B ^Space^J
+(or
+.BR ^Space^Enter )
+opens a new line into the text without any automatic indentation.
 .TP
 .B Backspace
 (or more properly, its synonym

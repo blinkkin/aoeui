@@ -50,16 +50,16 @@ Command characters
   ^U	undo [redo]
 * ^I	(TAB)
   ^D	cut char [select whitespace] / cut [pre/append; replicate]
-  ^H	backward char(s)
-  ^T	forward char(s)
-  ^N	backward word(s) [sentence]
-  ^S	forward word(s) [sentence]
+  ^H	backward char(s) [up line; multiple chars]
+  ^T	forward char(s) [down line; multiple chars]
+  ^N	backward word(s) [sentence; multiple words]
+  ^S	forward word(s) [sentence; multiple words]
 * ^-	-- smaller font
 * ^_	(^/) incremental search mode [regexp]
-*  ENT	(^M) newline [open line]
-  ^ENT	(^J) newline and alignment
+*  ENT	(^M) newline [open line] and alignment
+  ^ENT	(^J) newline [open line]
   ^Q	suspend editor [quit]
-* ^J	(^ENT)
+* ^J
   ^K	save all [single]
   ^X	get path / visit file [set path]
   ^B	paste / exchange with clip buffer [; register]
@@ -71,7 +71,7 @@ Command characters
 
 Non-control characters -- commands must be [variants]
   =	[; set bookmark]
-  -	[; goto bookmark]
+  -	[; go to bookmark]
   ;	[new anonymous text]
   '	[go to tag]
   ,	[fold view on indentation] / [fold selection]

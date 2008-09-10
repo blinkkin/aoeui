@@ -24,10 +24,28 @@ static struct window *active_window;
 static struct display *display;
 static unsigned display_rows, display_columns;
 
+static void title(struct window *window)
+{
+	char buff[128];
+	if (window != active_window)
+		return;
+	if (!window) {
+		display_title(display, NULL);
+		return;
+	}
+	snprintf(buff, sizeof buff, "%s%s",
+		 window->view->name,
+		 window->view->text->flags & TEXT_CREATED ? "(new)" :
+		 window->view->text->flags & TEXT_RDONLY ? "(read-only)" :
+		 window->view->text->preserved !=
+		    window->view->text->dirties ? "(unsaved)" : "");
+	display_title(display, buff);
+}
+
 static struct window *activate(struct window *window)
 {
-	if ((active_window = window))
-		display_title(display, active_window->view->name);
+	active_window = window;
+	title(window);
 	return window;
 }
 
@@ -343,27 +361,32 @@ done:	window->cursor_column = find_column(&above, view, cursorrow,
 	return start;
 }
 
-static Boolean_t lame_space(struct view *view, position_t offset, unsigned look)
+static Boolean_t lame_space(struct view *view, position_t start,
+			    unsigned next_tab)
 {
-	int all_spaces_lame = look > 1 && !no_tabs;
-	if (view->shell_std_in >= 0)
+	unsigned distance = 0;
+	position_t offset = start;
+	Unicode_t ch;
+	if (view->shell_std_in >= 0 || view->text->flags & TEXT_EDITOR)
 		return FALSE;
-	while (look--) {
-		Unicode_t ch = view_char(view, offset, &offset);
+	do {
+		distance++;
+		ch = view_char(view, offset, &offset);
 		if (!IS_UNICODE(ch) || ch == '\n' || ch == '\t')
 			return TRUE;
-		if (ch != ' ')
-			return FALSE;
-	}
-	return all_spaces_lame;
+	} while (ch == ' ');
+	return distance > next_tab &&
+	       !(view->text->flags & TEXT_NO_TABS) &&
+	       (next_tab ||
+		view_char_prior(view, start-1, NULL) == ' ');
 }
 
 static Boolean_t lame_tab(struct view *view, position_t offset)
 {
 	Unicode_t ch;
-	if (view->shell_std_in >= 0)
+	if (view->shell_std_in >= 0 || view->text->flags & TEXT_EDITOR)
 		return FALSE;
-	if (no_tabs)
+	if (view->text->flags & TEXT_NO_TABS)
 		return TRUE;
 	for (;
 	     IS_UNICODE(ch = view_char(view, offset, &offset)) &&
@@ -420,11 +443,12 @@ static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 			ch = '?';
 		else
 			ch += '@';
-	} else if (ch == ' ' &&
+	} else if (ch == ' ') {
+		if (bgrgba == window->bgrgba &&
 		   lame_space(window->view, at + 1,
 			      tabstop-1 - column % tabstop))
-		bgrgba = 0xff00ff00;
-	else if (!IS_UNICODE(ch))
+			bgrgba = 0xff00ff00;
+	} else if (!IS_UNICODE(ch))
 		ch = ' ', bgrgba = 0xff00ff00;
 	else if (brack)
 		for (; *brack; brack += 2)
@@ -472,7 +496,7 @@ static void paint(struct window *window)
 	position_t mark = locus_get(view, MARK);
 	unsigned brackets = 1;
 
-	repainted(window, cursor, mark);
+	title(window);
 
 	at = focus(window);
 	for (row = 0; row < window->rows; row++) {
@@ -504,6 +528,8 @@ static void paint(struct window *window)
 			      window->columns - column,
 			      window->fgrgba, window->bgrgba);
 	}
+
+	repainted(window, cursor, mark);
 }
 
 void window_hint_deleting(struct window *window, position_t offset, size_t bytes)

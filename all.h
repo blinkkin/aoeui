@@ -49,6 +49,8 @@ void *allocate0(size_t);
 void depart(int exit_status);			/* die.c */
 void die(const char *, ...);
 void message(const char *, ...);
+void status(const char *, ...);
+void status_hide(void);
 
 Boolean_t multiplexor(Boolean_t block);		/* child.c */
 void multiplex_write(fd_t fd, const char *, ssize_t bytes, Boolean_t retain);

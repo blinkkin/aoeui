@@ -331,7 +331,7 @@ Boolean_t text_rename(struct text *text, const char *path0)
 void text_dirty(struct text *text)
 {
 	if (text->path && !text->dirties && text->flags & TEXT_RDONLY)
-		message("%s: read-only, changes won't be saved.",
+		message("%s: read-only, changes won't be saved here",
 			path_format(text->path));
 	text->dirties++;
 	if (!text->buffer) {
@@ -350,6 +350,7 @@ static void save_original(struct text *text)
 	if (!text->clean ||
 	    !text->path ||
 	    text->flags & (TEXT_SAVED_ORIGINAL |
+			   TEXT_RDONLY |
 			   TEXT_CREATED |
 			   TEXT_EDITOR))
 		return;
@@ -383,12 +384,10 @@ void text_preserve(struct text *text)
 
 	if (text->preserved == text->dirties || text->fd < 0 || !text->buffer)
 		return;
-
 	text->preserved = text->dirties;
-
 	text_unfold_all(text);
-
 	if (text->clean) {
+		save_original(text);
 		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 		if (bytes == text->clean_bytes &&
 		    !memcmp(text->clean, raw, bytes))
@@ -396,9 +395,6 @@ void text_preserve(struct text *text)
 		munmap(text->clean, text->clean_bytes);
 		text->clean = NULL;
 	}
-
-	save_original(text);
-
 	if (text->mtime &&
 	    text->path &&
 	    !fstat(text->fd, &statbuf) &&
@@ -406,7 +402,29 @@ void text_preserve(struct text *text)
 		message("%s: modified since read into the "
 			"editor, changes may have been overwritten.",
 			path_format(text->path));
-
+	text->preserved = text->dirties;
+	if (text->flags & TEXT_RDONLY && text->path) {
+		int newfd;
+		char *new_path = allocate(strlen(text->path) + 2);
+		sprintf(new_path, "%s@", text->path);
+		errno = 0;
+		newfd = open(new_path, O_CREAT|O_TRUNC|O_RDWR,
+			     S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+		if (newfd < 0) {
+			message("%s: can't create", path_format(new_path));
+			RELEASE(new_path);
+			return;
+		}
+		message("%s: read-only, new version saved to %s@",
+			text->path, text->path);
+		text->flags &= ~TEXT_RDONLY;
+		text->flags |= TEXT_CREATED;
+		close(text->fd);
+		RELEASE(text->path);
+		text->fd = newfd;
+		text->path = new_path;
+	} else
+		text->flags &= ~TEXT_CREATED;
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 	ftruncate(text->fd, bytes);
 	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);
@@ -414,12 +432,13 @@ void text_preserve(struct text *text)
 		memcpy(text->clean, raw, bytes);
 		msync(text->clean, bytes, MS_SYNC);
 	} else {
+		ssize_t wrote;
 		lseek(text->fd, 0, SEEK_SET);
-		write(text->fd, raw, bytes);
+		errno = 0;
+		wrote = write(text->fd, raw, bytes);
+		if (wrote != bytes)
+			message("%s: write failed", path_format(text->path));
 	}
-
-	text->preserved = text->dirties;
-	text->flags &= ~TEXT_CREATED;
 	grab_mtime(text);
 }
 

@@ -7,7 +7,7 @@ position_t find_line_start(struct view *view, position_t offset)
 	Unicode_t ch;
 	position_t prev;
 
-	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev)) &&
+	while (IS_UNICODE((ch = view_char_prior(view, offset, &prev))) &&
 	       ch != '\n')
 		offset = prev;
 	return offset;
@@ -18,7 +18,7 @@ position_t find_line_end(struct view *view, position_t offset)
 	Unicode_t ch;
 	position_t next;
 
-	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
+	while (IS_UNICODE((ch = view_char(view, offset, &next))) &&
 	       ch != '\n')
 		offset = next;
 	return offset;
@@ -29,7 +29,7 @@ position_t find_paragraph_start(struct view *view, position_t offset)
 	Unicode_t ch, nch = UNICODE_BAD, nnch = UNICODE_BAD;
 	position_t prev;
 
-	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
+	while (IS_UNICODE((ch = view_char_prior(view, offset, &prev)))) {
 		if (ch == '\n' && nch == '\n' && IS_UNICODE(nnch))
 			return offset + 1;
 		offset = prev, nnch = nch, nch = ch;
@@ -42,7 +42,7 @@ position_t find_paragraph_end(struct view *view, position_t offset)
 	Unicode_t ch, pch = UNICODE_BAD, ppch = UNICODE_BAD;
 	position_t next;
 
-	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
+	while (IS_UNICODE((ch = view_char(view, offset, &next))) &&
 	       (ch == '\n' || pch != '\n' || ppch != '\n'))
 		offset = next, ppch = pch, pch = ch;
 	return offset;
@@ -106,80 +106,98 @@ position_t find_line_down(struct view *view, position_t at)
 	return same_column(view, nextstart, find_line_end(view, nextstart));
 }
 
-position_t find_space(struct view *view, position_t offset)
+typedef Unicode_t (*stepper_t)(struct view *, position_t, position_t *);
+
+static position_t find_not(struct view *view, position_t offset,
+			   stepper_t stepper,
+			   Boolean_t (*test)(Unicode_t))
 {
-	Unicode_t ch;
 	position_t next;
 
-	while (IS_UNICODE(ch = view_char(view, offset, &next)) &&
-	       !isspace(ch))
+	while (test(stepper(view, offset, &next)))
 		offset = next;
 	return offset;
+}
+
+static Boolean_t space_test(Unicode_t ch)
+{
+	return IS_CODEPOINT(ch) && isspace(ch);
+}
+
+static Boolean_t nonspace_test(Unicode_t ch)
+{
+	return IS_UNICODE(ch) && !space_test(ch);
+}
+
+position_t find_space(struct view *view, position_t offset)
+{
+	return find_not(view, offset, view_char, nonspace_test);
+}
+
+position_t find_space_prior(struct view *view, position_t offset)
+{
+	return find_not(view, offset, view_char_prior, nonspace_test);
 }
 
 position_t find_nonspace(struct view *view, position_t offset)
 {
-	position_t next;
+	return find_not(view, offset, view_char, space_test);
+}
 
-	while (isspace(view_char(view, offset, &next)))
-		offset = next;
+position_t find_nonspace_prior(struct view *view, position_t offset)
+{
+	return find_not(view, offset, view_char_prior, space_test);
+}
+
+
+static position_t find_contiguous(struct view *view, position_t offset,
+				  stepper_t stepper,
+				  Boolean_t (*test)(Unicode_t, struct view *,
+						    position_t *, stepper_t))
+{
+	Unicode_t ch;
+	position_t next;
+	Boolean_t in_region = FALSE;
+
+	for (; IS_UNICODE((ch = stepper(view, offset, &next))); offset = next)
+		if (test(ch, view, &next, stepper))
+			in_region = TRUE;
+		else if (in_region)
+			break;
 	return offset;
+}
+
+static Boolean_t word_test(Unicode_t ch, struct view *view, position_t *next,
+			   stepper_t stepper)
+{
+	return is_wordch(ch);
 }
 
 position_t find_word_start(struct view *view, position_t offset)
 {
-	Unicode_t ch;
-	position_t prev;
-
-	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
-		offset = prev;
-		if (!isspace(ch))
-			break;
-	}
-	while (is_wordch(view_char_prior(view, offset, &prev)))
-		offset = prev;
-	return offset;
+	return find_contiguous(view, offset, view_char_prior, word_test);
 }
 
 position_t find_word_end(struct view *view, position_t offset)
 {
-	Unicode_t ch;
-	position_t next;
+	return find_contiguous(view, offset, view_char, word_test);
+}
 
-	offset = find_nonspace(view, offset)+1;
-	for (; IS_UNICODE(ch = view_char(view, offset, &next)); offset = next)
-		if (!is_wordch(ch))
-			break;
-	return offset;
+static Boolean_t id_test(Unicode_t ch, struct view *view, position_t *next,
+			 stepper_t stepper)
+{
+	return is_idch(ch) ||
+	       ch == ':' && stepper(view, *next, next) == ':';
 }
 
 position_t find_id_start(struct view *view, position_t offset)
 {
-	Unicode_t ch;
-	position_t prev;
-
-	while (IS_UNICODE(ch = view_char_prior(view, offset, &prev))) {
-		offset = prev;
-		if (!isspace(ch))
-			break;
-	}
-	while (is_idch((ch = view_char_prior(view, offset, &prev))) ||
-	       ch == ':' && view_char_prior(view, prev, &prev) == ':')
-		offset = prev;
-	return offset;
+	return find_contiguous(view, offset, view_char_prior, id_test);
 }
 
 position_t find_id_end(struct view *view, position_t offset)
 {
-	Unicode_t ch;
-	position_t next;
-
-	offset = find_nonspace(view, offset)+1;
-	for (; IS_UNICODE(ch = view_char(view, offset, &next)); offset = next)
-		if (!(is_idch(ch) ||
-		      ch == ':' && view_char(view, next, &next) == ':'))
-			break;
-	return offset;
+	return find_contiguous(view, offset, view_char, id_test);
 }
 
 position_t find_sentence_start(struct view *view, position_t offset)

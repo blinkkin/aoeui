@@ -136,6 +136,7 @@ static Boolean_t search(struct view *view, int backward, int new)
 		}
 		if (!mode->regex_ready) {
 			mode->pattern[mode->bytes] = '\0';
+			status("regular expression: %s", mode->pattern);
 			err = regcomp(mode->regex, (char *) mode->pattern,
 				      REG_EXTENDED | REG_ICASE | REG_NEWLINE);
 			if (err)
@@ -254,6 +255,7 @@ done:	if (mode->bytes) {
 	}
 
 	view->mode = mode->previous;
+	status_hide();
 
 	if (ch == '\r' || ch == CONTROL('A') || ch == CONTROL('_'))
 		;

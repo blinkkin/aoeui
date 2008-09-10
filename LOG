@@ -1,3 +1,9 @@
+??-?? 1.2 release
+09-09 pmk: display regular expressions during searches
+09-09 pmk: swap ^J and ^M, so that Enter causes automatic alignment
+09-05 pmk: fix original~ file saving and bad writes to read-only files
+09-05 pmk: fix TAGS with absolute paths
+09-05 pmk: fix folding, tweak motion by words and identifiers
 07-04 1.1.2 release
 04-18 pmk: shell mode via ptys
 04-16 pmk: basic keyword highlighting for C/C++
