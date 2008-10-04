@@ -223,7 +223,7 @@ If already there, it moves forward to the end of the next line.
 moves the cursor back to the beginning of the paragraph.
 If already there, it moves back to the beginning of the previous paragraph.
 .TP
-.B ^Space^cmd(S,L)
+.B ^Space^cmd(C,Y)
 moves the cursor forward to the end of the paragraph.
 If already there, it moves forward to the end of the next paragraph.
 .TP

@@ -8,17 +8,21 @@ HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h \
 	window.h util.h clip.h macro.h
 RELS = $(SRCS:.c=.o)
 INST_DIR = $(DESTDIR)/usr
-CFLAGS += -Wall -Wno-parentheses \
+CFLAGS = -Wall -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
 -Wmissing-prototypes -Wmissing-declarations
 # -Werror
-# Linux and perhaps other systems need:
+
+# Linux and perhaps other systems need to uncomment this line:
 # LIBS = -lutil
-# BSD users may need -lcompat as well
+# BSD users may need -lcompat as well in LIBS
+
+# Uncomment this line if you want to develop aoeui yourself with exuberant-ctags
 # CTAGS = exuberant-ctags
 CTAGS = ctags
 
-default: aoeui aoeui.1 asdfg.1
+default: optimized aoeui.1 asdfg.1
+
 aoeui: $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
@@ -36,11 +40,11 @@ asdfg.1: aoeui.1.m4
 	m4 -D ASDFG aoeui.1.m4 >$@
 
 optimized: clean
-	$(MAKE) CFLAGS="-O3"
+	$(MAKE) CFLAGS="-O3 $(CFLAGS)" aoeui
 debug: clean
-	$(MAKE) CFLAGS="-g -O0"
+	$(MAKE) CFLAGS="-g -O0 $(CFLAGS)" aoeui
 profile: clean
-	$(MAKE) CFLAGS="-pg" LIBS="$(LIBS) -pg"
+	$(MAKE) CFLAGS="-pg $(CFLAGS)" LIBS="$(LIBS) -pg" aoeui
 
 TAGS: $(SRCS) $(HDRS)
 	$(CTAGS) -x $(SRCS) $(HDRS) >$@
@@ -63,7 +67,7 @@ spotless: clobber
 release: spotless
 	rm -rf .tar
 	mkdir .tar
-	find . | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
+	find . | egrep -v '/2.0/' | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
 	mv .tar $(PACKAGE)
 	ls -CF $(PACKAGE)
 	tar czf $(PACKAGE).tgz $(PACKAGE)

@@ -7,3 +7,5 @@ The file COPYING contains the license under which aoeui is released;
 please review it so that you understand your rights and responsibilities.
 In particular, be aware that aoeui comes with ABSOLUTELY NO WARRANTY
 and your use of the program is entirely at your own risk.
+
+To build, edit first few lines of the Makefile to reflect your system.
