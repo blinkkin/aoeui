@@ -1,3 +1,8 @@
+??-?? 1.3 release
+11-19 pmk: add copyright notices
+11-11 pmk: removed useless ^Space^M and ^Space^J
+11-11 pmk: swap ^J and ^M again so that cut-and-paste text doesn't align
+11-07 pmk: spot improvements to code alignment
 10-04 1.2 release
 09-09 pmk: display regular expressions during searches
 09-09 pmk: swap ^J and ^M, so that Enter causes automatic alignment

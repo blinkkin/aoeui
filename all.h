@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 /* All editor sources #include this file. */
 
 /* Standard and system headers */

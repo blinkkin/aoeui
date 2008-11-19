@@ -35,7 +35,7 @@ Command characters
 *  TAB	tab / tab completion [align; set tab stop]
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection
-  ^F	/ copy [pre/append; replicate]
+  ^F	AVAILABLE / copy [pre/append; replicate]
   ^G	backward to line start [paragraph start; multiple lines]
   ^C	forward to line end [paragraph end; multiple lines]
   ^R	backward screen(s) [beginning of view]
@@ -56,10 +56,10 @@ Command characters
   ^S	forward word(s) [sentence; multiple words]
 * ^-	-- smaller font
 * ^_	(^/) incremental search mode [regexp]
-*  ENT	(^M) newline [open line] and alignment
-  ^ENT	(^J) newline [open line]
+*  ENT	(^M) newline
+  ^ENT	(^J)
   ^Q	suspend editor [quit]
-* ^J
+* ^J	(^ENT) newline with automatic alignment
   ^K	save all [single]
   ^X	get path / visit file [set path]
   ^B	paste / exchange with clip buffer [; register]

@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 #ifdef __APPLE__
 # include <util.h>

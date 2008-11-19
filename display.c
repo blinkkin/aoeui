@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 #include <sys/ioctl.h>
 
@@ -29,8 +30,8 @@
 #define CTL_GOTO	CSI "%d;%df"
 #define CTL_ERASEALL	CSI "2J"
 #if 0 /* broken on Apple Terminal, dammit */
-#define CTL_ERASETOEND	CSI "J"
-#define CTL_ERASELINE	CSI "K"
+# define CTL_ERASETOEND	CSI "J"
+# define CTL_ERASELINE	CSI "K"
 #endif
 #define CTL_ERASECOLS	CSI "%dX"
 #define CTL_DELCOLS	CSI "%uP"
@@ -913,7 +914,9 @@ again:	if (display->size_changed)
 			return ERROR_EMPTY;
 		goto again;
 	default:
-		if (p[1] >= 'a' && p[1] <= 'z')
+		if (p[1] < ' ')
+			key = *++p;  /* ignore Esc before control character */
+		else if (p[1] >= 'a' && p[1] <= 'z')
 			key = CONTROL(*++p-'a'+'A');
 		else if (p[1] >= 'A' && p[1] <= 'Z')
 			key = CONTROL(*++p);

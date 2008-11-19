@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 
 ssize_t view_vprintf(struct view *view, const char *msg, va_list ap)

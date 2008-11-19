@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #ifndef LOCUS_H
 #define LOCUS_H
 

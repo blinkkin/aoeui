@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #ifndef DISPLAY_H
 #define DISPLAY_H
 

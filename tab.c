@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 #include <dirent.h>
 #ifndef NAME_MAX
@@ -100,7 +101,8 @@ static char *word_complete(const char *string)
 				for (hit_length = 0;
 				     hit_length < old_hit_length;
 				     hit_length++)
-					if (view_byte(hit_view, hit_offset + length +
+					if (view_byte(hit_view,
+						      hit_offset + length +
 							hit_length) !=
 					    view_byte(view, offset + length +
 							hit_length))
@@ -180,7 +182,8 @@ void insert_tab(struct view *view)
 			while (at != cursor) {
 				Unicode_t ch = view_char(view, at, &at);
 				if (ch == '\t')
-					offset = (offset / tabstop + 1) * tabstop;
+					offset = (offset / tabstop + 1) *
+						 tabstop;
 				else
 					offset++;
 			}
@@ -192,93 +195,117 @@ void insert_tab(struct view *view)
 		locus_set(view, MARK, /*old*/ cursor);
 }
 
+static void indent_line(struct view *view,
+			position_t lnstart, position_t first_nonspace,
+			unsigned indentation) {
+	char *indent;
+	unsigned indent_bytes;
+	if (view->text->flags & TEXT_NO_TABS) {
+		indent_bytes = indentation;
+		indent = allocate(indent_bytes);
+		memset(indent, ' ', indentation);
+	} else {
+		unsigned tabstop = view->text->tabstop;
+		tabstop |= !tabstop;
+		indent_bytes = indentation / tabstop + indentation % tabstop;
+		indent = allocate(indent_bytes);
+		memset(indent, '\t', indentation / tabstop);
+		memset(indent + indentation / tabstop, ' ',
+		       indentation % tabstop);
+	}
+
+	view_delete(view, lnstart, first_nonspace - lnstart);
+	view_insert(view, indent, lnstart, indent_bytes);
+	RELEASE(indent);
+}
+
 void align(struct view *view)
 {
 	position_t cursor = locus_get(view, CURSOR);
 	position_t lnstart0 = find_line_start(view, cursor);
-	position_t nonspace0, lnstart, offset, next;
-	Unicode_t ch, last = UNICODE_BAD, firstch;
-	char *indentation;
-	unsigned indent = 0, spaces = 0, indent_bytes;
+	position_t nonspace0, lnstart, offset, at, corr;
+	Unicode_t ch, firstch;
+	unsigned indent, brindent, spaces, chars;
 	unsigned tabstop = view->text->tabstop;
-	unsigned stack[16], stackptr = 0;
+	Boolean_t is_nested;
 
 	if (!lnstart0)
 		return;
 	tabstop |= !tabstop;
 
 	for (nonspace0 = lnstart0;
-	     IS_UNICODE(firstch = view_char(view, nonspace0, &next));
-	     nonspace0 = next)
+	     IS_UNICODE(firstch = view_char(view, nonspace0, &offset));
+	     nonspace0 = offset)
 		if (firstch == '\n' ||
 		    !IS_CODEPOINT(firstch) ||
 		    !isspace(firstch))
 			break;
-	lnstart = find_line_start(view, lnstart0-1);
+	lnstart = lnstart0 - 1;
+
+	/* Find previous non-blank line */
+again:	lnstart = find_line_start(view, lnstart);
 	while (lnstart && view_char(view, lnstart, NULL) == '\n')
 		lnstart = find_line_start(view, lnstart-1);
 
-	for (offset = lnstart;
-	     IS_UNICODE(ch = view_char(view, offset, &offset)); )
+	/* Determine its indentation */
+	indent = spaces = chars = brindent = 0;
+	for (offset = at = lnstart;
+	     IS_UNICODE(ch = view_char(view, offset, &offset)) &&
+	     ch != '\n'; )
 		if (ch == ' ')
-			spaces++;
+			spaces += !chars;
 		else if (ch == '\t') {
-			indent = ((indent + spaces) / tabstop + 1) * tabstop;
-			spaces = 0;
+			indent = ((indent + spaces + chars) /
+				  tabstop + 1) * tabstop;
+			spaces = chars = 0;
+			at = offset;
 		} else
-			break;
-	if (spaces >= tabstop) {
-		indent += spaces / tabstop * tabstop;
-		spaces %= tabstop;
-	}
-	stack[stackptr++] = indent;
-	stack[stackptr++] = indent += spaces;
+			chars++;
+	indent += spaces;
+	at += spaces;
 
-	for (; IS_UNICODE(ch); ch = view_char(view, offset, &offset)) {
-		if (ch == '\n')
+	/* Adjust for nesting */
+	brindent = indent + 1;
+	is_nested = FALSE;
+	for (ch = view_char(view, at, &offset);
+	     IS_UNICODE(ch) && ch != '\n';
+	     ch = view_char(view, at = offset, &offset), brindent++) {
+		switch (ch) {
+		case '(':
+		case '[':
+			corr = find_corresponding_bracket(view, at);
+			if (corr >= lnstart0) {
+				indent = brindent;
+				is_nested = TRUE;
+			}
 			break;
-		indent++;
-		if (!(IS_CODEPOINT(ch) && isspace(ch)))
-			last = ch;
-		if (ch == '(' || ch == '[') {
-			if ((unsigned) stackptr < 16)
-				stack[stackptr] = indent;
-			stackptr++;
-		} else if (ch == ')' || ch == ']')
-			stackptr--;
-		else if (ch == '\t')
-			indent = ((indent-1) / tabstop + 1) * tabstop;
+		case ')':
+		case ']':
+			corr = find_corresponding_bracket(view, at);
+			if (corr < lnstart) {
+				lnstart = corr;
+				goto again;
+			}
+			break;
+		case '\t':
+			brindent = (brindent / tabstop + 1) * tabstop;
+			break;
+		}
 	}
 
-	if (stackptr <= 0 || stackptr > 16)
-		indent = stack[0];
-	else {
-		indent = stack[stackptr-1];
-		if (stackptr > 2)
-			;
-		else if (last == '{' || last == ')' || last == ':')
-			indent += tabstop;
+	/* Adjust for clues at the end of the previous line */
+	if (!is_nested && lnstart0) {
+		ch = view_char_prior(view, lnstart0 - 1, NULL);
+		if (ch == '{' || ch == ')' || ch == ':')
+			indent = (indent / tabstop + 1) * tabstop;
 		else if (indent >= tabstop) {
 			offset = lnstart;
 			do ch = view_char_prior(view, offset, &offset);
 			while (ch == ' ' || ch == '\t' || ch == '\n');
 			if (ch == ')' || firstch == '}')
-				indent -= tabstop;
+				indent = (indent / tabstop - 1) * tabstop;
 		}
 	}
 
-	if (view->text->flags & TEXT_NO_TABS) {
-		indent_bytes = indent;
-		indentation = allocate(indent_bytes);
-		memset(indentation, ' ', indent);
-	} else {
-		indent_bytes = indent / tabstop + indent % tabstop;
-		indentation = allocate(indent_bytes);
-		memset(indentation, '\t', indent / tabstop);
-		memset(indentation + indent / tabstop, ' ', indent % tabstop);
-	}
-
-	view_delete(view, lnstart0, nonspace0 - lnstart0);
-	view_insert(view, indentation, lnstart0, indent_bytes);
-	RELEASE(indentation);
+	indent_line(view, lnstart0, nonspace0, indent);
 }

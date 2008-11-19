@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #ifndef TEXT_H
 #define TEXT_H
 

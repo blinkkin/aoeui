@@ -4,7 +4,7 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
 .TH AOEUI 1 "September 9, 2008"
-.LO 1
+.\" .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
 .SH SYNOPSIS
@@ -395,21 +395,11 @@ With a numeric argument between 2 and 20, it will set the tab stop pitch.
 .BR ^M )
 inserts a new line into the text with automatic indentation.
 .TP
-.B ^SpaceEnter
-(or
-.BR ^Space^M )
-opens up a new line after the current one, with automatic indentation.
-.TP
 .B ^J
 (or
 .B ^Enter
 under some good terminal emulators)
 inserts a new line into the text without any automatic indentation.
-.TP
-.B ^Space^J
-(or
-.BR ^Space^Enter )
-opens a new line into the text without any automatic indentation.
 .TP
 .B Backspace
 (or more properly, its synonym

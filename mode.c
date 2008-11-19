@@ -1,3 +1,4 @@
+/* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 
 /*
@@ -54,6 +55,8 @@ static void forward_lines(struct view *view)
 	else
 		while (count-- && cursor < view->bytes)
 			cursor = find_line_end(view, cursor+1);
+	if (count)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -65,6 +68,8 @@ static void down_lines(struct view *view)
 
 	while (count-- && cursor < view->bytes)
 		cursor = find_line_down(view, cursor);
+	if (count)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -79,6 +84,8 @@ static void backward_lines(struct view *view)
 	else
 		while (count-- && cursor)
 			cursor = find_line_start(view, cursor-1);
+	if (count)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -90,6 +97,8 @@ static void up_lines(struct view *view)
 
 	while (count-- && cursor)
 		cursor = find_line_up(view, cursor);
+	if (count && !cursor)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -101,6 +110,8 @@ static void forward_chars(struct view *view)
 
 	while (count-- && IS_UNICODE(view_char(view, cursor, &next)))
 		cursor = next;
+	if (count)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -112,6 +123,8 @@ static void backward_chars(struct view *view)
 
 	while (count-- && cursor)
 		view_char_prior(view, cursor, &cursor);
+	if (count)
+		macros_abort();
 	locus_set(view, CURSOR, cursor);
 }
 
@@ -398,16 +411,11 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 		else
 			align(view);
 		break;
-	case 'J':  /* line feed: new line [opened] */
-	case 'M': /* (ENTER) new line with alignment [opened] */
+	case 'J':  /* line feed: new line */
+	case 'M': /* (ENTER) new line with alignment */
 		self_insert(view, '\n', mark, cursor, FALSE);
-		if (ch == 'M')
+		if (ch == 'J')
 			align(view);
-		if (mode->variant) {
-			locus_set(view, CURSOR, cursor);
-			if (ch == 'M')
-				align(view);
-		}
 		break;
 	case 'K': /* save all [single] */
 		if (mode->variant)

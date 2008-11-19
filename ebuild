@@ -3,13 +3,21 @@
 # $Header: $
 
 DESCRIPTION="a lightweight, unobtrusive, Dvorak-optimized editor"
-HOMEPAGE="http://aoeui.sourceforge.net/"
-SRC_URI="mirror://sourceforge/aoeui/${P}.tgz"
+HOMEPAGE="http://sites.google.com/site/aoeuiandasdfg/"
+SRC_URI="http://aoeui.googlecode.com/files/${P}.tgz"
+
+inherit eutils
 
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="~amd64 ~x86"
 IUSE=""
+
+src_unpack() {
+	unpack ${A}
+	cd "${S}"
+	epatch "${FILESDIR}"/lutil.patch
+}
 
 src_install() {
 	emake DESTDIR="${D}" install || die "emake install failed"
