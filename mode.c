@@ -53,7 +53,7 @@ static void forward_lines(struct view *view)
 	if (!count)
 		cursor = find_paragraph_end(view, cursor);
 	else
-		while (count-- && cursor < view->bytes)
+		for (; count && cursor < view->bytes; count--)
 			cursor = find_line_end(view, cursor+1);
 	if (count)
 		macros_abort();
@@ -66,7 +66,7 @@ static void down_lines(struct view *view)
 	unsigned count = mode->variant ? mode->value : 1;
 	position_t cursor = locus_get(view, CURSOR);
 
-	while (count-- && cursor < view->bytes)
+	for (; count && cursor < view->bytes; count--)
 		cursor = find_line_down(view, cursor);
 	if (count)
 		macros_abort();
@@ -82,7 +82,7 @@ static void backward_lines(struct view *view)
 	if (!count)
 		cursor = find_paragraph_start(view, cursor);
 	else
-		while (count-- && cursor)
+		for (; count && cursor; count--)
 			cursor = find_line_start(view, cursor-1);
 	if (count)
 		macros_abort();
@@ -95,7 +95,7 @@ static void up_lines(struct view *view)
 	unsigned count = mode->variant ? mode->value : 1;
 	position_t cursor = locus_get(view, CURSOR);
 
-	while (count-- && cursor)
+	for (; count && cursor; count--)
 		cursor = find_line_up(view, cursor);
 	if (count && !cursor)
 		macros_abort();
@@ -108,7 +108,7 @@ static void forward_chars(struct view *view)
 	unsigned count = mode->variant ? mode->value : 1;
 	position_t cursor = locus_get(view, CURSOR), next;
 
-	while (count-- && IS_UNICODE(view_char(view, cursor, &next)))
+	for (; count && IS_UNICODE(view_char(view, cursor, &next)); count--)
 		cursor = next;
 	if (count)
 		macros_abort();
@@ -121,7 +121,7 @@ static void backward_chars(struct view *view)
 	unsigned count = mode->variant ? mode->value : 1;
 	position_t cursor = locus_get(view, CURSOR);
 
-	while (count-- && cursor)
+	for (; count && cursor; count--)
 		view_char_prior(view, cursor, &cursor);
 	if (count)
 		macros_abort();

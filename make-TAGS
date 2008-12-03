@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ ".$1" = . ]
+then set .
+fi
+for path
+do find -L $path -type f | egrep '\.(h|c|cc|C)$'
+done | xargs ctags -x \
+     | tee TAGS.tmp1 \
+     | grep '::' \
+     | sed 's/[^:]*:://' >TAGS.tmp2
+sort TAGS.tmp[12] >TAGS
+rm TAGS.tmp[12]
