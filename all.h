@@ -4,18 +4,40 @@
 /* Standard and system headers */
 #define _GNU_SOURCE /* for mremap */
 #define _POSIX_C_SOURCE_199309 /* for nanosleep */
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
 #include <ctype.h>
-#include <signal.h>
+#include <dirent.h>
 #include <errno.h>
-#include <unistd.h>
+#include <fcntl.h>
+#include <regex.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <time.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/wait.h>
+#ifdef __APPLE__
+# include <util.h>
+#else
+# include <pty.h>
+#endif
+
+#ifndef NAME_MAX
+# define NAME_MAX 256
+#endif
+#ifndef S_IRUSR
+# define S_IRUSR 0400
+#endif
+#ifndef S_IWUSR
+# define S_IWUSR 0200
+#endif
 
 #ifndef INLINE
 # ifdef __GNUC__
@@ -25,9 +47,8 @@
 # endif
 #endif
 
-#include "types.h"
-
 /* Module headers */
+#include "types.h"
 #include "utf8.h"
 #include "buffer.h"
 #include "mode.h"

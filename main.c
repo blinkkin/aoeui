@@ -1,5 +1,4 @@
 #include "all.h"
-#include <sys/wait.h>
 
 struct termios original_termios;
 

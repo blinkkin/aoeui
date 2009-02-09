@@ -1,8 +1,5 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 enum utf8_mode utf8_mode = UTF8_AUTO;
 

@@ -122,6 +122,7 @@ struct view *view_help(void);			/* help.c */
 char *tab_complete(const char *, Boolean_t);	/* tab.c */
 Boolean_t tab_completion_command(struct view *);
 void insert_tab(struct view *);
+void insert_newline(struct view *);
 void align(struct view *);
 
 /* fold.c */

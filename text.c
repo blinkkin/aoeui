@@ -1,6 +1,5 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#include <sys/mman.h>
 
 /*
  *	A text is a container for the content of a file or

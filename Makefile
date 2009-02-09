@@ -1,4 +1,4 @@
-VERSION = 1.3
+VERSION = 1.4
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
@@ -13,19 +13,24 @@ CFLAGS = -Wall -Wno-parentheses \
 -Wmissing-prototypes -Wmissing-declarations
 # -Werror
 
-# Linux and perhaps other systems need to uncomment this line:
-# LIBS = -lutil
-# BSD users may need -lcompat as well in LIBS
-
 # Uncomment this line if you want to develop aoeui yourself with exuberant-ctags
 # CTAGS = exuberant-ctags
 CTAGS = ctags
 
+STRINGIFY = sed 's/\\/\\\\/g;s/"/\\"/g;s/^/"/;s/$$/\\n"/'
+
 default: optimized aoeui.1 asdfg.1
 
-aoeui: $(RELS)
-	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
+aoeui: $(RELS) libs
+	$(CC) $(CFLAGS) -o $@ $(RELS) `cat libs`
 $(RELS): $(HDRS)
+help.o: aoeui.help asdfg.help
+aoeui.help: help.m4
+	m4 help.m4 | $(STRINGIFY) >$@
+asdfg.help: help.m4
+	m4 -D ASDFG help.m4 | $(STRINGIFY) >$@
+libs:
+	if [ .`uname -s` = .Linux ]; then echo -lutil; fi >$@
 aoeui.1.gz: aoeui.1
 	gzip -9 -c aoeui.1 >$@
 asdfg.1.gz: asdfg.1
@@ -58,16 +63,15 @@ install: aoeui aoeui.1.gz asdfg.1.gz
 	install *.txt $(INST_DIR)/share/aoeui
 	install *.1.gz $(INST_DIR)/share/man/man1
 clean:
-	rm -f *.o core gmon.out screenlog.*
+	rm -f *.o *.help libs core gmon.out screenlog.*
 clobber: clean
-	rm -f aoeui TAGS aoeui.1 asdfg.1 aoeui.1.gz asdfg.1.gz \
-		aoeui.1.html asdfg.1.html unicode
+	rm -f aoeui TAGS *.1 *.1.gz *.1.html unicode
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless
-	rm -rf .tar
+	rm -rf .tar $(PACKAGE) $(PACKAGE).tgz
 	mkdir .tar
-	find . | egrep -v '/2.0/' | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
+	find . | egrep -v '/\.' | egrep -v '[~#]' | cpio -o | (cd .tar; cpio -id)
 	mv .tar $(PACKAGE)
 	ls -CF $(PACKAGE)
 	tar czf $(PACKAGE).tgz $(PACKAGE)

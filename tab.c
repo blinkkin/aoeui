@@ -1,9 +1,5 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#include <dirent.h>
-#ifndef NAME_MAX
-# define NAME_MAX 256
-#endif
 
 static char *path_complete(const char *string)
 {
@@ -172,7 +168,7 @@ void insert_tab(struct view *view)
 
 	if (mark != UNSET && mark > cursor) {
 		view_delete(view, cursor, mark - cursor);
-		mark = UNSET;
+		locus_set(view, MARK, mark = UNSET);
 	}
 	if (view->text->flags & TEXT_NO_TABS) {
 		int tabstop = view->text->tabstop;
@@ -196,10 +192,24 @@ void insert_tab(struct view *view)
 }
 
 static void indent_line(struct view *view,
-			position_t lnstart, position_t first_nonspace,
-			unsigned indentation) {
+			position_t lnstart,
+			unsigned indentation,
+			Boolean_t no_blank_line)
+{
 	char *indent;
 	unsigned indent_bytes;
+	position_t nonspace, next;
+	Unicode_t ch;
+
+	for (nonspace = lnstart;
+	     IS_UNICODE(ch = view_char(view, nonspace, &next));
+	     nonspace = next)
+		if (ch == '\n' || !IS_CODEPOINT(ch) || !isspace(ch))
+			break;
+	view_delete(view, lnstart, nonspace - lnstart);
+	if (no_blank_line && ch == '\n')
+		return;
+
 	if (view->text->flags & TEXT_NO_TABS) {
 		indent_bytes = indentation;
 		indent = allocate(indent_bytes);
@@ -207,40 +217,50 @@ static void indent_line(struct view *view,
 	} else {
 		unsigned tabstop = view->text->tabstop;
 		tabstop |= !tabstop;
-		indent_bytes = indentation / tabstop + indentation % tabstop;
+		indent_bytes = indentation/tabstop + indentation%tabstop;
 		indent = allocate(indent_bytes);
 		memset(indent, '\t', indentation / tabstop);
-		memset(indent + indentation / tabstop, ' ',
+		memset(indent + indentation/tabstop, ' ',
 		       indentation % tabstop);
 	}
 
-	view_delete(view, lnstart, first_nonspace - lnstart);
 	view_insert(view, indent, lnstart, indent_bytes);
 	RELEASE(indent);
 }
 
-void align(struct view *view)
+static int current_line_indentation(struct view *view, position_t *at)
 {
-	position_t cursor = locus_get(view, CURSOR);
-	position_t lnstart0 = find_line_start(view, cursor);
-	position_t nonspace0, lnstart, offset, at, corr;
-	Unicode_t ch, firstch;
-	unsigned indent, brindent, spaces, chars;
+	int indent = 0, spaces = 0, chars = 0;
+	position_t offset = *at;
+	Unicode_t ch;
+	unsigned tabstop = view->text->tabstop;
+
+	while (IS_UNICODE(ch = view_char(view, offset, &offset)) && ch != '\n')
+		if (ch == ' ')
+			spaces += !chars;
+		else if (ch == '\t') {
+			indent = ((indent + spaces + chars) /
+				  tabstop + 1) * tabstop;
+			spaces = chars = 0;
+			*at = offset;
+		} else
+			chars++;
+	*at += spaces;
+	return indent + spaces;
+}
+
+static int line_alignment(struct view *view, position_t lnstart0)
+{
+	position_t lnstart, offset, at, corr;
+	Unicode_t ch;
+	unsigned indent, brindent;
 	unsigned tabstop = view->text->tabstop;
 	Boolean_t is_nested;
 
 	if (!lnstart0)
-		return;
-	tabstop |= !tabstop;
-
-	for (nonspace0 = lnstart0;
-	     IS_UNICODE(firstch = view_char(view, nonspace0, &offset));
-	     nonspace0 = offset)
-		if (firstch == '\n' ||
-		    !IS_CODEPOINT(firstch) ||
-		    !isspace(firstch))
-			break;
+		return 0;
 	lnstart = lnstart0 - 1;
+	tabstop |= !tabstop;
 
 	/* Find previous non-blank line */
 again:	lnstart = find_line_start(view, lnstart);
@@ -248,21 +268,8 @@ again:	lnstart = find_line_start(view, lnstart);
 		lnstart = find_line_start(view, lnstart-1);
 
 	/* Determine its indentation */
-	indent = spaces = chars = brindent = 0;
-	for (offset = at = lnstart;
-	     IS_UNICODE(ch = view_char(view, offset, &offset)) &&
-	     ch != '\n'; )
-		if (ch == ' ')
-			spaces += !chars;
-		else if (ch == '\t') {
-			indent = ((indent + spaces + chars) /
-				  tabstop + 1) * tabstop;
-			spaces = chars = 0;
-			at = offset;
-		} else
-			chars++;
-	indent += spaces;
-	at += spaces;
+	at = lnstart;
+	indent = current_line_indentation(view, &at);
 
 	/* Adjust for nesting */
 	brindent = indent + 1;
@@ -288,7 +295,7 @@ again:	lnstart = find_line_start(view, lnstart);
 			}
 			break;
 		case '\t':
-			brindent = (brindent / tabstop + 1) * tabstop;
+			brindent = (brindent/tabstop + 1) * tabstop;
 			break;
 		}
 	}
@@ -296,16 +303,76 @@ again:	lnstart = find_line_start(view, lnstart);
 	/* Adjust for clues at the end of the previous line */
 	if (!is_nested && lnstart0) {
 		ch = view_char_prior(view, lnstart0 - 1, NULL);
-		if (ch == '{' || ch == ')' || ch == ':')
-			indent = (indent / tabstop + 1) * tabstop;
+		if (ch == '{' || ch == ')' || ch == ':' || ch == /*els*/'e')
+			indent = (indent/tabstop + 1) * tabstop;
 		else if (indent >= tabstop) {
 			offset = lnstart;
 			do ch = view_char_prior(view, offset, &offset);
 			while (ch == ' ' || ch == '\t' || ch == '\n');
-			if (ch == ')' || firstch == '}')
-				indent = (indent / tabstop - 1) * tabstop;
+			if (ch == ')' /* || ch == '}' */)
+				indent = (indent/tabstop - 1) * tabstop;
 		}
 	}
 
-	indent_line(view, lnstart0, nonspace0, indent);
+	/* Adjust for leading character on current line */
+	if (indent) {
+		offset = lnstart0;
+		do ch = view_char(view, offset, &offset);
+		while (ch == ' ' || ch == '\t');
+		if (ch == '}')
+			indent = (indent/tabstop - 1) * tabstop;
+	}
+
+	return indent;
+}
+
+void align(struct view *view)
+{
+	position_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
+	if (mark == UNSET) {
+		position_t line_start = find_line_start(view, cursor);
+		indent_line(view, line_start, line_alignment(view, line_start),
+			    FALSE);
+	} else {
+		position_t top, bottom, line_start;
+		locus_t end;
+		if (cursor <= mark)
+			top = cursor, bottom = mark;
+		else
+			top = mark, bottom = cursor;
+		end = locus_create(view, bottom);
+		line_start = find_line_start(view, top);
+		do {
+			int align = line_alignment(view, line_start);
+			indent_line(view, line_start, align, TRUE);
+			line_start = find_line_end(view, line_start) + 1;
+		} while (line_start < locus_get(view, end));
+		locus_destroy(view, end);
+	}
+}
+
+void insert_newline(struct view *view)
+{
+	sposition_t cursor = locus_get(view, CURSOR);
+	position_t mark = locus_get(view, MARK);
+	if (mark != UNSET && mark > cursor) {
+		view_delete(view, cursor, mark - cursor);
+		locus_set(view, MARK, mark = UNSET);
+	}
+	view_insert(view, "\n", cursor++, 1);
+	locus_set(view, CURSOR, cursor);
+	if (view_byte(view, cursor-2) == '{') {
+		position_t at = cursor+1;
+		if (cursor == view->bytes ||
+		    line_alignment(view, cursor) >
+		    current_line_indentation(view, &at) + view->text->tabstop) {
+			view_insert(view, "}\n", cursor,
+				    1 + (cursor == view->bytes));
+			align(view);
+			view_insert(view, "\n", cursor, 1);
+			locus_set(view, CURSOR, cursor);
+		}
+	}
+	align(view);
 }

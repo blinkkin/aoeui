@@ -1,6 +1,8 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 
+/* Error messaging */
+
 void depart(int status)
 {
 	struct text *text;

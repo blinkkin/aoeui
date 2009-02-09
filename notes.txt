@@ -31,7 +31,7 @@ Command characters
   ^@	(^Space)
   ^^	literal, control [; unicode]
 * ^[	(ESC or "smaller font")
-  ^]	move to corresponding or nearest bracket
+  ^]	move to corresponding or nearest bracket [AVAILABLE]
 *  TAB	tab / tab completion [align; set tab stop]
   ^P	select another window [closing current]
   ^Y	split window [vertically] / narrow to selection
@@ -44,7 +44,7 @@ Command characters
 * ^?	(BCK) delete character before cursor
 * ^+	-- larger font
   ^\	[quit without saving]
-* ^A	synonym for ^/(^_)
+* ^A	-- reserved by screen(1), synonym for ^/(^_)
   ^O	macro end, macro execute [macro start; repeat]
   ^E	shell [end children] / pipe clipbuffer to command
   ^U	undo [redo]
@@ -54,7 +54,7 @@ Command characters
   ^T	forward char(s) [down line; multiple chars]
   ^N	backward word(s) [sentence; multiple words]
   ^S	forward word(s) [sentence; multiple words]
-* ^-	-- smaller font
+* ^-	-- smaller font in some WMs, otherwise (^_)
 * ^_	(^/) incremental search mode [regexp]
 *  ENT	(^M) newline
   ^ENT	(^J)
@@ -82,8 +82,6 @@ Non-control characters -- commands must be [variants]
 
 Missing features:
 	multiple column characters (using wcwidth)
-	^Space> and < could be indent/outdent on selection
-		but it would be better to use sed!
 	preserving window layouts
 	moving to prior window
 	saving, restoring, rewriting F-key definitions
@@ -97,6 +95,7 @@ Idioms
 - exchanging cursor and mark and then retyping with automatic cut
   is often faster than an explicit cut.
 - going forward or back a half screenful: use ^R/^L, then ^Z
+- inserting with a repeat count: cut with repeat, then paste
 
 
 QWERTY->Dvorak command mapping

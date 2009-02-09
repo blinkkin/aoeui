@@ -1,6 +1,8 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
 
+/* Error-checking wrappers for memory management */
+
 void *reallocate(const void *old, size_t bytes)
 {
 	void *new = realloc((void *) old, bytes);

@@ -1,11 +1,11 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#include <sys/ioctl.h>
 
 /*
  *	Bandwidth-optimized terminal display management.
  *	Maintain an image of the display surface and
  *	update it when repainting differs from the image.
+ *	Assume lowest-common-denominator terminal emulation.
  *
  *	reference: man 4 console_codes
  */
@@ -47,6 +47,7 @@
 #define XTERM_ALTSCREEN	CSI "?47h"
 #define XTERM_REGSCREEN	CSI "?47l"
 #define XTERM_BCKISDEL	CSI "?67l"
+#define XTERM_LOCATOR	CSI "1'z" CSI "1'{" CSI "4'{"
 
 
 struct cell {
@@ -74,8 +75,7 @@ struct display {
 static struct display *display_list;
 static void (*old_sigwinch)(int, siginfo_t *, void *);
 
-
-static void emit(struct display *display, const char *str, size_t bytes)
+static void emit(const char *str, size_t bytes)
 {
 	size_t wrote;
 	ssize_t chunk;
@@ -93,7 +93,7 @@ static void emit(struct display *display, const char *str, size_t bytes)
 
 static void flush(struct display *display)
 {
-	emit(display, display->outbuf, display->outbuf_bytes);
+	emit(display->outbuf, display->outbuf_bytes);
 	display->outbuf_bytes = 0;
 }
 
@@ -102,7 +102,7 @@ static void out(struct display *display, const char *str, size_t bytes)
 	if (display->outbuf_bytes + bytes > sizeof display->outbuf)
 		flush(display);
 	if (bytes > sizeof display->outbuf)
-		emit(display, str, bytes);
+		emit(str, bytes);
 	else {
 		memcpy(display->outbuf + display->outbuf_bytes, str, bytes);
 		display->outbuf_bytes += bytes;
@@ -639,16 +639,17 @@ void display_reset(struct display *display)
 	RELEASE(display->image);
 	display->cursor_row = display->cursor_column = 0;
 	display->at_row = display->at_column = 0;
-	if (display->is_xterm) {
+	if (display->is_xterm)
 		outs(display, XTERM_ALTSCREEN);
-		outs(display, XTERM_BCKISDEL);
-	} else
+	else
 		outs(display, CTL_RESET);
 	outs(display, CTL_UTF8
 		      CTL_RESETMODES
 		      CTL_RESETCOLORS
 		      CTL_ERASEALL);
-	if (!display->is_xterm)
+	if (display->is_xterm)
+		outs(display, XTERM_BCKISDEL);
+	else
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
 	display->fgrgba = DEFAULT_FGRGBA;
@@ -770,7 +771,7 @@ void display_cursor(struct display *display, unsigned row, unsigned column)
 
 void display_beep(struct display *display)
 {
-	emit(display, "\a", 1);
+	emit("\a", 1);
 	display_sync(display);
 }
 

@@ -173,3 +173,23 @@ Unicode_t view_char_prior(struct view *view, position_t offset,
 		*prev = offset;
 	return ch;
 }
+
+Boolean_t is_open_bracket(const char *brackets, Unicode_t ch)
+{
+	if (ch >= 0x80)
+		return FALSE;
+	for (; *brackets; brackets += 2)
+		if (*brackets == ch)
+			return TRUE;
+	return FALSE;
+}
+
+Boolean_t is_close_bracket(const char *brackets, Unicode_t ch)
+{
+	if (ch >= 0x80)
+		return FALSE;
+	for (brackets++; *brackets; brackets += 2)
+		if (*brackets == ch)
+			return TRUE;
+	return FALSE;
+}

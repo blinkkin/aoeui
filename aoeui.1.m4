@@ -111,6 +111,11 @@ at the other.
 The view's window, if any, always renders part of the text containing
 the view's cursor.
 .P
+The selection plays a critical role in
+.BR AOEUI .
+Besides highlighting regions to be cut or copied, it also serves to supply
+arguments to some commands, such as the path name of a file to open.
+.P
 The
 .I clip buffer
 is not visible in any window.
@@ -266,7 +271,7 @@ A numeric argument may be used to manage multiple bookmarks.
 (note that
 .B -
 is not a control character)
-returns to a previous set bookmark, possibly identified with a
+returns to a previously set bookmark, possibly identified with a
 numeric argument.
 .TP
 .B ^Space'
@@ -393,17 +398,27 @@ With a numeric argument between 2 and 20, it will set the tab stop pitch.
 .B Enter
 (or
 .BR ^M )
-inserts a new line into the text with automatic indentation.
+inserts a new line into the text without automatic indentation.
 .TP
 .B ^J
 (or
 .B ^Enter
 under some good terminal emulators)
-inserts a new line into the text without any automatic indentation.
+inserts a new line into the text with automatic indentation.
+If
+.B ^J
+is executed immediately after a
+.B {
+character that does not yet have a closing
+.BR } ,
+.B ^J
+will also add a properly-indented closing brace.
 .TP
 .B Backspace
 (or more properly, its synonym
-.BR ^? ),
+.B ^?
+and sometimes, as in Mac OS X's Terminal application,
+.BR ^/ ),
 deletes the character immediately before the cursor.
 .TP
 .B ^cmd(D,X)
@@ -463,14 +478,34 @@ the text that matches a parenthesized subpattern in a regular expression
 search.
 .SH SEARCHING
 .TP
-.B ^/
-and its synonyms
 .B ^_
+and its synonyms
+.BR ^/ ,
+.BR ^- ,
 and
 .B ^A
 enter search mode.
-The variant command
-.B ^Space^/
+The many synonyms are defined because they're often synonymous or
+reserved key sequences in the various window managers and the
+.BR screen (1)
+utility.
+.P
+(Specifically,
+.B ^/
+gets mapped to
+.B ^_
+by many X terminal emulators, while
+.B ^-
+gets mapped to
+.B ^_
+by the Mac OS X Terminal application.
+.B ^A
+is the default escape sequence in
+.BR screen (1).)
+.P
+The variant version of this command
+.RB ( ^Space^_
+and its synonyms)
 searches for occurrences of POSIX regular expressions.
 Each non-command character that is typed thereafter will be appended
 to the current search target string and the selection is moved to the
@@ -496,12 +531,8 @@ the latest hit, with the mark returned to where it was before the search
 (if anywhere).
 This is useful for using search to place the bounds of a selection.
 .TP
-.B ^/
-(or
 .B ^_
-or
-.B ^A
-)
+(or its synonyms)
 with no characters in the search target string will cause the
 last successful search's target string to be reused.
 .TP
@@ -513,11 +544,8 @@ target string, not single-character motion.
 .TP
 .B Enter
 (and
-.BR ^/ ,
-.BR ^_ ,
-and
-.BR ^A )
-simply leaves search mode with the last hit as the selection.
+.B ^_
+and its synonyms) simply leaves search mode with the last hit as the selection.
 .SH TEXTS, VIEWS, and WINDOWS
 .TP
 .B ^cmd(K,W)
@@ -743,6 +771,13 @@ or
 .B ^cmd(L,P)
 and then
 .BR ^cmd(Z,N) .
+.TP
+.B *
+To insert characters with a repeat count, type the characters into a new
+selection, cut into the clip buffer with a repeat count with
+.BR ^Space^cmd(D,X) ,
+and then paste with
+.BR ^cmd(B,V) .
 .SH BUGS
 Inevitable; please tell me about any that you find.
 .SH ENVIRONMENT
@@ -754,6 +789,7 @@ command.
 .TP
 .B ROWS
 and
+.TP
 .B COLUMNS
 may be set to override
 .BR AOEUI 's
@@ -764,7 +800,9 @@ will, when set to a string beginning with
 .BR xterm ,
 cause
 .B AOEUI
-to try to set the title of the window to the name of the active view.
+use the title bar of the terminal emulator as a status indicator
+that displays the path name of the active view and whether or not it has
+been saved since last modified.
 .SH FILES
 .TP
 .IB file ~
@@ -811,5 +849,5 @@ Helpful commands to use with
 .BR tr (1),
 .BR uniq (1)
 .SH AUTHOR
-Peter Klausler <peter@klausler.com> wrote
+Peter Klausler <pmk@google.com> wrote
 .BR AOEUI .

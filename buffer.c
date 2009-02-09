@@ -1,14 +1,5 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#include <sys/mman.h>
-#include <fcntl.h>
-
-#ifndef S_IRUSR
-#define S_IRUSR 0400
-#endif
-#ifndef S_IWUSR
-#define S_IWUSR 0200
-#endif
 
 /*
  *	Buffers contain payload bytes and a "gap" of unused space.
@@ -30,7 +21,6 @@
  *	Besides being used to hold the content of files, buffers
  *	are used for cut/copied text (the "clip buffer"), macros,
  *	and for undo histories.
-
  */
 
 struct buffer *buffer_create(char *path)
@@ -52,15 +42,15 @@ struct buffer *buffer_create(char *path)
 
 void buffer_destroy(struct buffer *buffer)
 {
-	if (!buffer)
-		return;
-	munmap(buffer->data, buffer->mapped);
-	if (buffer->fd >= 0) {
-		close(buffer->fd);
-		unlink(buffer->path);
+	if (buffer) {
+		munmap(buffer->data, buffer->mapped);
+		if (buffer->fd >= 0) {
+			close(buffer->fd);
+			unlink(buffer->path);
+		}
+		RELEASE(buffer->path);
+		RELEASE(buffer);
 	}
-	RELEASE(buffer->path);
-	RELEASE(buffer);
 }
 
 static void place_gap(struct buffer *buffer, position_t offset)

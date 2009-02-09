@@ -317,7 +317,6 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 		goto done;
 	}
 
-
 	/*
 	 *	Control character commands
 	 */
@@ -412,10 +411,10 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			align(view);
 		break;
 	case 'J':  /* line feed: new line */
+		insert_newline(view);
+		break;
 	case 'M': /* (ENTER) new line with alignment */
 		self_insert(view, '\n', mark, cursor, FALSE);
-		if (ch == 'J')
-			align(view);
 		break;
 	case 'K': /* save all [single] */
 		if (mode->variant)

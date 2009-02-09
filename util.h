@@ -47,6 +47,8 @@ Unicode_t view_unicode(struct view *, position_t, size_t *);
 Unicode_t view_unicode_prior(struct view *, position_t, position_t *prev);
 Unicode_t view_char(struct view *, position_t, size_t *);
 Unicode_t view_char_prior(struct view *, position_t, position_t *prev);
+Boolean_t is_open_bracket(const char *, Unicode_t);
+Boolean_t is_close_bracket(const char *, Unicode_t);
 
 void keyword_init(struct text *);			/* keyword.c */
 Boolean_t is_keyword(struct view *, position_t);

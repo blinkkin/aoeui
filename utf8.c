@@ -4,6 +4,7 @@
 #include "types.h"
 #include "utf8.h"
 
+/* Encode a Unicode code point in UTF-8; return the encoding length in bytes. */
 size_t unicode_utf8(char *out, Unicode_t unicode)
 {
 	char *p = out;
@@ -23,6 +24,7 @@ size_t unicode_utf8(char *out, Unicode_t unicode)
 	return p - out;
 }
 
+/* The first byte of a UTF-8 encoding reveals its length. */
 Byte_t utf8_bytes[0x100] = {
 	/* 00-7f are themselves */
 /*00*/	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -58,6 +60,10 @@ Byte_t utf8_bytes[0x100] = {
 /*fe*/	1, 1
 };
 
+/*
+ * Validate a UTF-8 encoding and return its length.
+ * Invalid encodings are expressed as single bytes.
+ */
 size_t utf8_length(const char *in, size_t max)
 {
 	const Byte_t *p = (const Byte_t *) in;
@@ -73,6 +79,7 @@ size_t utf8_length(const char *in, size_t max)
 	return max;
 }
 
+/* Find the length of a UTF-8 encoding in reverse. */
 size_t utf8_length_backwards(const char *in, size_t max)
 {
 	int n;
@@ -90,6 +97,7 @@ size_t utf8_length_backwards(const char *in, size_t max)
 	return 1;
 }
 
+/* Decode UTF-8 to Unicode. */
 Unicode_t utf8_unicode(const char *in, size_t length)
 {
 	const Byte_t *p = (const Byte_t *) in;

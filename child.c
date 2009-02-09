@@ -1,11 +1,5 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
 #include "all.h"
-#ifdef __APPLE__
-# include <util.h>
-#else
-# include <pty.h>
-#endif
-#include <sys/ioctl.h>
 
 /*
  *	Handle the ^E command, which runs the shell command pipeline
@@ -66,22 +60,9 @@ static Boolean_t shell_output_activity(struct stream *stream, char *received,
 
 	while (bytes--) {
 		char ch = *received++;
-		switch (ch) {
-		case '\r':
-#if 0
-			offset = find_line_start(view, offset);
-#endif
-			break;
-		case CONTROL('H'):
-#if 0
-			if (offset)
-				view_delete(view, --offset, 1);
-#endif
-			break;
-		case '\n':
-			offset = locus_get(view, locus);
-			/* fall-through */
-		default:
+		if (ch != '\r' && ch != CONTROL('H')) {
+			if (ch == '\n')
+				offset = locus_get(view, locus);
 			view_insert(view, &ch, offset++, 1);
 		}
 	}
