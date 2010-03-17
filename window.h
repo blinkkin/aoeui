@@ -11,6 +11,7 @@ struct window *window_below(struct view *, struct view *, unsigned rows);
 struct window *window_replace(struct view *, struct view *);
 void window_destroy(struct window *);
 void window_next(struct view *);
+void window_index(int);
 void window_hint_deleting(struct window *, position_t, size_t);
 void window_hint_inserted(struct window *, position_t, size_t);
 struct window *window_recenter(struct view *);

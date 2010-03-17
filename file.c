@@ -2,6 +2,9 @@
 #include "all.h"
 
 enum utf8_mode utf8_mode = UTF8_AUTO;
+const char *make_writable;
+Boolean_t no_save_originals;
+Boolean_t read_only;
 
 const char *path_format(const char *path)
 {
@@ -179,6 +182,11 @@ struct view *view_open(const char *path0)
 			message("%s: can't stat", path_format(path));
 			goto fail;
 		}
+		if (read_only) {
+			message("%s: can't create in read-only mode",
+				path_format(path));
+			goto fail;
+		}
 		errno = 0;
 		text->fd = open(path, O_CREAT|O_TRUNC|O_RDWR,
 				S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
@@ -192,7 +200,8 @@ struct view *view_open(const char *path0)
 			message("%s: not a regular file", path_format(path));
 			goto fail;
 		}
-		text->fd = open(path, O_RDWR);
+		if (!read_only)
+			text->fd = open(path, O_RDWR);
 		if (text->fd < 0) {
 			errno = 0;
 			text->flags |= TEXT_RDONLY;
@@ -329,13 +338,16 @@ Boolean_t text_rename(struct text *text, const char *path0)
 void text_dirty(struct text *text)
 {
 	if (text->path && !text->dirties && text->flags & TEXT_RDONLY)
-		message("%s: read-only, changes won't be saved here",
-			path_format(text->path));
+		message("%s: read-only, %s",
+			path_format(text->path),
+			make_writable ? "will be made writable"
+				      : "changes won't be saved here");
 	text->dirties++;
 	if (!text->buffer) {
 		text->buffer = buffer_create(text->fd >= 0 ? text->path : NULL);
 		if (text->clean)
-			buffer_insert(text->buffer, text->clean, 0, text->clean_bytes);
+			buffer_insert(text->buffer, text->clean, 0,
+				      text->clean_bytes);
 		grab_mtime(text);
 	}
 }
@@ -345,7 +357,8 @@ static void save_original(struct text *text)
 	char *save_path;
 	fd_t fd;
 
-	if (!text->clean ||
+	if (no_save_originals ||
+	    !text->clean ||
 	    !text->path ||
 	    text->flags & (TEXT_SAVED_ORIGINAL |
 			   TEXT_RDONLY |
@@ -380,9 +393,13 @@ void text_preserve(struct text *text)
 	size_t bytes;
 	struct stat statbuf;
 
-	if (text->preserved == text->dirties || text->fd < 0 || !text->buffer)
+	if (text->preserved == text->dirties ||
+	    text->fd < 0 ||
+	    !text->buffer)
 		return;
 	text->preserved = text->dirties;
+	if (read_only)
+		return;
 	text_unfold_all(text);
 	if (text->clean) {
 		save_original(text);
@@ -401,6 +418,18 @@ void text_preserve(struct text *text)
 			"editor, changes may have been overwritten.",
 			path_format(text->path));
 	text->preserved = text->dirties;
+	if (text->flags & TEXT_RDONLY && text->path && make_writable) {
+		char cmd[128];
+		int newfd;
+		snprintf(cmd, sizeof cmd, make_writable, text->path);
+		background_command(cmd);
+		newfd = open(text->path, O_RDWR);
+		if (newfd >= 0) {
+			close(text->fd);
+			text->fd = newfd;
+			text->flags &= ~TEXT_RDONLY;
+		}
+	}
 	if (text->flags & TEXT_RDONLY && text->path) {
 		int newfd;
 		char *new_path = allocate(strlen(text->path) + 2);
@@ -416,13 +445,12 @@ void text_preserve(struct text *text)
 		message("%s: read-only, new version saved to %s@",
 			text->path, text->path);
 		text->flags &= ~TEXT_RDONLY;
-		text->flags |= TEXT_CREATED;
 		close(text->fd);
 		RELEASE(text->path);
 		text->fd = newfd;
 		text->path = new_path;
-	} else
-		text->flags &= ~TEXT_CREATED;
+	}
+	text->flags &= ~TEXT_CREATED;
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
 	ftruncate(text->fd, bytes);
 	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);

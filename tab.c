@@ -360,13 +360,16 @@ void insert_newline(struct view *view)
 		view_delete(view, cursor, mark - cursor);
 		locus_set(view, MARK, mark = UNSET);
 	}
-	view_insert(view, "\n", cursor++, 1);
-	locus_set(view, CURSOR, cursor);
+	view_insert(view, "\n", cursor, 1);
+	locus_set(view, CURSOR, ++cursor);
 	if (view_byte(view, cursor-2) == '{') {
 		position_t at = cursor+1;
+		int la, cla;
 		if (cursor == view->bytes ||
-		    line_alignment(view, cursor) >
-		    current_line_indentation(view, &at) + view->text->tabstop) {
+		    (la = line_alignment(view, cursor)) >
+		    (cla = current_line_indentation(view, &at) +
+			   view->text->tabstop) ||
+		    la == cla && view_byte(view, at) != '}') {
 			view_insert(view, "}\n", cursor,
 				    1 + (cursor == view->bytes));
 			align(view);

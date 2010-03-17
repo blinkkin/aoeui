@@ -452,3 +452,27 @@ void shell_command(struct view *view, Unicode_t ch)
 		  view->bytes ? view->bytes-1 : UNSET);
 	locus_set(view, CURSOR, view->bytes);
 }
+
+void background_command(const char *command)
+{
+	int j;
+	pid_t pg;
+	fd_t stdfd[3][2];
+	const char *argv[4];
+	struct stream *std_out, *std_err;
+
+	argv[0] = shell_name();
+	argv[1] = "-c";
+	argv[2] = command;
+	argv[3] = NULL;
+	if ((pg = child(stdfd, 3, argv)) < 0)
+		return;
+	for (j = 0; j < 3; j++)
+		close(stdfd[j][1]);
+	close(stdfd[0][0]);
+	std_out = stream_create(stdfd[1][0]);
+	std_out->activity = error_activity;
+	std_err = stream_create(stdfd[2][0]);
+	std_err->activity = error_activity;
+	waitpid(pg, NULL, 0);
+}

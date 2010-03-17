@@ -1,4 +1,4 @@
-VERSION = 1.4
+VERSION = 1.5
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
@@ -46,8 +46,10 @@ asdfg.1: aoeui.1.m4
 
 optimized:
 	$(MAKE) CFLAGS="-O3 $(CFLAGS)" aoeui
+static:
+	$(MAKE) CFLAGS="-O3 $(CFLAGS) -static" aoeui
 debug: clean
-	$(MAKE) CFLAGS="-g -O0 $(CFLAGS)" aoeui
+	$(MAKE) CFLAGS="-g -O0 -DDEBUG $(CFLAGS)" aoeui
 profile: clean
 	$(MAKE) CFLAGS="-pg $(CFLAGS)" LIBS="$(LIBS) -pg" aoeui
 

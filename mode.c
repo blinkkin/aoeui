@@ -11,6 +11,7 @@ static struct macro *default_macro, *function_key[FUNCTION_FKEYS+1];
 
 struct mode_default {
 	command command;
+	rgba_t selection_bgrgba;
 	Boolean_t variant, is_hex;
 	int value;
 };
@@ -448,10 +449,12 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			window_beep(view);
 		break;
 	case 'P': /* select other window [closing current] */
-		if (mode->variant)
-			window_destroy(view->window);
-		else
+		if (!mode->variant)
 			window_next(view);
+		else if (mode->value)
+			window_index(mode->value);
+		else
+			window_destroy(view->window);
 		break;
 	case 'Q': /* suspend [quit] */
 		windows_end();
@@ -596,5 +599,6 @@ struct mode *mode_default(void)
 {
 	struct mode_default *dft = allocate0(sizeof *dft);
 	dft->command = command_handler;
+	dft->selection_bgrgba = 0x00ffff00; /*cyan*/
 	return (struct mode *) dft;
 }

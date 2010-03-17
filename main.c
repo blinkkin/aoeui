@@ -15,8 +15,11 @@ static void sighandler(int signo)
 
 static void signals(void)
 {
-	static int sig[] = { SIGHUP, SIGINT, SIGQUIT, SIGFPE, SIGSEGV,
+	static int sig[] = { SIGHUP, SIGINT, SIGQUIT,
 			     SIGTERM, SIGCHLD,
+#ifndef DEBUG
+			     SIGFPE, SIGSEGV,
+#endif
 #ifdef SIGPWR
 			     SIGPWR,
 #endif
@@ -52,8 +55,10 @@ int main(int argc, char *const *argv)
 	signals();
 
 	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
+	if (!make_writable)
+		make_writable = getenv("AOEUI_WRITABLE");
 
-	while ((ch = getopt(argc, argv, "dkqst:uU")) >= 0)
+	while ((ch = getopt(argc, argv, "dkoqrst:uUw:")) >= 0)
 		switch (ch) {
 		case 'd':
 			is_asdfg = FALSE;
@@ -61,8 +66,14 @@ int main(int argc, char *const *argv)
 		case 'k':
 			no_keywords = TRUE;
 			break;
+		case 'o':
+			no_save_originals = TRUE;
+			break;
 		case 'q':
 			is_asdfg = TRUE;
+			break;
+		case 'r':
+			read_only = TRUE;
 			break;
 		case 's':
 			default_no_tabs = TRUE;
@@ -79,6 +90,9 @@ int main(int argc, char *const *argv)
 			break;
 		case 'U':
 			utf8_mode = UTF8_NO;
+			break;
+		case 'w':
+			make_writable = optarg;
 			break;
 		default:
 			die("unknown flag");

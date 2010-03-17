@@ -33,7 +33,7 @@ Command characters
 * ^[	(ESC or "smaller font")
   ^]	move to corresponding or nearest bracket [AVAILABLE]
 *  TAB	tab / tab completion [align; set tab stop]
-  ^P	select another window [closing current]
+  ^P	select another window [closing current; by index]
   ^Y	split window [vertically] / narrow to selection
   ^F	AVAILABLE / copy [pre/append; replicate]
   ^G	backward to line start [paragraph start; multiple lines]

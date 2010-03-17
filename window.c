@@ -17,6 +17,7 @@ struct window {
 	unsigned last_dirties;
 	position_t last_cursor, last_mark;
 	rgba_t last_fgrgba, last_bgrgba;
+	struct mode *last_mode;
 	struct window *next;
 };
 
@@ -412,7 +413,7 @@ static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 	if (mark != UNSET &&
 	    (at >= cursor && at < mark ||
 	     at >= mark && at < cursor)) {
-		bgrgba = 0x00ffff00;
+		bgrgba = window->view->mode->selection_bgrgba;
 		fgrgba = 0xff000000;
 	} else if (at == cursor) {
 		if (window->view->text->flags & TEXT_RDONLY)
@@ -446,8 +447,8 @@ static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
 			ch += '@';
 	} else if (ch == ' ') {
 		if (bgrgba == window->bgrgba &&
-		   lame_space(window->view, at + 1,
-			      tabstop-1 - column % tabstop))
+		    lame_space(window->view, at + 1,
+			       tabstop-1 - column % tabstop))
 			bgrgba = 0xff00ff00;
 	} else if (!IS_UNICODE(ch))
 		ch = ' ', bgrgba = 0xff00ff00;
@@ -476,7 +477,8 @@ static Boolean_t needs_repainting(struct window *window)
 		window->last_fgrgba != window->fgrgba ||
 		window->last_bgrgba != window->bgrgba ||
 		window->last_cursor != cursor ||
-		window->last_mark != mark;
+		window->last_mark != mark ||
+		window->last_mode != view->mode;
 }
 
 static void repainted(struct window *window, position_t cursor, position_t mark)
@@ -486,6 +488,7 @@ static void repainted(struct window *window, position_t cursor, position_t mark)
 	window->last_bgrgba = window->bgrgba;
 	window->last_cursor = cursor;
 	window->last_mark = mark;
+	window->last_mode = window->view->mode;
 }
 
 static void paint(struct window *window)
@@ -528,6 +531,10 @@ static void paint(struct window *window)
 			      window->column + column, 1,
 			      window->columns - column,
 			      window->fgrgba, window->bgrgba);
+		for (; column < window->columns; column++)
+			display_put(display, window->row + row,
+				    window->column + column, ' ',
+				    window->fgrgba, window->bgrgba);
 	}
 
 	repainted(window, cursor, mark);
@@ -627,6 +634,14 @@ void window_next(struct view *view)
 		activate(view->window->next ? view->window->next : window_list);
 }
 
+void window_index(int num)
+{
+	struct window *window = window_list;
+	while (--num > 0 && window->next)
+		window = window->next;
+	activate(window);
+}
+
 struct window *window_recenter(struct view *view)
 {
 	struct window *window = view->window;
@@ -706,9 +721,11 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
+#if 0
 		{ DEFAULT_FGRGBA, DEFAULT_BGRGBA },
-		{ 0x00000000, 0x7f7f7f00 },
+#endif
 		{ 0x00000000, 0xffffff00 },
+		{ 0x00000000, 0x7f7f7f00 },
 		{ 0x0000ff00, 0xffff0000 },
 		{ 0x0000ff00, 0x7f7f0000 },
 		{ 0x00ff0000, 0xff00ff00 },

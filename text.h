@@ -58,8 +58,11 @@ struct keywords {
 extern struct text *text_list;
 extern unsigned default_tab_stop;
 extern Boolean_t default_no_tabs;
-extern Boolean_t no_keywords;
+extern Boolean_t no_keywords;  /* -k */
+extern Boolean_t no_save_originals;  /* -o */
+extern Boolean_t read_only;  /* -r */
 extern enum utf8_mode { UTF8_NO, UTF8_YES, UTF8_AUTO } utf8_mode;
+extern const char *make_writable;
 
 /* text.c */
 struct view *view_find(const char *name);

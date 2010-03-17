@@ -51,7 +51,6 @@
 #include "types.h"
 #include "utf8.h"
 #include "buffer.h"
-#include "mode.h"
 #include "locus.h"
 #include "text.h"
 #include "window.h"
@@ -59,6 +58,7 @@
 #include "clip.h"
 #include "macro.h"
 #include "display.h"
+#include "mode.h"
 
 /* Miscellaneous declarations and prototypes that didn't fit elsewhere */
 extern struct termios original_termios;

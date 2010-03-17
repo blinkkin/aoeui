@@ -7,6 +7,7 @@
 
 struct mode_search {
 	command command;
+	rgba_t selection_bgrgba;
 	struct mode *previous;
 	Byte_t *pattern;
 	size_t bytes, alloc, last_bytes;
@@ -39,7 +40,7 @@ static size_t match_pattern(struct view *view, position_t offset)
 	return mode->bytes;
 }
 
-static int match_regex(struct view *view, position_t*offset, Boolean_t advance)
+static int match_regex(struct view *view, position_t *offset, Boolean_t advance)
 {
 	int j, err;
 	char *raw;
@@ -80,10 +81,12 @@ static int scan_forward(struct view *view, size_t *length,
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
 
-	if (offset + mode->bytes > view->bytes)
+	if (mode->bytes > view->bytes)
 		return -1;
-	if (max_offset + mode->bytes > view->bytes)
+	if (max_offset > view->bytes - mode->bytes)
 		max_offset = view->bytes - mode->bytes;
+	if (offset + mode->bytes > max_offset)
+		return -1;
 	if (mode->regex) {
 		if ((*length = match_regex(view, &offset, 1)) &&
 		    offset < max_offset)
@@ -118,8 +121,8 @@ static int scan_backward(struct view *view, size_t *length,
 static Boolean_t search(struct view *view, int backward, int new)
 {
 	struct mode_search *mode = (struct mode_search *) view->mode;
-	position_t cursor;
-	size_t length;
+	position_t mark;
+	size_t length = 0;
 	int at;
 
 	if (!mode->bytes) {
@@ -145,18 +148,20 @@ static Boolean_t search(struct view *view, int backward, int new)
 		}
 	}
 
-	cursor = locus_get(view, CURSOR);
+	mark = locus_get(view, MARK);
+	if (mark == UNSET)
+		mark = locus_get(view, CURSOR);
 
 	if (backward) {
-		at = scan_backward(view, &length, cursor - !new, 0);
+		at = scan_backward(view, &length, mark - !new, 0);
 		if (at < 0)
 			at = scan_backward(view, &length,
-					   view->bytes, cursor+1);
+					   view->bytes, mark+1);
 	} else {
 		at = scan_forward(view, &length,
-				  cursor + !new, view->bytes);
+				  mark + !new, view->bytes);
 		if (at < 0)
-			at = scan_forward(view, &length, 0, cursor-1);
+			at = scan_forward(view, &length, 0, mark-1);
 	}
 	if (at < 0) {
 		window_beep(view);
@@ -165,8 +170,8 @@ static Boolean_t search(struct view *view, int backward, int new)
 	}
 
 	/* A hit! */
-	locus_set(view, CURSOR, at);
-	locus_set(view, MARK, at + length);
+	locus_set(view, MARK, at);
+	locus_set(view, CURSOR, at + length);
 	mode->last_bytes = mode->bytes;
 	return TRUE;
 }
@@ -257,18 +262,17 @@ done:	if (mode->bytes) {
 	view->mode = mode->previous;
 	status_hide();
 
-	if (ch == '\r' || ch == CONTROL('A') || ch == CONTROL('_'))
-		;
-	else if (ch == cmdchar[2][is_asdfg]) {
-		/* restore mark */
-		if (mode->mark != UNSET && !mode->backward) {
-			position_t endmark = locus_get(view, MARK);
-			if (endmark != UNSET)
-				locus_set(view, CURSOR, endmark);
-		}
+	if (ch == cmdchar[2][is_asdfg]) {
+		/* ^V: keep target as selection */
+	} else {
+		/* restore mark, if any */
 		locus_set(view, MARK, mode->mark);
-	} else if (ch != 0x7f /*BCK*/)
-		view->mode->command(view, ch);
+		if (ch != '\r' &&
+		    ch != CONTROL('A') &&
+		    ch != CONTROL('_') &&
+		    ch != 0x7f /*BCK*/)
+			view->mode->command(view, ch);
+	}
 
 	/* Release search mode resources */
 	RELEASE(mode->pattern);
@@ -283,6 +287,7 @@ void mode_search(struct view *view, Boolean_t regex)
 	struct mode_search *mode = allocate0(sizeof *mode);
 	mode->previous = view->mode;
 	mode->command = command_handler;
+	mode->selection_bgrgba = 0xffff0000;
 	mode->start = locus_get(view, CURSOR);
 	mode->mark = locus_get(view, MARK);
 	if (regex)

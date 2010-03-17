@@ -3,12 +3,21 @@ ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui
 .\"
 .\" Copyright 2007 Peter Klausler
 .\" Released under GPLv2.
-.TH AOEUI 1 "September 9, 2008"
+.TH AOEUI 1 "February 15, 2009"
 .\" .LO 1
 .SH NAME
 AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboard
 .SH SYNOPSIS
 .B AOEUI
+[
+.B -k
+]
+[
+.B -o
+]
+[
+.B -r
+]
 [
 .B -s
 ]
@@ -20,6 +29,10 @@ AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboa
 .B -u
 |
 .B -U
+]
+[
+.B -w
+.I command
 ]
 .RI [ file... ]
 .SH DESCRIPTION
@@ -40,6 +53,13 @@ duplicated in memory until they are about to be modified.
 .B -k
 Disable keyword highlighting.
 .TP
+.B -o
+Do not save the original contents of a modified file in
+.IR file ~.
+.TP
+.B -r
+Read-only mode: do not modify the file on disk.
+.TP
 .B -s
 Use spaces, not tabs, for automatic indentation.
 .TP
@@ -52,6 +72,16 @@ Treat files as UTF-8 even if they contain invalid UTF-8 encodings.
 .TP
 .B -U
 Don't treat files as UTF-8 even if they look like it.
+.TP
+.BI -w " writability command"
+When an attempt is made to modify a read-only file, use this command
+(within which the string
+.B "%s"
+will be replaced with the path name of the file) to attempt to put
+the file into a writable state.
+This is useful for interacting with source code control systems
+(e.g.,
+.BR "p4 edit %s" ).
 .SH "INTENTIONALLY MISSING FEATURES"
 .B AOEUI
 has no embedded extension language, since it is trivial to
@@ -526,10 +556,8 @@ will remove the last character from the search target and
 move the selection back to its previous position.
 .TP
 .B ^cmd(V,U)
-is typically used to leave search mode with the cursor at
-the latest hit, with the mark returned to where it was before the search
-(if anywhere).
-This is useful for using search to place the bounds of a selection.
+is typically used to leave search mode with the currently highlighted
+search target as the selection.
 .TP
 .B ^_
 (or its synonyms)
@@ -545,7 +573,10 @@ target string, not single-character motion.
 .B Enter
 (and
 .B ^_
-and its synonyms) simply leaves search mode with the last hit as the selection.
+and its synonyms) simply leaves search mode with the cursor at
+the latest hit, with the mark returned to where it was before the search
+(if anywhere).
+This is useful for using search to place the bounds of a selection.
 .SH TEXTS, VIEWS, and WINDOWS
 .TP
 .B ^cmd(K,W)
@@ -593,6 +624,10 @@ view in the right half of the original window.
 .TP
 .B ^cmd(P,S)
 moves to another window.
+.TP
+.B ^cmd(P,S)
+with a numeric argument moves to a specific window; number 1
+is in the upper left-hand corner of the display.
 .TP
 .B ^Space^cmd(P,S)
 moves to another window, closing the old one.
@@ -803,6 +838,14 @@ cause
 use the title bar of the terminal emulator as a status indicator
 that displays the path name of the active view and whether or not it has
 been saved since last modified.
+.TP
+.B TERM_PROGRAM
+will, if set to Apple_Terminal, avoid some bugs in Apple's terminal emulator.
+.TP
+.B AOEUI_WRITABLE
+Default command used in the absence of the
+.B -w
+option.
 .SH FILES
 .TP
 .IB file ~

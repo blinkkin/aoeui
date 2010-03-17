@@ -29,10 +29,8 @@
 #define CTL_RESETCOLORS	CSI "39;49m"
 #define CTL_GOTO	CSI "%d;%df"
 #define CTL_ERASEALL	CSI "2J"
-#if 0 /* broken on Apple Terminal, dammit */
-# define CTL_ERASETOEND	CSI "J"
-# define CTL_ERASELINE	CSI "K"
-#endif
+#define CTL_ERASETOEND	CSI "J"
+#define CTL_ERASELINE	CSI "K"
 #define CTL_ERASECOLS	CSI "%dX"
 #define CTL_DELCOLS	CSI "%uP"
 #define CTL_DELLINES	CSI "%uM"
@@ -66,7 +64,7 @@ struct display {
 	Byte_t inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
 	size_t inbuf_bytes, outbuf_bytes;
-	Boolean_t is_xterm;
+	Boolean_t is_xterm, is_screen;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
 	char *title;
@@ -124,6 +122,12 @@ static void outf(struct display *display, const char *msg, ...)
 	outs(display, buf);
 }
 
+static void force_moveto(struct display *display, unsigned row, unsigned column)
+{
+	outf(display, CTL_GOTO, (display->at_row = row) + 1,
+	     (display->at_column = column) + 1);
+}
+
 static void moveto(struct display *display, unsigned row, unsigned column)
 {
 	if (row == display->at_row && column == display->at_column)
@@ -141,8 +145,7 @@ static void moveto(struct display *display, unsigned row, unsigned column)
 			return;
 		}
 	}
-	outf(display, CTL_GOTO, (display->at_row = row) + 1,
-	     (display->at_column = column) + 1);
+	force_moveto(display, row, column);
 }
 
 void display_sync(struct display *display)
@@ -232,7 +235,7 @@ static unsigned colormap(struct display *display, rgba_t rgba)
 
 static void set_color(struct display *display, rgba_t rgba, unsigned magic)
 {
-	if (display->is_xterm) {
+	if (display->is_xterm || display->is_screen) {
 		unsigned c = colormap(display, rgba);
 		if (c >= 18)
 			outf(display, CSI "%d;5;%dm", magic+8, c);
@@ -260,6 +263,12 @@ static void foreground_color(struct display *display, rgba_t rgba)
 	}
 }
 
+static void fill_color(struct display *display, rgba_t rgba)
+{
+	foreground_color(display, rgba);
+	background_color(display, rgba);
+}
+
 void display_put(struct display *display, unsigned row, unsigned column,
 		 Unicode_t unicode, rgba_t fgrgba, rgba_t bgrgba)
 {
@@ -279,18 +288,21 @@ void display_put(struct display *display, unsigned row, unsigned column,
 			foreground_color(display, fgrgba);
 		out(display, buf, unicode_utf8(buf, unicode));
 		display->at_column++;
+		/* display->image may have moved due to resize */
+		cell = &display->image[row*display->columns + column];
 		cell->unicode = unicode;
 		cell->bgrgba = bgrgba;
 	}
 	cell->fgrgba = fgrgba;
 }
 
-static void fill(struct display *display, unsigned row, unsigned column,
-		 unsigned columns, Unicode_t code, rgba_t fgrgba,
-		 rgba_t bgrgba)
+static void fill_image(struct display *display, unsigned row, unsigned column,
+		       unsigned columns, Unicode_t code, rgba_t fgrgba,
+		       rgba_t bgrgba)
 {
 	struct cell *cell = &display->image[row * display->columns +
 					    column];
+	bgrgba = DEFAULT_BGRGBA; /*pmk!!!*/
 	while (columns--) {
 		cell->unicode = code;
 		cell->fgrgba = fgrgba;
@@ -303,6 +315,7 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 		   rgba_t fgrgba, rgba_t bgrgba)
 {
 	int r, c;
+	int any = 0;
 
 	if (row >= display->rows || column >= display->columns)
 		return;
@@ -318,36 +331,38 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 						    column];
 		for (c = 0; c < columns; c++)
 			if (cell->unicode != ' ' ||
-			    cell->fgrgba != fgrgba ||
-			    cell++->bgrgba != bgrgba)
-				goto doit;
+			    /* cell->fgrgba != fgrgba || */
+			    cell++->bgrgba != bgrgba) {
+				any = 1;
+				break;
+			}
+		if (any)
+			break;
 	}
-	return;
+	if (!any)
+		return;
 
-doit:	foreground_color(display, fgrgba);
-	background_color(display, bgrgba);
+	fill_color(display, bgrgba);
 
-#ifdef CTL_ERASETOEND
-	if (!column && columns == display->columns && row + rows == display->rows) {
+	if (!column &&
+	    columns == display->columns &&
+	    row + rows == display->rows) {
 		moveto(display, row, column);
 		outs(display, CTL_ERASETOEND);
-	} else
-#endif
-#ifdef CTL_ERASELINE
-	if (column + columns == display->columns) {
+	} else if (column + columns == display->columns) {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
 			outs(display, CTL_ERASELINE);
 		}
-	} else
-#endif
-	for (r = 0; r < rows; r++) {
-		moveto(display, row + r, column);
-		outf(display, CTL_ERASECOLS, columns);
+	} else {
+		for (r = 0; r < rows; r++) {
+			moveto(display, row + r, column);
+			outf(display, CTL_ERASECOLS, columns);
+		}
 	}
 
 	for (; rows--; row++)
-		fill(display, row, column, columns, ' ', fgrgba, bgrgba);
+		fill_image(display, row, column, columns, ' ', fgrgba, bgrgba);
 }
 
 void display_insert_spaces(struct display *display, unsigned row,
@@ -364,17 +379,16 @@ void display_insert_spaces(struct display *display, unsigned row,
 		spaces = columns;
 	if (!spaces)
 		return;
-
 	if (column + columns != display->columns) {
 		moveto(display, row, column + columns - spaces);
 		outf(display, CTL_DELCOLS, spaces);
 	}
 	moveto(display, row, column);
-	background_color(display, bgrgba);
+	fill_color(display, bgrgba);
 	outf(display, CTL_INSCOLS, spaces);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell + spaces, cell, (columns - spaces) * sizeof *cell);
-	fill(display, row, column, spaces, ' ', fgrgba, bgrgba);
+	fill_image(display, row, column, spaces, ' ', fgrgba, bgrgba);
 }
 
 void display_delete_chars(struct display *display, unsigned row,
@@ -393,14 +407,14 @@ void display_delete_chars(struct display *display, unsigned row,
 		return;
 
 	moveto(display, row, column);
-	background_color(display, bgrgba);
+	fill_color(display, bgrgba);
 	outf(display, CTL_DELCOLS, chars);
 	moveto(display, row, column + columns - chars);
 	outf(display, CTL_INSCOLS, chars);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell, cell + chars, (columns - chars) * sizeof *cell);
-	fill(display, row, column + columns - chars, chars,
-	     ' ', fgrgba, bgrgba);
+	fill_image(display, row, column + columns - chars, chars,
+		   ' ', fgrgba, bgrgba);
 }
 
 static Boolean_t validate(struct display *display, unsigned row,
@@ -422,38 +436,39 @@ static void insert_whole_lines(struct display *display, unsigned row,
 			       unsigned lines, unsigned rows,
 			       rgba_t fgrgba, rgba_t bgrgba)
 {
-	struct cell *cell = &display->image[row * display->columns];
-
 	if (row + rows != display->rows) {
 		moveto(display, row + rows - lines, 0);
 		outf(display, CTL_DELLINES, lines);
 	}
 	moveto(display, row, 0);
-	background_color(display, bgrgba);
+	fill_color(display, bgrgba);
 	outf(display, CTL_INSLINES, lines);
 	memmove(&display->image[(row + lines) * display->columns],
-		cell, (rows - lines) * display->columns * sizeof *cell);
-	fill(display, row, 0, lines * display->columns, ' ', fgrgba, bgrgba);
+		&display->image[row * display->columns],
+		(rows - lines) * display->columns * sizeof *display->image);
+	fill_image(display, row, 0, lines * display->columns, ' ',
+		   fgrgba, bgrgba);
 }
 
 static void delete_whole_lines(struct display *display, unsigned row,
 			       unsigned lines, unsigned rows,
 			       rgba_t fgrgba, rgba_t bgrgba)
 {
-	struct cell *cell = &display->image[row * display->columns];
+	struct cell *cell;  /* assigned later for safety from resizing */
 
 	moveto(display, row, 0);
 	background_color(display, bgrgba);
 	outf(display, CTL_DELLINES, lines);
 	if (row + rows != display->rows) {
 		moveto(display, row + rows - lines, 0);
-		background_color(display, bgrgba);
+		fill_color(display, bgrgba);
 		outf(display, CTL_INSLINES, lines);
 	}
+	cell = &display->image[row * display->columns];
 	memmove(cell, cell + lines * display->columns,
 		(rows - lines) * display->columns * sizeof *cell);
-	fill(display, row + rows - lines, 0, lines * display->columns,
-	     ' ', fgrgba, bgrgba);
+	fill_image(display, row + rows - lines, 0, lines * display->columns,
+		   ' ', fgrgba, bgrgba);
 }
 
 static void shortpause(struct display *display, int millisec)
@@ -483,11 +498,13 @@ static void whole_lines(struct display *display, unsigned row,
 static void copy_line(struct display *display, unsigned to_row,
 		      unsigned from_row, unsigned column, unsigned columns)
 {
-	struct cell *cell = &display->image[from_row * display->columns +
-					    column];
-	for (; columns--; cell++)
+	for (; columns--; column++) {
+		struct cell *cell =
+			&display->image[from_row * display->columns +
+					column];
 		display_put(display, to_row, column++,
 			    cell->unicode, cell->fgrgba, cell->bgrgba);
+	}
 }
 
 void display_insert_lines(struct display *display, unsigned row,
@@ -496,7 +513,6 @@ void display_insert_lines(struct display *display, unsigned row,
 			  rgba_t fgrgba, rgba_t bgrgba)
 {
 	int j;
-
 	if (!validate(display, row, column, &rows, &columns, &lines))
 		return;
 	if (!column && columns == display->columns)
@@ -537,7 +553,7 @@ static struct cell *resize(struct display *display, struct cell *old,
 			   unsigned new_rows, unsigned new_columns)
 {
 	unsigned cells = new_rows * new_columns;
-	size_t bytes = cells * sizeof(struct cell);
+	size_t bytes = cells * sizeof *old;
 	struct cell *new = allocate(bytes);
 	unsigned min_rows = new_rows < old_rows ? new_rows : old_rows;
 	unsigned min_columns = new_columns < old_columns ?
@@ -620,7 +636,7 @@ static void geometry(struct display *display)
 			rows = 24;
 		if (!columns)
 			columns = 80;
-		moveto(display, 666, 666);
+		force_moveto(display, 666, 666);
 		outs(display, CTL_CURSORPOS);
 	}
 	set_geometry(display, rows, columns);
@@ -637,8 +653,6 @@ void display_get_geometry(struct display *display,
 void display_reset(struct display *display)
 {
 	RELEASE(display->image);
-	display->cursor_row = display->cursor_column = 0;
-	display->at_row = display->at_column = 0;
 	if (display->is_xterm)
 		outs(display, XTERM_ALTSCREEN);
 	else
@@ -652,10 +666,11 @@ void display_reset(struct display *display)
 	else
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
-	display->fgrgba = DEFAULT_FGRGBA;
-	display->bgrgba = DEFAULT_BGRGBA;
+	display->fgrgba = display->bgrgba = 0;
 	geometry(display);
-	display_sync(display);
+	force_moveto(display, 0, 0);
+	display->cursor_row = display->cursor_column = 0;
+	flush(display);
 }
 
 static void sigwinch(int signo, siginfo_t *info, void *data)
@@ -701,10 +716,10 @@ struct display *display_init(void)
 
 	display_list = display;
 	display->inbuf_bytes = display->outbuf_bytes = 0;
-	display->is_xterm = (term = getenv("TERM")) &&
-			    !strncmp(term, "xterm", 5);
+	term = getenv("TERM");
+	display->is_xterm = term && !strncmp(term, "xterm", 5);
+	display->is_screen = term && !strcmp(term, "screen");
 	display_reset(display);
-	display_sync(display);
 	return display;
 }
 
@@ -846,7 +861,7 @@ again:	if (display->size_changed)
 				key = SET_GEOMETRY;
 			break;
 		case '~':
-			if (!val)
+			if (!val[0])
 				break;
 			switch (val[0]) {
 			case  2: key = FUNCTION_INSERT;	break;

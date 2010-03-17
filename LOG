@@ -1,4 +1,19 @@
-??-?? 1.4 release
+??-?? 1.5 release
+03-17 pmk: optimize screen erasure (background color problem)
+02-16 pmk: AOEUI_WRITABLE environment variable
+01-11 pmk: fix crash due to stale image pointer after resizing
+01-08 pmk: work around Apple Terminal for OS X 10.5
+2010
+09-10 pmk: tweak ^J after { again to NOT add automatic } if one exists
+08-07 pmk: tweak ^J after { to add correct automatic } more often
+07-21 pmk: -o (do not save original) and -r modes (read-only mode)
+06-16 pmk: ^V in search mode retains target as selection
+06-10 pmk: use mode-specific background colors for selections
+04-05 pmk: fix searching bug with CURSOR==0
+04-05 pmk: ^P with number
+04-03 pmk: -w 'p4 edit %s' (command to make file writable)
+02-21 pmk: detect and support screen(1)
+02-15 1.4 release
 02-09 pmk: SVN check-in
 01-05 pmk: auto-closing '}' for ^J after '{'
 2009
