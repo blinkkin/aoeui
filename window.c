@@ -531,10 +531,10 @@ static void paint(struct window *window)
 			      window->column + column, 1,
 			      window->columns - column,
 			      window->fgrgba, window->bgrgba);
-		for (; column < window->columns; column++)
+		while (column < window->columns)
 			display_put(display, window->row + row,
-				    window->column + column, ' ',
-				    window->fgrgba, window->bgrgba);
+				    window->column + column++,
+				    ' ', window->fgrgba, window->bgrgba);
 	}
 
 	repainted(window, cursor, mark);
@@ -721,7 +721,7 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-#if 0
+#if 1
 		{ DEFAULT_FGRGBA, DEFAULT_BGRGBA },
 #endif
 		{ 0x00000000, 0xffffff00 },
