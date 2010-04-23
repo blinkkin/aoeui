@@ -1,5 +1,5 @@
 ??-?? 1.5 release
-04-21 pmk: tweak colors
+04-21 pmk: tweak colors, code cleanup, add display test
 03-17 pmk: optimize screen erasure (background color problem)
 02-16 pmk: AOEUI_WRITABLE environment variable
 01-11 pmk: fix crash due to stale image pointer after resizing

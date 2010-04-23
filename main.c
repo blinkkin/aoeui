@@ -1,7 +1,5 @@
 #include "all.h"
 
-struct termios original_termios;
-
 static void sighandler(int signo)
 {
 	if (signo == SIGCHLD) {
@@ -43,6 +41,33 @@ static void signals(void)
 		signal(sigig[j], SIG_IGN);
 }
 
+static void save_all(void)
+{
+	struct text *text;
+	Boolean_t msg = FALSE;
+	char *raw;
+
+	for (text = text_list; text; text = text->next) {
+		if (!text->path || !text->buffer || !text->buffer->path)
+			continue;
+		text_unfold_all(text);
+		if (text->clean &&
+		    buffer_raw(text->buffer, &raw, 0, ~0) ==
+			text->clean_bytes &&
+		    !memcmp(text->clean, raw, text->clean_bytes)) {
+			unlink(text->buffer->path);
+			continue;
+		}
+		if (!msg) {
+			fprintf(stderr, "\ncheck working files for "
+				"current unsaved data\n");
+			msg = TRUE;
+		}
+		fprintf(stderr, "\t%s\n", text->buffer->path);
+		buffer_snap(text->buffer);
+	}
+}
+
 int main(int argc, char *const *argv)
 {
 	int ch, value;
@@ -53,6 +78,7 @@ int main(int argc, char *const *argv)
 	if (tcgetattr(1, &original_termios))
 		die("not running in a terminal");
 	signals();
+	atexit(save_all);
 
 	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
 	if (!make_writable)

@@ -171,8 +171,7 @@ struct window *window_raise(struct view *view)
 	if (!display)
 		display = display_init();
 	display_get_geometry(display, &display_rows, &display_columns);
-	display_erase(display, 0, 0, display_rows, display_columns,
-		      DEFAULT_FGRGBA, DEFAULT_BGRGBA);
+	display_erase(display, 0, 0, display_rows, display_columns);
 	while (window_list && window_list->view != view)
 		window_destroy(window_list);
 	while (window_list && window_list->next)
@@ -529,8 +528,7 @@ static void paint(struct window *window)
 
 		display_erase(display, window->row + row,
 			      window->column + column, 1,
-			      window->columns - column,
-			      window->fgrgba, window->bgrgba);
+			      window->columns - column);
 		while (column < window->columns)
 			display_put(display, window->row + row,
 				    window->column + column++,
@@ -569,8 +567,7 @@ void window_hint_deleting(struct window *window, position_t offset, size_t bytes
 			display_delete_chars(display, window->row + row,
 					     window->column + column,
 					     end_column - column,
-					     window->columns, window->fgrgba,
-					     window->bgrgba);
+					     window->columns);
 			return;
 		}
 		lines++;
@@ -580,8 +577,7 @@ void window_hint_deleting(struct window *window, position_t offset, size_t bytes
 		end_column = 0;
 	}
 	display_delete_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns,
-			     window->fgrgba, window->bgrgba);
+			     lines, window->rows, window->columns);
 }
 
 void window_hint_inserted(struct window *window, position_t offset, size_t bytes)
@@ -613,8 +609,7 @@ void window_hint_inserted(struct window *window, position_t offset, size_t bytes
 			display_insert_spaces(display, window->row + row,
 					      window->column + column,
 					      end_column - column,
-					      window->columns, window->fgrgba,
-					      window->bgrgba);
+					      window->columns);
 			return;
 		}
 		lines++;
@@ -624,8 +619,7 @@ void window_hint_inserted(struct window *window, position_t offset, size_t bytes
 		end_column = 0;
 	}
 	display_insert_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns,
-			     window->fgrgba, window->bgrgba);
+			     lines, window->rows, window->columns);
 }
 
 void window_next(struct view *view)
@@ -684,8 +678,7 @@ void window_page_up(struct view *view)
 						     window->columns)))
 				break;
 		display_insert_lines(display, window->row, window->column,
-				     1, window->rows, window->columns,
-				     window->fgrgba, window->bgrgba);
+				     1, window->rows, window->columns);
 	}
 	locus_set(view, CURSOR, start);
 }
@@ -701,8 +694,7 @@ void window_page_down(struct view *view)
 		if (!(bytes = find_row_bytes(view, start, 0, window->columns)))
 			break;
 	display_delete_lines(display, window->row, window->column, 1,
-			     window->rows, window->columns,
-			     window->fgrgba, window->bgrgba);
+			     window->rows, window->columns);
 	new_start(view, start);
 	locus_set(view, CURSOR, start);
 }
@@ -721,11 +713,7 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-#if 1
-		{ DEFAULT_FGRGBA, DEFAULT_BGRGBA },
-#endif
 		{ 0x00000000, 0xffffff00 },
-		{ 0x00000000, 0x7f7f7f00 },
 		{ 0x0000ff00, 0xffff0000 },
 		{ 0x0000ff00, 0x7f7f0000 },
 		{ 0x00ff0000, 0xff00ff00 },
@@ -738,12 +726,12 @@ static void window_colors(void)
 	for (window = window_list; window; window = window->next)
 		window->bgrgba = 0;
 	j = active_window != window_list || active_window->next;
-	active_window->fgrgba = colors[j][0];
-	active_window->bgrgba = colors[j][1];
+	active_window->fgrgba = DEFAULT_FGRGBA;
+	active_window->bgrgba = DEFAULT_BGRGBA;
 	for (window = window_list; window; window = window->next) {
 		if (window->bgrgba)
 			continue;
-		for (j = 1; colors[j][1]; j++) {
+		for (j = 0; colors[j][1]; j++) {
 			for (w = window_list; w; w = w->next)
 				if (w != window &&
 				    w->bgrgba == colors[j][1] &&

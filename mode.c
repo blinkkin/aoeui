@@ -560,7 +560,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 		if (mode->variant) {
 			windows_end();
 			texts_uncreate();
-			depart(EXIT_SUCCESS);
+			exit(EXIT_SUCCESS);
 		}
 		break;
 	case ']': /* move to corresponding bracket */

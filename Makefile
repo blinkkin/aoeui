@@ -4,8 +4,8 @@ SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
 	child.c bookmark.c help.c find.c tags.c tab.c fold.c macro.c \
 	keyword.c
-HDRS = all.h buffer.h mode.h text.h locus.h utf8.h display.h \
-	window.h util.h clip.h macro.h
+HDRS = all.h buffer.h child.h mode.h text.h locus.h utf8.h display.h \
+	window.h util.h clip.h macro.h mem.h die.h types.h
 RELS = $(SRCS:.c=.o)
 INST_DIR = $(DESTDIR)/usr
 CFLAGS = -Wall -Wno-parentheses \
@@ -19,7 +19,7 @@ CTAGS = ctags
 
 STRINGIFY = sed 's/\\/\\\\/g;s/"/\\"/g;s/^/"/;s/$$/\\n"/'
 
-default: optimized aoeui.1 asdfg.1
+default: optimized display-test aoeui.1 asdfg.1
 
 aoeui: $(RELS) libs
 	$(CC) $(CFLAGS) -o $@ $(RELS) `cat libs`
@@ -31,6 +31,11 @@ asdfg.help: help.m4
 	m4 -D ASDFG help.m4 | $(STRINGIFY) >$@
 libs:
 	if [ .`uname -s` = .Linux ]; then echo -lutil; fi >$@
+
+display-test: display-test.o display.o mem.o utf8.o libs
+	$(CC) $(CFLAGS) -o $@ display-test.o display.o mem.o utf8.o `cat libs`
+display-test.o: types.h utf8.h display.h
+
 aoeui.1.gz: aoeui.1
 	gzip -9 -c aoeui.1 >$@
 asdfg.1.gz: asdfg.1

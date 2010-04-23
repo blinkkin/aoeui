@@ -59,20 +59,6 @@
 #include "macro.h"
 #include "display.h"
 #include "mode.h"
-
-/* Miscellaneous declarations and prototypes that didn't fit elsewhere */
-extern struct termios original_termios;
-
-void *reallocate(const void *, size_t);		/* mem.c */
-#define allocate(sz) (reallocate(NULL, (sz)))
-void *allocate0(size_t);
-#define RELEASE(p) (reallocate((p), 0), (p) = NULL)
-
-void depart(int exit_status);			/* die.c */
-void die(const char *, ...);
-void message(const char *, ...);
-void status(const char *, ...);
-void status_hide(void);
-
-Boolean_t multiplexor(Boolean_t block);		/* child.c */
-void multiplex_write(fd_t fd, const char *, ssize_t bytes, Boolean_t retain);
+#include "mem.h"
+#include "die.h"
+#include "child.h"

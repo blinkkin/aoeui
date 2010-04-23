@@ -14,9 +14,5 @@ struct mode {
 extern Boolean_t is_asdfg;
 struct mode *mode_default(void);
 void mode_search(struct view *, Boolean_t regex);
-void mode_child(struct view *);
-void mode_shell_pipe(struct view *);
-void shell_command(struct view *, Unicode_t);
-void background_command(const char *command);
 
 #endif

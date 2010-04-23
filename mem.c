@@ -1,5 +1,8 @@
 /* Copyright 2007, 2008 Peter Klausler.  See COPYING for license. */
-#include "all.h"
+#include <stdlib.h>
+#include <string.h>
+#include "die.h"
+#include "mem.h"
 
 /* Error-checking wrappers for memory management */
 

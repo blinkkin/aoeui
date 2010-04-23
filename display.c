@@ -47,6 +47,8 @@
 #define XTERM_BCKISDEL	CSI "?67l"
 #define XTERM_LOCATOR	CSI "1'z" CSI "1'{" CSI "4'{"
 
+#define BAD_RGBA 0x01010100
+
 
 struct cell {
 	Unicode_t unicode;
@@ -64,12 +66,13 @@ struct display {
 	Byte_t inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
 	size_t inbuf_bytes, outbuf_bytes;
-	Boolean_t is_xterm, is_screen;
+	Boolean_t is_xterm, is_screen, is_apple;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
 	char *title;
 };
 
+struct termios original_termios;
 static struct display *display_list;
 static void (*old_sigwinch)(int, siginfo_t *, void *);
 
@@ -263,12 +266,6 @@ static void foreground_color(struct display *display, rgba_t rgba)
 	}
 }
 
-static void fill_color(struct display *display, rgba_t rgba)
-{
-	foreground_color(display, rgba);
-	background_color(display, rgba);
-}
-
 void display_put(struct display *display, unsigned row, unsigned column,
 		 Unicode_t unicode, rgba_t fgrgba, rgba_t bgrgba)
 {
@@ -296,28 +293,30 @@ void display_put(struct display *display, unsigned row, unsigned column,
 	cell->fgrgba = fgrgba;
 }
 
-static void fill_image(struct display *display, unsigned row, unsigned rows,
-		       unsigned column, unsigned columns,
-		       Unicode_t code, rgba_t fgrgba, rgba_t bgrgba)
+static void clear_image(struct display *display, unsigned row, unsigned rows,
+			unsigned column, unsigned columns)
 {
 	int j;
 	while (rows--) {
 		struct cell *cell = &display->image[row++ * display->columns +
 						    column];
-		for (j = 0; j < columns; j++) {
-			cell->unicode = code;
-			cell->fgrgba = fgrgba;
-			cell++->bgrgba = bgrgba;
+		for (j = 0; j < columns; j++, cell++) {
+			cell->unicode = ' ';
+			if (display->is_apple) {
+				cell->fgrgba = DEFAULT_FGRGBA;
+				cell->bgrgba = DEFAULT_BGRGBA;
+			} else {
+				cell->fgrgba = BAD_RGBA;
+				cell->bgrgba = BAD_RGBA;
+			}
 		}
 	}
 }
 
 void display_erase(struct display *display, unsigned row, unsigned column,
-		   unsigned rows, unsigned columns,
-		   rgba_t fgrgba, rgba_t bgrgba)
+		   unsigned rows, unsigned columns)
 {
-	int r, c;
-	int any = 0;
+	int r;
 
 	if (row >= display->rows || column >= display->columns)
 		return;
@@ -328,51 +327,30 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 	if (!columns)
 		return;
 
-	for (r = 0; r < rows; r++) {
-		struct cell *cell = &display->image[(row+r)*display->columns +
-						    column];
-		for (c = 0; c < columns; c++)
-			if (cell->unicode != ' ' ||
-			    /* cell->fgrgba != fgrgba || */
-			    cell++->bgrgba != bgrgba) {
-				any = 1;
-				break;
-			}
-		if (any)
-			break;
-	}
-	if (!any)
-		return;
-
-	fill_color(display, bgrgba);
-
 	if (!column &&
 	    columns == display->columns &&
 	    row + rows == display->rows) {
-		moveto(display, row, column);
-		outs(display, CTL_ERASETOEND);
-		fill_image(display, row, rows, column, columns,
-			   ' ', fgrgba, bgrgba);
+		if (row) {
+			moveto(display, row, column);
+			outs(display, CTL_ERASETOEND);
+		} else
+			outs(display, CTL_ERASEALL);
 	} else if (column + columns == display->columns) {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
 			outs(display, CTL_ERASELINE);
 		}
-		fill_image(display, row, rows, column, columns,
-			   ' ', fgrgba, DEFAULT_BGRGBA);
 	} else {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
 			outf(display, CTL_ERASECOLS, columns);
 		}
-		fill_image(display, row, rows, column, columns,
-			   ' ', fgrgba, DEFAULT_BGRGBA);
 	}
+	clear_image(display, row, rows, column, columns);
 }
 
 void display_insert_spaces(struct display *display, unsigned row,
-			   unsigned column, unsigned spaces, unsigned columns,
-			   rgba_t fgrgba, rgba_t bgrgba)
+			   unsigned column, unsigned spaces, unsigned columns)
 {
 	struct cell *cell;
 
@@ -389,17 +367,14 @@ void display_insert_spaces(struct display *display, unsigned row,
 		outf(display, CTL_DELCOLS, spaces);
 	}
 	moveto(display, row, column);
-	fill_color(display, bgrgba);
 	outf(display, CTL_INSCOLS, spaces);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell + spaces, cell, (columns - spaces) * sizeof *cell);
-	fill_image(display, row, 1, column, spaces,
-		   ' ', fgrgba, DEFAULT_BGRGBA);
+	clear_image(display, row, 1, column, spaces);
 }
 
 void display_delete_chars(struct display *display, unsigned row,
-			  unsigned column, unsigned chars, unsigned columns,
-			  rgba_t fgrgba, rgba_t bgrgba)
+			  unsigned column, unsigned chars, unsigned columns)
 {
 	struct cell *cell;
 
@@ -413,14 +388,12 @@ void display_delete_chars(struct display *display, unsigned row,
 		return;
 
 	moveto(display, row, column);
-	fill_color(display, bgrgba);
 	outf(display, CTL_DELCOLS, chars);
 	moveto(display, row, column + columns - chars);
 	outf(display, CTL_INSCOLS, chars);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell, cell + chars, (columns - chars) * sizeof *cell);
-	fill_image(display, row, 1, column + columns - chars, chars,
-		   ' ', fgrgba, DEFAULT_BGRGBA);
+	clear_image(display, row, 1, column + columns - chars, chars);
 }
 
 static Boolean_t validate(struct display *display, unsigned row,
@@ -439,42 +412,35 @@ static Boolean_t validate(struct display *display, unsigned row,
 }
 
 static void insert_whole_lines(struct display *display, unsigned row,
-			       unsigned lines, unsigned rows,
-			       rgba_t fgrgba, rgba_t bgrgba)
+			       unsigned lines, unsigned rows)
 {
 	if (row + rows != display->rows) {
 		moveto(display, row + rows - lines, 0);
 		outf(display, CTL_DELLINES, lines);
 	}
 	moveto(display, row, 0);
-	fill_color(display, bgrgba);
 	outf(display, CTL_INSLINES, lines);
 	memmove(&display->image[(row + lines) * display->columns],
 		&display->image[row * display->columns],
 		(rows - lines) * display->columns * sizeof *display->image);
-	fill_image(display, row, lines, 0, display->columns, ' ',
-		   fgrgba, bgrgba);
+	clear_image(display, row, lines, 0, display->columns);
 }
 
 static void delete_whole_lines(struct display *display, unsigned row,
-			       unsigned lines, unsigned rows,
-			       rgba_t fgrgba, rgba_t bgrgba)
+			       unsigned lines, unsigned rows)
 {
 	struct cell *cell;  /* assigned later for safety from resizing */
 
 	moveto(display, row, 0);
-	background_color(display, bgrgba);
 	outf(display, CTL_DELLINES, lines);
 	if (row + rows != display->rows) {
 		moveto(display, row + rows - lines, 0);
-		fill_color(display, bgrgba);
 		outf(display, CTL_INSLINES, lines);
 	}
 	cell = &display->image[row * display->columns];
 	memmove(cell, cell + lines * display->columns,
 		(rows - lines) * display->columns * sizeof *cell);
-	fill_image(display, row + rows - lines, lines, 0, display->columns,
-		   ' ', fgrgba, bgrgba);
+	clear_image(display, row + rows - lines, lines, 0, display->columns);
 }
 
 static void shortpause(struct display *display, int millisec)
@@ -488,15 +454,13 @@ static void shortpause(struct display *display, int millisec)
 
 static void whole_lines(struct display *display, unsigned row,
 			unsigned lines, unsigned rows,
-			rgba_t fgrgba, rgba_t bgrgba,
 			void (*mover)(struct display *, unsigned, unsigned,
-				      unsigned, rgba_t, rgba_t))
+				      unsigned))
 {
 	unsigned amount;
 	for (; lines; lines -= amount) {
 		amount = 1 + (lines > 2) + (lines > 4) + (lines > 8);
-		mover(display, row, amount = 1 + (lines > 2),
-		      rows, fgrgba, bgrgba);
+		mover(display, row, amount = 1 + (lines > 2), rows);
 		shortpause(display, 12 - 4 * amount);
 	}
 }
@@ -522,42 +486,39 @@ static void copy_line(struct display *display, unsigned to_row,
 
 void display_insert_lines(struct display *display, unsigned row,
 			  unsigned column, unsigned lines,
-			  unsigned rows, unsigned columns,
-			  rgba_t fgrgba, rgba_t bgrgba)
+			  unsigned rows, unsigned columns)
 {
 	int j;
 	if (!validate(display, row, column, &rows, &columns, &lines))
 		return;
 	if (!column && columns == display->columns)
-		whole_lines(display, row, lines, rows, fgrgba, bgrgba,
+		whole_lines(display, row, lines, rows,
 			    insert_whole_lines);
 	else {
 		for (j = rows - lines; j-- > 0; )
 			copy_line(display, row + lines + j, row + j,
 				  column, columns);
-		display_erase(display, row, column, lines, columns,
-			      fgrgba, bgrgba);
+		display_erase(display, row, column, lines, columns);
 	}
 }
 
 void display_delete_lines(struct display *display, unsigned row,
 			  unsigned column, unsigned lines,
-			  unsigned rows, unsigned columns,
-			  rgba_t fgrgba, rgba_t bgrgba)
+			  unsigned rows, unsigned columns)
 {
 	int j;
 
 	if (!validate(display, row, column, &rows, &columns, &lines))
 		return;
 	if (!column && columns == display->columns)
-		whole_lines(display, row, lines, rows, fgrgba, bgrgba,
+		whole_lines(display, row, lines, rows,
 			    delete_whole_lines);
 	else {
 		for (j = 0; j < rows - lines; j++)
 			copy_line(display, row + j, row + lines + j,
 				  column, columns);
 		display_erase(display, row + rows - lines, column,
-			      lines, columns, fgrgba, bgrgba);
+			      lines, columns);
 	}
 }
 
@@ -618,6 +579,7 @@ static void set_geometry(struct display *display,
 	display->rows = rows;
 	display->columns = columns;
 	display->size_changed = TRUE;
+	display_erase(display, 0, rows, 0, columns);
 	display_cursor(display, display->cursor_row, display->cursor_column);
 }
 
@@ -672,14 +634,14 @@ void display_reset(struct display *display)
 		outs(display, CTL_RESET);
 	outs(display, CTL_UTF8
 		      CTL_RESETMODES
-		      CTL_RESETCOLORS
-		      CTL_ERASEALL);
+		      CTL_RESETCOLORS);
 	if (display->is_xterm)
 		outs(display, XTERM_BCKISDEL);
 	else
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
-	display->fgrgba = display->bgrgba = 0;
+	display->fgrgba = BAD_RGBA;
+	display->bgrgba = BAD_RGBA;
 	geometry(display);
 	force_moveto(display, 0, 0);
 	display->cursor_row = display->cursor_column = 0;
@@ -730,8 +692,11 @@ struct display *display_init(void)
 	display_list = display;
 	display->inbuf_bytes = display->outbuf_bytes = 0;
 	term = getenv("TERM");
-	display->is_xterm = term && !strncmp(term, "xterm", 5);
-	display->is_screen = term && !strcmp(term, "screen");
+	if ((display->is_xterm = term && !strncmp(term, "xterm", 5))) {
+		term = getenv("TERM_PROGRAM");
+		display->is_apple = term && !strncmp(term, "Apple", 5);
+	} else
+		display->is_screen = term && !strcmp(term, "screen");
 	display_reset(display);
 	return display;
 }
