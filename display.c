@@ -66,7 +66,7 @@ struct display {
 	Byte_t inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
 	size_t inbuf_bytes, outbuf_bytes;
-	Boolean_t is_xterm, is_screen, is_apple;
+	Boolean_t is_xterm, is_linux;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
 	char *title;
@@ -75,11 +75,18 @@ struct display {
 struct termios original_termios;
 static struct display *display_list;
 static void (*old_sigwinch)(int, siginfo_t *, void *);
+static FILE *debug_file;
 
 static void emit(const char *str, size_t bytes)
 {
 	size_t wrote;
 	ssize_t chunk;
+
+	if (debug_file && bytes) {
+		fprintf(debug_file, "emit %d:", (int) bytes);
+		fwrite(str, bytes, 1, debug_file);
+		fputc('\n', debug_file);
+	}
 
 	for (wrote = 0; wrote < bytes; wrote += chunk) {
 		errno = 0;
@@ -238,7 +245,9 @@ static unsigned colormap(struct display *display, rgba_t rgba)
 
 static void set_color(struct display *display, rgba_t rgba, unsigned magic)
 {
-	if (display->is_xterm || display->is_screen) {
+	if (display->is_linux)
+		outf(display, CSI "%dm", linux_colormap(rgba) + magic);
+	else {
 		unsigned c = colormap(display, rgba);
 		if (c >= 18)
 			outf(display, CSI "%d;5;%dm", magic+8, c);
@@ -246,8 +255,7 @@ static void set_color(struct display *display, rgba_t rgba, unsigned magic)
 			outf(display, CSI "%dm", c - 10 + magic + 60);
 		else
 			outf(display, CSI "%dm", c + magic);
-	} else
-		outf(display, CSI "%dm", linux_colormap(rgba) + magic);
+	}
 }
 
 static void background_color(struct display *display, rgba_t rgba)
@@ -276,25 +284,26 @@ void display_put(struct display *display, unsigned row, unsigned column,
 	if (unicode < ' ')
 		unicode = ' ';
 	cell = &display->image[row*display->columns + column];
-	if (cell->unicode != unicode ||
-	    cell->fgrgba != fgrgba && unicode != ' ' ||
-	    cell->bgrgba != bgrgba) {
-		moveto(display, row, column);
-		background_color(display, bgrgba);
-		if (unicode != ' ')
-			foreground_color(display, fgrgba);
-		out(display, buf, unicode_utf8(buf, unicode));
-		display->at_column++;
-		/* display->image may have moved due to resize */
-		cell = &display->image[row*display->columns + column];
-		cell->unicode = unicode;
-		cell->bgrgba = bgrgba;
-	}
+	if (cell->unicode == unicode &&
+	    (cell->fgrgba == fgrgba || unicode == ' ') &&
+	    cell->bgrgba == bgrgba)
+		return;
+	moveto(display, row, column);
+	background_color(display, bgrgba);
+	if (unicode != ' ')
+		foreground_color(display, fgrgba);
+	out(display, buf, unicode_utf8(buf, unicode));
+	display->at_column++;
+	/* display->image may have moved due to resize */
+	cell = &display->image[row*display->columns + column];
+	cell->unicode = unicode;
+	cell->bgrgba = bgrgba;
 	cell->fgrgba = fgrgba;
 }
 
 static void clear_image(struct display *display, unsigned row, unsigned rows,
-			unsigned column, unsigned columns)
+			unsigned column, unsigned columns,
+			Boolean_t colors_trashed)
 {
 	int j;
 	while (rows--) {
@@ -302,10 +311,7 @@ static void clear_image(struct display *display, unsigned row, unsigned rows,
 						    column];
 		for (j = 0; j < columns; j++, cell++) {
 			cell->unicode = ' ';
-			if (display->is_apple) {
-				cell->fgrgba = DEFAULT_FGRGBA;
-				cell->bgrgba = DEFAULT_BGRGBA;
-			} else {
+			if (colors_trashed) {
 				cell->fgrgba = BAD_RGBA;
 				cell->bgrgba = BAD_RGBA;
 			}
@@ -335,18 +341,20 @@ void display_erase(struct display *display, unsigned row, unsigned column,
 			outs(display, CTL_ERASETOEND);
 		} else
 			outs(display, CTL_ERASEALL);
+		clear_image(display, row, rows, column, columns, FALSE);
 	} else if (column + columns == display->columns) {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
 			outs(display, CTL_ERASELINE);
 		}
+		clear_image(display, row, rows, column, columns, TRUE);
 	} else {
 		for (r = 0; r < rows; r++) {
 			moveto(display, row + r, column);
 			outf(display, CTL_ERASECOLS, columns);
 		}
+		clear_image(display, row, rows, column, columns, FALSE);
 	}
-	clear_image(display, row, rows, column, columns);
 }
 
 void display_insert_spaces(struct display *display, unsigned row,
@@ -370,7 +378,7 @@ void display_insert_spaces(struct display *display, unsigned row,
 	outf(display, CTL_INSCOLS, spaces);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell + spaces, cell, (columns - spaces) * sizeof *cell);
-	clear_image(display, row, 1, column, spaces);
+	clear_image(display, row, 1, column, spaces, FALSE);
 }
 
 void display_delete_chars(struct display *display, unsigned row,
@@ -393,7 +401,7 @@ void display_delete_chars(struct display *display, unsigned row,
 	outf(display, CTL_INSCOLS, chars);
 	cell = &display->image[row*display->columns + column];
 	memmove(cell, cell + chars, (columns - chars) * sizeof *cell);
-	clear_image(display, row, 1, column + columns - chars, chars);
+	clear_image(display, row, 1, column + columns - chars, chars, FALSE);
 }
 
 static Boolean_t validate(struct display *display, unsigned row,
@@ -423,7 +431,7 @@ static void insert_whole_lines(struct display *display, unsigned row,
 	memmove(&display->image[(row + lines) * display->columns],
 		&display->image[row * display->columns],
 		(rows - lines) * display->columns * sizeof *display->image);
-	clear_image(display, row, lines, 0, display->columns);
+	clear_image(display, row, lines, 0, display->columns, FALSE);
 }
 
 static void delete_whole_lines(struct display *display, unsigned row,
@@ -440,7 +448,7 @@ static void delete_whole_lines(struct display *display, unsigned row,
 	cell = &display->image[row * display->columns];
 	memmove(cell, cell + lines * display->columns,
 		(rows - lines) * display->columns * sizeof *cell);
-	clear_image(display, row + rows - lines, lines, 0, display->columns);
+	clear_image(display, row + rows - lines, lines, 0, display->columns, FALSE);
 }
 
 static void shortpause(struct display *display, int millisec)
@@ -672,7 +680,11 @@ struct display *display_init(void)
 {
 	struct display *display = allocate0(sizeof *display);
 	struct termios termios = original_termios;
-	const char *term;
+	const char *term, *path;
+
+	if ((path = getenv("DISPLAY_DEBUG_PATH")) &&
+	    !(debug_file = fopen(path, "w")))
+		die("could not open display debug file %s for writing", path);
 
 	cfmakeraw(&termios);
 	tcsetattr(1, TCSADRAIN, &termios);
@@ -692,11 +704,8 @@ struct display *display_init(void)
 	display_list = display;
 	display->inbuf_bytes = display->outbuf_bytes = 0;
 	term = getenv("TERM");
-	if ((display->is_xterm = term && !strncmp(term, "xterm", 5))) {
-		term = getenv("TERM_PROGRAM");
-		display->is_apple = term && !strncmp(term, "Apple", 5);
-	} else
-		display->is_screen = term && !strcmp(term, "screen");
+	if (!(display->is_xterm = term && !strncmp(term, "xterm", 5)))
+		display->is_linux = term && !strcmp(term, "linux");
 	display_reset(display);
 	return display;
 }
@@ -795,6 +804,13 @@ again:	if (display->size_changed)
 				 sizeof display->inbuf - 1 -
 					display->inbuf_bytes);
 		} while (n < 0 && (errno == EAGAIN || errno == EINTR));
+		if (debug_file) {
+			fprintf(debug_file, "read %d:", n);
+			if (n > 0)
+				fwrite(display->inbuf + display->inbuf_bytes,
+				       n, 1, debug_file);
+			fputc('\n', debug_file);
+		}
 		if (!n)
 			return ERROR_EOF;
 		if (n < 0)

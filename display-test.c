@@ -27,8 +27,8 @@ static void dfill(int row, int rows, int col, int cols,
 			display_put(D, row+j, col+k, ch, fgrgba, bgrgba);
 }
 
-static void dprintf(int row, int col, rgba_t fgrgba, rgba_t bgrgba,
-		    const char *format, ...)
+static void dprint(int row, int col, rgba_t fgrgba, rgba_t bgrgba,
+		   const char *format, ...)
 {
 	char buffer[256], *p;
 	va_list ap;
@@ -43,7 +43,7 @@ static void dpause(void)
 {
 	int ch;
 	dfill(rows-1, 1, 0, columns, ' ', RED, WHITE);
-	dprintf(rows-1, 0, RED, WHITE, "Hit Q to quit, or any other key to continue...");
+	dprint(rows-1, 0, RED, WHITE, "Hit Q to quit, or any other key to continue...");
 	while ((ch = display_getch(D, 1)) == ERROR_CHANGED)
 		display_get_geometry(D, &rows, &columns);
 	if (ch == 'q' || ch == 'Q') {
@@ -74,45 +74,45 @@ int main(void)
 	D = display_init();
 	display_get_geometry(D, &rows, &columns);
 	display_title(D, "display-test");
-	dprintf(0, 0, BLACK, WHITE, "geometry: %d rows, %d columns", rows, columns);
-	dprintf(1, 0, DEFAULT_FGRGBA, DEFAULT_BGRGBA, "default foreground and background");
-	dprintf(2, 0, WHITE, BLACK, "white foreground on black background");
+	dprint(0, 0, BLACK, WHITE, "geometry: %d rows, %d columns", rows, columns);
+	dprint(1, 0, DEFAULT_FGRGBA, DEFAULT_BGRGBA, "default foreground and background");
+	dprint(2, 0, WHITE, BLACK, "white foreground on black background");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "filled with white dots on black");
+	dprint(0, 0, WHITE, BLACK, "filled with white dots on black");
 	dpause();
 
 	display_erase(D, 1, 0, rows-1, columns);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "after display_erase()");
+	dprint(0, 0, WHITE, BLACK, "after display_erase()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
 	display_insert_lines(D, 2, 0, rows/2, rows-2, columns);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "after display_insert_lines()");
+	dprint(0, 0, WHITE, BLACK, "after display_insert_lines()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
 	dfill(rows-1, 1, 0, columns, '*', WHITE, BLACK);
 	display_delete_lines(D, 2, 0, rows/2, rows-2, columns);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "after display_delete_lines()");
+	dprint(0, 0, WHITE, BLACK, "after display_delete_lines()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
 	display_insert_spaces(D, 2, 0, columns/2, columns);
 	display_insert_spaces(D, 3, columns/2, columns - (columns/2), columns);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "after display_insert_spaces()");
+	dprint(0, 0, WHITE, BLACK, "after display_insert_spaces()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
 	display_delete_chars(D, 2, 0, columns/2, columns);
 	display_delete_chars(D, 3, columns/2, columns - (columns/2), columns);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprintf(0, 0, WHITE, BLACK, "after display_delete_chars()");
+	dprint(0, 0, WHITE, BLACK, "after display_delete_chars()");
 	dpause();
 
 	display_end(D);

@@ -526,9 +526,11 @@ static void paint(struct window *window)
 					 fgrgba);
 		}
 
+#if 0
 		display_erase(display, window->row + row,
 			      window->column + column, 1,
 			      window->columns - column);
+#endif
 		while (column < window->columns)
 			display_put(display, window->row + row,
 				    window->column + column++,
@@ -567,7 +569,7 @@ void window_hint_deleting(struct window *window, position_t offset, size_t bytes
 			display_delete_chars(display, window->row + row,
 					     window->column + column,
 					     end_column - column,
-					     window->columns);
+					     window->columns - column);
 			return;
 		}
 		lines++;
@@ -609,7 +611,7 @@ void window_hint_inserted(struct window *window, position_t offset, size_t bytes
 			display_insert_spaces(display, window->row + row,
 					      window->column + column,
 					      end_column - column,
-					      window->columns);
+					      window->columns - column);
 			return;
 		}
 		lines++;

@@ -356,6 +356,7 @@ static void save_original(struct text *text)
 {
 	char *save_path;
 	fd_t fd;
+	ssize_t wrote = -1;
 
 	if (no_save_originals ||
 	    !text->clean ||
@@ -370,12 +371,13 @@ static void save_original(struct text *text)
 	sprintf(save_path, "%s~", text->path);
 	errno = 0;
 	fd = creat(save_path, S_IRUSR|S_IWUSR);
-	if (fd < 0)
-		message("%s: can't save original text", path_format(save_path));
-	else {
-		write(fd, text->clean, text->clean_bytes);
-		close(fd);
+	if (fd >= 0) {
+		wrote = write(fd, text->clean, text->clean_bytes);
+		if (close(fd))
+			wrote = -1;
 	}
+	if (wrote != text->clean_bytes)
+		message("%s: can't save original text", path_format(save_path));
 	RELEASE(save_path);
 	text->flags |= TEXT_SAVED_ORIGINAL;
 }
@@ -452,7 +454,8 @@ void text_preserve(struct text *text)
 	}
 	text->flags &= ~TEXT_CREATED;
 	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
-	ftruncate(text->fd, bytes);
+	if (ftruncate(text->fd, bytes))
+		message("%s: truncation failed", path_format(text->path));
 	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);
 	if (text->clean) {
 		memcpy(text->clean, raw, bytes);

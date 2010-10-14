@@ -72,7 +72,7 @@ install: aoeui aoeui.1.gz asdfg.1.gz
 clean:
 	rm -f *.o *.help libs core gmon.out screenlog.*
 clobber: clean
-	rm -f aoeui TAGS *.1 *.1.gz *.1.html unicode
+	rm -f aoeui display-test unicode TAGS *.1 *.1.gz *.1.html
 spotless: clobber
 	rm -f *~ *.tgz
 release: spotless

@@ -776,14 +776,13 @@ with the selection.
 Incremental search and replacement can be done with a macro or by
 clipping the replacement text, and on search hits that are to be
 replaced, using
-.B ^cmd(B,V)^cmd(F,C)^/^/
+.B ^cmd(V,U)^cmd(B,V)^cmd(F,C)^/^/
 to exchange the hit with the replacement text, copy it back to the
 clip buffer, and proceed to the next occurrence of the search pattern.
 But when the replacement text is short, it's sometimes easiest to just
 overwrite the selection by hitting
-.B Enter
-to leave search mode and immediately retyping it, since the cursor
-will be placed at its beginning.
+.B ^cmd(V,U)^cmd(D,X)
+and immediately retyping the new text.
 .TP
 .B *
 Reconfigure your keyboards so that the key to the left of A, which is
@@ -839,9 +838,6 @@ use the title bar of the terminal emulator as a status indicator
 that displays the path name of the active view and whether or not it has
 been saved since last modified.
 .TP
-.B TERM_PROGRAM
-will, if set to Apple_Terminal, avoid some bugs in Apple's terminal emulator.
-.TP
 .B AOEUI_WRITABLE
 Default command used in the absence of the
 .B -w
@@ -850,7 +846,10 @@ option.
 .TP
 .IB file ~
 is overwritten with the original contents of
-.IR file .
+.I file
+unless the
+.B -o
+option is used.
 .TP
 .IB file #
 contains the temporary image of the edited file

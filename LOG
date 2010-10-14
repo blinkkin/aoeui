@@ -1,4 +1,5 @@
 ??-?? 1.5 release
+10-14 pmk: display debugging output, fix display errors
 04-21 pmk: tweak colors, code cleanup, add display test
 03-17 pmk: optimize screen erasure (background color problem)
 02-16 pmk: AOEUI_WRITABLE environment variable
