@@ -195,6 +195,8 @@ struct view *view_open(const char *path0)
 			goto fail;
 		}
 		text->flags |= TEXT_CREATED;
+		if (utf8_mode == UTF8_NO)
+			text->flags |= TEXT_NO_UTF8;
 	} else {
 		if (!S_ISREG(statbuf.st_mode)) {
 			message("%s: not a regular file", path_format(path));
@@ -270,7 +272,7 @@ struct view *text_new(void)
 		sprintf(dir, "/tmp/aoeui-%s", me);
 		fd = try_dir(path, dir, gmt);
 	}
-#ifndef __APPLE__
+#if !defined __APPLE__ && !defined BSD
 	if (fd < 0 && (me = cuserid(NULL))) {
 		sprintf(dir, "/tmp/aoeui-%s", me);
 		fd = try_dir(path, dir, gmt);

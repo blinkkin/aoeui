@@ -67,7 +67,7 @@ Command characters
   ^W	select other view [closing current]
   ^V	set/unset mark [select line / exchange mark with cursor; force unset]
   ^Z	recenter view [single window, reset display; go to line]
- ^Space	(^@) variant, beginning of value
+  ^SP	(^@) variant, beginning of value
 
 Non-control characters -- commands must be [variants]
   =	[; set bookmark]

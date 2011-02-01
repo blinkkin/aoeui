@@ -393,6 +393,8 @@ character code 0x01 inserted.)
 .B ^Space^^
 with a numeric argument, probably in hexadecimal, inserts the
 specified Unicode character into the text in UTF-8 format.
+If the text is not UTF-8, the character code is inserted directly
+as a big-endian literal.
 .TP
 .B Tab
 (or
@@ -418,9 +420,6 @@ with a single TAB character.
 (or
 .BR ^Space^I )
 will align the current line to the indentation of the previous one.
-This is equivalent to
-.B ^Space^cmd(D,X)
-.BR Enter .
 With a numeric argument of 1, it toggles the text's use of tab characters
 for indentation.
 With a numeric argument between 2 and 20, it will set the tab stop pitch.

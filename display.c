@@ -665,7 +665,7 @@ static void sigwinch(int signo, siginfo_t *info, void *data)
 		old_sigwinch(signo, info, data);
 }
 
-#if !(defined __linux__ || defined __APPLE__)
+#if !(defined __linux__ || defined BSD || defined __APPLE__)
 void cfmakeraw(struct termios *termios)
 {
 	termios->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|IXON);

@@ -1,3 +1,5 @@
+02-01 pmk: fix raw hex character insertion (encode to UTF-8 unless -U)
+2011
 10-14 1.5 release
 10-14 pmk: display debugging output, fix display errors
 04-21 pmk: tweak colors, code cleanup, add display test

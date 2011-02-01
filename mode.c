@@ -145,33 +145,32 @@ static Boolean_t funckey(struct view *view, int Fk)
 }
 
 static position_t self_insert(struct view *view, Unicode_t ch,
-			      position_t mark, position_t old_cursor,
-			      Boolean_t literal_unicode)
+			      position_t mark, position_t old_cursor)
 {
-	char cbuf[8];
+	char cbuf[16], *p = cbuf;
 	position_t cursor = old_cursor;
+	size_t len = 0;
+
 	if (mark != UNSET && mark > cursor) {
 		cursor = cut(view, 1);
 		mark = UNSET;
 	}
 	if (ch == '\n' && view->text->flags & TEXT_CRNL) {
-		view_insert(view, "\r\n", cursor, 2);
-		cursor += 2;
-	} else if (ch <= 0x100 &&
-		   (!literal_unicode ||
-		    view->text->flags & TEXT_NO_UTF8)) {
-		cbuf[0] = ch;
-		view_insert(view, cbuf, cursor++, 1);
+		memcpy(p, "\r\n", len = 2);
+	} else if (view->text->flags & TEXT_NO_UTF8) {
+		for (p = cbuf + sizeof cbuf; ch; ch >>= 8)
+			*--p = ch, len++;
+		if (!len)
+			*--p = 0, len++;
 	} else {
-		size_t len = unicode_utf8(cbuf, ch);
-		view_insert(view, cbuf, cursor, len);
-		cursor += len;
+		len = unicode_utf8(p, ch);
 	}
+	view_insert(view, p, cursor, len);
 	if (mark == old_cursor)
 		locus_set(view, MARK, old_cursor);
 	if (view->shell_std_in >= 0)
 		shell_command(view, ch);
-	return cursor;
+	return cursor + len;
 }
 
 static void command_handler(struct view *view, Unicode_t ch0)
@@ -314,7 +313,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			}
 		}
 
-		self_insert(view, ch, mark, cursor, FALSE);
+		self_insert(view, ch, mark, cursor);
 		goto done;
 	}
 
@@ -415,7 +414,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 		insert_newline(view);
 		break;
 	case 'M': /* (ENTER) new line with alignment */
-		self_insert(view, '\n', mark, cursor, FALSE);
+		self_insert(view, '\n', mark, cursor);
 		break;
 	case 'K': /* save all [single] */
 		if (mode->variant)
@@ -572,7 +571,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 		break;
 	case '^': /* literal [; unicode] */
 		if (mode->value)
-			self_insert(view, mode->value, mark, cursor, TRUE);
+			self_insert(view, mode->value, mark, cursor);
 		else if (IS_UNICODE(ch = macro_getch())) {
 			if (ch >= '@' && ch <= '_')
 				ch = CONTROL(ch);
@@ -580,7 +579,7 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 				ch = CONTROL(ch-'a'+'A');
 			else if (ch == '?')
 				ch = 0x7f;
-			self_insert(view, ch, mark, cursor, FALSE);
+			self_insert(view, ch, mark, cursor);
 		} else
 			ok = FALSE;
 		break;

@@ -23,7 +23,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-#ifdef __APPLE__
+#if defined __APPLE__ || defined BSD
 # include <util.h>
 #else
 # include <pty.h>
