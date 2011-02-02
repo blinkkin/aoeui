@@ -1,5 +1,5 @@
 ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui')define(`cmd',`$1')')dnl
-Welcome to AOEUI 1.6!  Here are some clues to help you use the editor.
+Welcome to AOEUI 1.5a!  Here are some clues to help you use the editor.
 
 - The up/down/left/right "arrow" keys, page up/down keys, and Delete key
   all work fine.  You can use AOEUI as a simple notepad if you like.
