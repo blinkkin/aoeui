@@ -7,6 +7,7 @@ SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 HDRS = all.h buffer.h child.h mode.h text.h locus.h utf8.h display.h \
 	window.h util.h clip.h macro.h mem.h die.h types.h
 RELS = $(SRCS:.c=.o)
+LIBS = -lutil
 INST_DIR = $(DESTDIR)/usr
 CFLAGS = -Wall -Wno-parentheses \
 -Wpointer-arith -Wcast-align -Wwrite-strings -Wstrict-prototypes \
@@ -22,7 +23,7 @@ STRINGIFY = sed 's/\\/\\\\/g;s/"/\\"/g;s/^/"/;s/$$/\\n"/'
 default: optimized display-test aoeui.1 asdfg.1
 
 aoeui: $(RELS)
-	$(CC) $(CFLAGS) -o $@ $(RELS)
+	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
 help.o: aoeui.help asdfg.help
 aoeui.help: help.m4
