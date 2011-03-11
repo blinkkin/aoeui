@@ -83,20 +83,20 @@ int main(void)
 	dprint(0, 0, WHITE, BLACK, "filled with white dots on black");
 	dpause();
 
-	display_erase(D, 1, 0, rows-1, columns);
+	display_erase(D, 1, 0, rows-1, columns, DEFAULT_BGRGBA);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
 	dprint(0, 0, WHITE, BLACK, "after display_erase()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
-	display_insert_lines(D, 2, 0, rows/2, rows-2, columns);
+	display_insert_lines(D, 2, 0, rows/2, rows-2, columns, BLACK);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
 	dprint(0, 0, WHITE, BLACK, "after display_insert_lines()");
 	dpause();
 
 	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
 	dfill(rows-1, 1, 0, columns, '*', WHITE, BLACK);
-	display_delete_lines(D, 2, 0, rows/2, rows-2, columns);
+	display_delete_lines(D, 2, 0, rows/2, rows-2, columns, BLACK);
 	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
 	dprint(0, 0, WHITE, BLACK, "after display_delete_lines()");
 	dpause();

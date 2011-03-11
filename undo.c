@@ -57,17 +57,15 @@ static Boolean_t in_view(struct view *view, position_t *offset, size_t *bytes)
 static void view_hint_deleting(struct view *view, position_t offset,
 			       size_t bytes)
 {
-	if (!view->window || !in_view(view, &offset, &bytes))
-		return;
-	window_hint_deleting(view->window, offset, bytes);
+	if (view->window && in_view(view, &offset, &bytes))
+		window_hint_deleting(view->window, offset, bytes);
 }
 
 static void view_hint_inserted(struct view *view, position_t offset,
 			       size_t bytes)
 {
-	if (!view->window || !in_view(view, &offset, &bytes))
-		return;
-	window_hint_inserted(view->window, offset, bytes);
+	if (view->window && in_view(view, &offset, &bytes))
+		window_hint_inserted(view->window, offset, bytes);
 }
 
 size_t text_delete(struct text *text, position_t offset, size_t bytes)

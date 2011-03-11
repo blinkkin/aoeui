@@ -30,14 +30,16 @@ Unicode_t display_getch(struct display *, Boolean_t block);
 
 /* hints */
 void display_erase(struct display *, unsigned row, unsigned column,
-		   unsigned rows, unsigned columns);
+		   unsigned rows, unsigned columns, rgba_t bgRGBA);
 void display_insert_spaces(struct display *, unsigned row, unsigned column,
 			   unsigned spaces, unsigned columns);
 void display_delete_chars(struct display *, unsigned row, unsigned column,
 			  unsigned chars, unsigned columns);
 void display_insert_lines(struct display *, unsigned row, unsigned column,
-			  unsigned lines, unsigned rows, unsigned columns);
+			  unsigned lines, unsigned rows, unsigned columns,
+			  rgba_t bgRGBA);
 void display_delete_lines(struct display *, unsigned row, unsigned column,
-			  unsigned lines, unsigned rows, unsigned columns);
+			  unsigned lines, unsigned rows, unsigned columns,
+			  rgba_t bgRGBA);
 
 #endif

@@ -1,3 +1,5 @@
+??-?? 1.6 release
+03-11 pmk: optimize screen erasure again
 02-01 pmk: fix raw hex character insertion (encode to UTF-8 unless -U)
 2011
 10-14 1.5 release
