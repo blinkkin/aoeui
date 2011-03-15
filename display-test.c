@@ -16,7 +16,7 @@ void die(const char *, ...);
 Boolean_t multiplexor(Boolean_t);
 
 static struct display *D;
-static unsigned rows, columns;
+static int rows, columns;
 
 static void dfill(int row, int rows, int col, int cols,
 		  int ch, rgba_t fgrgba, rgba_t bgrgba)
@@ -77,42 +77,55 @@ int main(void)
 	dprint(0, 0, BLACK, WHITE, "geometry: %d rows, %d columns", rows, columns);
 	dprint(1, 0, DEFAULT_FGRGBA, DEFAULT_BGRGBA, "default foreground and background");
 	dprint(2, 0, WHITE, BLACK, "white foreground on black background");
+	dprint(3, 0, BLACK, WHITE, "black foreground on white background");
+	dprint(4, 0, RED, BLUE, "red foreground on blue background");
+	dprint(5, 0, BLUE, RED, "blue foreground on red background");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "filled with white dots on black");
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dprint(0, 0, BLUE, RED, "filled with red dots on green");
 	dpause();
 
-	display_erase(D, 1, 0, rows-1, columns, DEFAULT_BGRGBA);
-	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "after display_erase()");
+	display_erase(D, 0, 0, rows, columns);
+	dprint(0, 0, BLUE, RED, "after ERASEALL display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
-	display_insert_lines(D, 2, 0, rows/2, rows-2, columns, BLACK);
-	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "after display_insert_lines()");
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	display_erase(D, rows/2, 0, rows - rows/2, columns);
+	dprint(0, 0, BLUE, RED, "after ERASETOEND display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
-	dfill(rows-1, 1, 0, columns, '*', WHITE, BLACK);
-	display_delete_lines(D, 2, 0, rows/2, rows-2, columns, BLACK);
-	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "after display_delete_lines()");
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	display_erase(D, 1, columns/2, 1, columns);
+	dprint(0, 0, BLUE, RED, "after ERASELINE display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	display_erase(D, 1, 0, 1, columns/2);
+	dprint(0, 0, BLUE, RED, "after ERASECOLS display_erase()");
+	dpause();
+
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	display_insert_lines(D, 2, 0, rows/2, rows-2, columns);
+	dprint(0, 0, BLUE, RED, "after display_insert_lines()");
+	dpause();
+
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(rows-1, 1, 0, columns, '*', RED, GREEN);
+	display_delete_lines(D, 2, 0, rows/2, rows-2, columns);
+	dprint(0, 0, BLUE, RED, "after display_delete_lines()");
+	dpause();
+
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
 	display_insert_spaces(D, 2, 0, columns/2, columns);
 	display_insert_spaces(D, 3, columns/2, columns - (columns/2), columns);
-	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "after display_insert_spaces()");
+	dprint(0, 0, BLUE, RED, "after display_insert_spaces()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', WHITE, BLACK);
+	dfill(0, rows, 0, columns, '.', RED, GREEN);
 	display_delete_chars(D, 2, 0, columns/2, columns);
 	display_delete_chars(D, 3, columns/2, columns - (columns/2), columns);
-	dfill(0, 1, 0, columns, ' ', WHITE, BLACK);
-	dprint(0, 0, WHITE, BLACK, "after display_delete_chars()");
+	dprint(0, 0, BLUE, RED, "after display_delete_chars()");
 	dpause();
 
 	display_end(D);

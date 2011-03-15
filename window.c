@@ -10,9 +10,9 @@
 struct window {
 	struct view *view;
 	locus_t start;
-	unsigned row, column;
-	unsigned rows, columns;
-	unsigned cursor_row, cursor_column;
+	int row, column;
+	int rows, columns;
+	int cursor_row, cursor_column;
 	rgba_t fgrgba, bgrgba;
 	unsigned last_dirties;
 	position_t last_cursor, last_mark;
@@ -24,7 +24,7 @@ struct window {
 static struct window *window_list;
 static struct window *active_window;
 static struct display *display;
-static unsigned display_rows, display_columns;
+static int display_rows, display_columns;
 
 static void title(struct window *window)
 {
@@ -171,8 +171,7 @@ struct window *window_raise(struct view *view)
 	if (!display)
 		display = display_init();
 	display_get_geometry(display, &display_rows, &display_columns);
-	display_erase(display, 0, 0, display_rows, display_columns,
-		      DEFAULT_BGRGBA);
+	display_erase(display, 0, 0, display_rows, display_columns);
 	while (window_list && window_list->view != view)
 		window_destroy(window_list);
 	while (window_list && window_list->next)
@@ -398,10 +397,9 @@ static Boolean_t lame_tab(struct view *view, position_t offset)
 	return TRUE;
 }
 
-static unsigned paintch(struct window *window, Unicode_t ch, unsigned row,
-			unsigned column,
-			position_t at, position_t cursor, position_t mark,
-			unsigned *brackets, rgba_t fgrgba)
+static int paintch(struct window *window, Unicode_t ch, int row, int column,
+		   position_t at, position_t cursor, position_t mark,
+		   unsigned *brackets, rgba_t fgrgba)
 {
 	rgba_t bgrgba = window->bgrgba;
 	unsigned tabstop = window->view->text->tabstop;
@@ -495,7 +493,7 @@ static void repainted(struct window *window, position_t cursor, position_t mark)
 static void paint(struct window *window)
 {
 	position_t at, next;
-	unsigned row, column;
+	int row, column;
 	struct view *view = window->view;
 	position_t cursor = locus_get(view, CURSOR);
 	position_t mark = locus_get(view, MARK);
@@ -529,8 +527,12 @@ static void paint(struct window *window)
 		}
 
 		display_erase(display, window->row + row,
-			      window->column + column, 1,
-			      window->columns - column, window->bgrgba);
+			      window->column + column,
+			      1, window->columns - column - 1);
+		while (column < window->columns)
+			display_put(display, window->row + row,
+				    window->column + column++,
+				    ' ', DEFAULT_FGRGBA, window->bgrgba);
 	}
 
 	repainted(window, cursor, mark);
@@ -576,8 +578,7 @@ void window_hint_deleting(struct window *window, position_t offset,
 		end_column = 0;
 	}
 	display_delete_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns,
-			     window->bgrgba);
+			     lines, window->rows, window->columns);
 }
 
 void window_hint_inserted(struct window *window, position_t offset,
@@ -620,8 +621,7 @@ void window_hint_inserted(struct window *window, position_t offset,
 		end_column = 0;
 	}
 	display_insert_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns,
-			     window->bgrgba);
+			     lines, window->rows, window->columns);
 }
 
 void window_next(struct view *view)
@@ -682,8 +682,7 @@ void window_page_up(struct view *view)
 				break;
 		display_insert_lines(display, window->row, window->column,
 				     window->rows - OVERLAP,
-				     window->rows, window->columns,
-				     window->bgrgba);
+				     window->rows, window->columns);
 	}
 	locus_set(view, CURSOR, start);
 }
@@ -700,7 +699,7 @@ void window_page_down(struct view *view)
 			break;
 	display_delete_lines(display, window->row, window->column,
 			     window->rows - OVERLAP,
-			     window->rows, window->columns, window->bgrgba);
+			     window->rows, window->columns);
 	new_start(view, start);
 	locus_set(view, CURSOR, start);
 }
