@@ -49,7 +49,6 @@
 
 #define BAD_RGBA 0x01010100
 
-
 struct cell {
 	Unicode_t unicode;
 	rgba_t fgrgba, bgrgba;
@@ -202,12 +201,14 @@ static rgba_t color_mean(rgba_t rgba1, rgba_t rgba2)
 static unsigned colormap(struct display *display, rgba_t rgba)
 {
 	static rgba_t basic[] = {
-		0, 0x7f000000, 0x007f0000, 0x7f7f0000,
-		0x00007f00, 0x7f007f00, 0x007f7f00, 0x7f7f7f00,
+		BLACK_RGBA, PALE_RGBA(RED_RGBA), PALE_RGBA(GREEN_RGBA),
+		PALE_RGBA(YELLOW_RGBA), PALE_RGBA(BLUE_RGBA),
+		PALE_RGBA(MAGENTA_RGBA), PALE_RGBA(CYAN_RGBA),
+		PALE_RGBA(WHITE_RGBA),
 	};
 	static rgba_t bright[] = {
-		0, 0xff000000, 0x00ff0000, 0xffff0000,
-		0x0000ff00, 0xff00ff00, 0x00ffff00, 0xffffff00,
+		BLACK_RGBA, RED_RGBA, GREEN_RGBA, YELLOW_RGBA,
+		BLUE_RGBA, MAGENTA_RGBA, CYAN_RGBA, WHITE_RGBA,
 	};
 
 	unsigned idx, best, bestdelta, delta;

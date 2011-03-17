@@ -1,11 +1,11 @@
-VERSION = 1.5c
+VERSION = 1.5d
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \
 	child.c bookmark.c help.c find.c tags.c tab.c fold.c macro.c \
 	keyword.c
 HDRS = all.h buffer.h child.h mode.h text.h locus.h utf8.h display.h \
-	window.h util.h clip.h macro.h mem.h die.h types.h
+	window.h util.h clip.h macro.h mem.h die.h types.h rgba.h
 RELS = $(SRCS:.c=.o)
 LIBS = -lutil
 INST_DIR = $(DESTDIR)/usr

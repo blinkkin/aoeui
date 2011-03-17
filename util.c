@@ -26,7 +26,8 @@ size_t view_get_selection(struct view *view, position_t *offset,
 	position_t mark = locus_get(view, MARK);
 
 	if (mark == UNSET)
-		mark = cursor + (cursor < view->bytes);
+		if ((mark = cursor) < view->bytes)
+			view_char(view, mark, &mark);
 	if (append)
 		*append = cursor >= mark;
 	if (mark <= cursor)

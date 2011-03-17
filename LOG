@@ -1,4 +1,5 @@
 ??-?? 1.6 release
+03-16 pmk: AOEUI_OVERLAP and comment highlighting
 03-15 pmk: fix display issues on non-Apple Xterms, Linux console
 03-11 pmk: optimize screen erasure again
 02-01 pmk: fix raw hex character insertion (encode to UTF-8 unless -U)

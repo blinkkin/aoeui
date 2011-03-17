@@ -636,6 +636,12 @@ moves to another window, closing the old one.
 .B ;
 is not a control character)
 creates a new anonymous text.
+.TP
+.B ^Space #
+(note that the number sign
+.B `
+is not a contral character)
+displays the current position's path name and line number.
 .SH MACROS
 .TP
 .B ^Space^cmd(O,B)
@@ -804,6 +810,9 @@ or
 .B ^cmd(L,P)
 and then
 .BR ^cmd(Z,N) .
+(Or set the environment variable
+.B AOEUI_OVERLAP
+to 50.)
 .TP
 .B *
 To insert characters with a repeat count, type the characters into a new
@@ -837,10 +846,23 @@ use the title bar of the terminal emulator as a status indicator
 that displays the path name of the active view and whether or not it has
 been saved since last modified.
 .TP
+.B TERM_PROGRAM
+will, if set to Apple_Terminal, make
+.B AOEUI
+work around Apple's Terminal emulator's behavioral differences from
+standard Xterm.
+.TP
 .B AOEUI_WRITABLE
 Default command used in the absence of the
 .B -w
 option.
+.TP
+.B AOEUI_OVERLAP
+The percentage of overlap when scrolling a window up with
+.B ^cmd(R,O)
+or down with
+.BR ^cmd(L,P) .
+The default is 1, for minimal overlap.
 .SH FILES
 .TP
 .IB file ~

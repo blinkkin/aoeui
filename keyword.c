@@ -28,6 +28,69 @@ static const char *Cpp_keyword_list[] = {
 	"wchar_t", "while"
 };
 
+static sposition_t C_comment_start(struct view *view, position_t offset)
+{
+	Unicode_t ch, nch = 0;
+	int newlines = 0;
+
+	while (IS_UNICODE((ch = view_char_prior(view, offset, &offset)))) {
+		if (ch == '\n') {
+			if (newlines++ == 100)
+				break;
+		} else if (ch == '/') {
+			if (nch == '*')
+				return offset;
+			if (!newlines && nch == '/')
+				return offset;
+		} else if (ch == '*' && nch == '/')
+			break;
+		nch = ch;
+	}
+	return -1;
+}
+
+static sposition_t C_comment_end(struct view *view, position_t offset)
+{
+	Unicode_t ch, lch = 0;
+	position_t next;
+
+	if (view_char(view, offset, &offset) != '/')
+		return -1;
+	ch = view_char(view, offset, &offset);
+	if (ch == '/')
+		return find_line_end(view, offset);
+	if (ch != '*')
+		return -1;
+	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
+		if (ch == '/' && lch == '*')
+			return offset;
+		lch = ch;
+		offset = next;
+	}
+	return -1;
+}
+
+static sposition_t C_string_end(struct view *view, position_t offset)
+{
+	Unicode_t ch, lch = 0, ch0 = view_char(view, offset, &offset);
+	position_t next;
+
+	if (ch0 != '\'' && ch0 != '"')
+		return -1;
+	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
+		if (ch == ch0 && lch != '\\')
+			return offset;
+		if (ch == '\n')
+			break;
+		if (ch == '\\' && lch == '\\')
+			lch = 0;
+		else
+			lch = ch;
+		offset = next;
+	}
+	return -1;
+}
+
 #define KW(lang) { sizeof lang##_keyword_list / sizeof *lang##_keyword_list, \
 		   lang##_keyword_list }
 
@@ -35,13 +98,16 @@ static struct file_keywords {
 	const char *suffix;
 	struct keywords keywords;
 	const char *brackets;
+	sposition_t (*comment_start)(struct view *, position_t);
+	sposition_t (*comment_end)(struct view *, position_t);
+	sposition_t (*string_end)(struct view *, position_t);
 } kwmap [] = {
-	{ ".c", KW(C), "()[]{}" },
-	{ ".C", KW(C), "()[]{}" },
-	{ ".cc", KW(Cpp), "()[]{}" },
-	{ ".cpp", KW(Cpp), "()[]{}" },
-	{ ".cxx", KW(Cpp), "()[]{}" },
-	{ ".h", KW(Cpp), "()[]{}" },
+	{ ".c", KW(C), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".C", KW(C), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".cc", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".cpp", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".cxx", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".h", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".html", { 0, NULL }, "<>" },
 	{ }
 };
@@ -57,8 +123,12 @@ void keyword_init(struct text *text)
 			    !strcmp(text->path + pathlen - suffixlen,
 				    kwmap[j].suffix)) {
 				text->brackets = kwmap[j].brackets;
-				if (!no_keywords)
+				if (!no_keywords) {
 					text->keywords = &kwmap[j].keywords;
+					text->comment_start = kwmap[j].comment_start;
+					text->comment_end = kwmap[j].comment_end;
+					text->string_end = kwmap[j].string_end;
+				}
 				return;
 			}
 		}

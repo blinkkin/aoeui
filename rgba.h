@@ -1,0 +1,36 @@
+/* Copyright 2011 Peter Klausler.  See COPYING for license. */
+#ifndef RGBA_H
+#define RGBA_H
+
+typedef unsigned rgba_t;
+
+#define DEFAULT_FGRGBA 0xff
+#define DEFAULT_BGRGBA (~0)
+#define PALE_RGBA(rgba) ((rgba) & 0x7f7f7f00)
+
+#define RED_RGBA	0xff000000
+#define GREEN_RGBA	0x00ff0000
+#define BLUE_RGBA	0x0000ff00
+#define YELLOW_RGBA	0xffff0000
+#define MAGENTA_RGBA	0xff00ff00
+#define CYAN_RGBA	0x00ffff00
+#define WHITE_RGBA	0xffffff00
+#define BLACK_RGBA	0x00000000
+
+#define SELECTION_FGRGBA	RED_RGBA
+#define RDONLY_FGRGBA		RED_RGBA
+#define DIRTY_FGRGBA		MAGENTA_RGBA
+#define EMPTYSEL_FGRGBA		CYAN_RGBA
+#define BRACKET_FGRGBA		BLUE_RGBA
+#define COMMENT_FGRGBA		MAGENTA_RGBA
+#define STRING_FGRGBA		RED_RGBA
+#define KEYWORD_FGRGBA		BLUE_RGBA
+#define FOLDED_FGRGBA		WHITE_RGBA
+
+#define FOLDED_BGRGBA		RED_RGBA
+#define SELECTION_BGRGBA	CYAN_RGBA
+#define LAMESPACE_BGRGBA	MAGENTA_RGBA
+#define BADCHAR_BGRGBA		MAGENTA_RGBA
+#define SEARCH_BGRGBA		YELLOW_RGBA
+
+#endif

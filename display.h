@@ -2,13 +2,11 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+#include "rgba.h"
+
 extern struct termios original_termios;
 
 struct display;
-
-typedef unsigned rgba_t;
-#define DEFAULT_FGRGBA 0xff
-#define DEFAULT_BGRGBA (~0)
 
 struct display *display_init(void);
 void display_reset(struct display *);

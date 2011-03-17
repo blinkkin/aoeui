@@ -6,11 +6,6 @@
 #include "types.h"
 #include "utf8.h"
 #include "display.h"
-#define RED 0xff000000
-#define GREEN 0x00ff0000
-#define BLUE 0x0000ff00
-#define WHITE 0xffffff00
-#define BLACK 0
 
 void die(const char *, ...);
 Boolean_t multiplexor(Boolean_t);
@@ -42,8 +37,8 @@ static void dprint(int row, int col, rgba_t fgrgba, rgba_t bgrgba,
 static void dpause(void)
 {
 	int ch;
-	dfill(rows-1, 1, 0, columns, ' ', RED, WHITE);
-	dprint(rows-1, 0, RED, WHITE, "Hit Q to quit, or any other key to continue...");
+	dfill(rows-1, 1, 0, columns, ' ', RED_RGBA, WHITE_RGBA);
+	dprint(rows-1, 0, RED_RGBA, WHITE_RGBA, "Hit Q to quit, or any other key to continue...");
 	while ((ch = display_getch(D, 1)) == ERROR_CHANGED)
 		display_get_geometry(D, &rows, &columns);
 	if (ch == 'q' || ch == 'Q') {
@@ -74,58 +69,58 @@ int main(void)
 	D = display_init();
 	display_get_geometry(D, &rows, &columns);
 	display_title(D, "display-test");
-	dprint(0, 0, BLACK, WHITE, "geometry: %d rows, %d columns", rows, columns);
+	dprint(0, 0, BLACK_RGBA, WHITE_RGBA, "geometry: %d rows, %d columns", rows, columns);
 	dprint(1, 0, DEFAULT_FGRGBA, DEFAULT_BGRGBA, "default foreground and background");
-	dprint(2, 0, WHITE, BLACK, "white foreground on black background");
-	dprint(3, 0, BLACK, WHITE, "black foreground on white background");
-	dprint(4, 0, RED, BLUE, "red foreground on blue background");
-	dprint(5, 0, BLUE, RED, "blue foreground on red background");
+	dprint(2, 0, WHITE_RGBA, BLACK_RGBA, "white foreground on black background");
+	dprint(3, 0, BLACK_RGBA, WHITE_RGBA, "black foreground on white background");
+	dprint(4, 0, RED_RGBA, BLUE_RGBA, "red foreground on blue background");
+	dprint(5, 0, BLUE_RGBA, RED_RGBA, "blue foreground on red background");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
-	dprint(0, 0, BLUE, RED, "filled with red dots on green");
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "filled with red dots on green");
 	dpause();
 
 	display_erase(D, 0, 0, rows, columns);
-	dprint(0, 0, BLUE, RED, "after ERASEALL display_erase()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after ERASEALL display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_erase(D, rows/2, 0, rows - rows/2, columns);
-	dprint(0, 0, BLUE, RED, "after ERASETOEND display_erase()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after ERASETOEND display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_erase(D, 1, columns/2, 1, columns);
-	dprint(0, 0, BLUE, RED, "after ERASELINE display_erase()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after ERASELINE display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_erase(D, 1, 0, 1, columns/2);
-	dprint(0, 0, BLUE, RED, "after ERASECOLS display_erase()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after ERASECOLS display_erase()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_insert_lines(D, 2, 0, rows/2, rows-2, columns);
-	dprint(0, 0, BLUE, RED, "after display_insert_lines()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after display_insert_lines()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
-	dfill(rows-1, 1, 0, columns, '*', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
+	dfill(rows-1, 1, 0, columns, '*', RED_RGBA, GREEN_RGBA);
 	display_delete_lines(D, 2, 0, rows/2, rows-2, columns);
-	dprint(0, 0, BLUE, RED, "after display_delete_lines()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after display_delete_lines()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_insert_spaces(D, 2, 0, columns/2, columns);
 	display_insert_spaces(D, 3, columns/2, columns - (columns/2), columns);
-	dprint(0, 0, BLUE, RED, "after display_insert_spaces()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after display_insert_spaces()");
 	dpause();
 
-	dfill(0, rows, 0, columns, '.', RED, GREEN);
+	dfill(0, rows, 0, columns, '.', RED_RGBA, GREEN_RGBA);
 	display_delete_chars(D, 2, 0, columns/2, columns);
 	display_delete_chars(D, 3, columns/2, columns - (columns/2), columns);
-	dprint(0, 0, BLUE, RED, "after display_delete_chars()");
+	dprint(0, 0, BLUE_RGBA, RED_RGBA, "after display_delete_chars()");
 	dpause();
 
 	display_end(D);

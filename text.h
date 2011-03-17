@@ -18,17 +18,20 @@ struct text {
 	time_t mtime;
 	unsigned tabstop;
 	struct keywords *keywords;
+	sposition_t (*comment_start)(struct view *, position_t);
+	sposition_t (*comment_end)(struct view *, position_t);
+	sposition_t (*string_end)(struct view *, position_t);
 	const char *brackets;
 	unsigned foldings;
 	unsigned flags;
-#define TEXT_SAVED_ORIGINAL 0x001
-#define TEXT_RDONLY 0x002
-#define TEXT_EDITOR 0x004
-#define TEXT_CREATED 0x008
-#define TEXT_SCRATCH 0x010
-#define TEXT_NO_TABS 0x020
-#define TEXT_NO_UTF8 0x040
-#define TEXT_CRNL 0x080
+#define TEXT_SAVED_ORIGINAL (1<<0)
+#define TEXT_RDONLY (1<<1)
+#define TEXT_EDITOR (1<<2)
+#define TEXT_CREATED (1<<3)
+#define TEXT_SCRATCH (1<<4)
+#define TEXT_NO_TABS (1<<5)
+#define TEXT_NO_UTF8 (1<<6)
+#define TEXT_CRNL (1<<7)
 };
 
 struct view {

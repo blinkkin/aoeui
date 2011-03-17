@@ -276,9 +276,9 @@ void windows_end(void)
 static unsigned count_rows(struct window *window, position_t start,
 			   position_t end)
 {
-	unsigned rows = 0, bytes;
+	unsigned rows = 0, bytes, max_rows = window->rows + 1;
 
-	for (rows = 0; start < end; rows++, start += bytes)
+	for (rows = 0; start < end && rows < max_rows; rows++, start += bytes)
 		if (!(bytes = find_row_bytes(window->view, start, 0,
 					     window->columns)))
 			break;
@@ -301,15 +301,21 @@ static position_t find_row_start(struct window *window, position_t position,
 
 static void new_start(struct view *view, position_t start)
 {
-	locus_set(view, view->window->start, start ? start-1 : UNSET);
+	if (start)
+		view_char_prior(view, start, &start);
+	else
+		start = UNSET;
+	locus_set(view, view->window->start, start);
 	view->window->last_dirties = ~0;
 }
 
 static position_t screen_start(struct view *view)
 {
 	position_t start = locus_get(view, view->window->start);
-	if (start++ == UNSET)
+	if (start == UNSET)
 		start = 0;
+	else
+		view_char(view, start, &start);
 	return start;
 }
 
@@ -321,13 +327,26 @@ static position_t focus(struct window *window)
 					      find_line_start(view, cursor));
 	position_t start = screen_start(view);
 	position_t end, at;
-	unsigned above, below;
+	unsigned above = 0, below;
 	size_t bytes;
 
 	start = find_row_start(window, start,
 			       find_line_start(view, start));
+
+	/* Scroll by single lines when cursor is just one row out of view. */
+	if (cursorrow < start &&
+	    start == cursorrow + find_row_bytes(view, cursorrow,
+						0, window->columns)) {
+		start = cursorrow;
+		goto done;
+	}
 	if (cursorrow >= start &&
-	    (above = count_rows(window, start, cursorrow)) < window->rows) {
+	    (above = count_rows(window, start, cursorrow)) == window->rows) {
+		start += find_row_bytes(view, start, 0, window->columns);
+		goto done;
+	}
+
+	if (cursorrow >= start && above < window->rows) {
 		for (below = 1, at = cursorrow;
 		     above + below < window->rows;
 		     below++, at += bytes)
@@ -412,18 +431,19 @@ static int paintch(struct window *window, Unicode_t ch, int row, int column,
 	    (at >= cursor && at < mark ||
 	     at >= mark && at < cursor)) {
 		bgrgba = window->view->mode->selection_bgrgba;
-		fgrgba = 0xff000000;
+		fgrgba = SELECTION_FGRGBA;
 	} else if (at == cursor) {
-		if (window->view->text->flags & TEXT_RDONLY)
-			fgrgba = 0xff000000;
-		else if (at == mark)
-			fgrgba = 0xff00ff00;
+		if (at == mark)
+			fgrgba = EMPTYSEL_FGRGBA;
+		else if (window->view->text->flags & TEXT_RDONLY)
+			fgrgba = RDONLY_FGRGBA;
 		else if (text_is_dirty(window->view->text))
-			fgrgba = 0x00ff0000;
+			fgrgba = DIRTY_FGRGBA;
 	}
 
 	if (ch == '\t') {
-		rgba_t bg = lame_tab(window->view, at+1) ? 0xff00ff00 : bgrgba;
+		rgba_t bg = lame_tab(window->view, at+1) ?
+				LAMESPACE_BGRGBA : bgrgba;
 		do {
 			display_put(display, window->row + row,
 				    window->column + column++, ' ', fgrgba, bg);
@@ -433,8 +453,8 @@ static int paintch(struct window *window, Unicode_t ch, int row, int column,
 	}
 
 	if (ch < ' ' || ch == 0x7f || IS_FOLDED(ch)) {
-		bgrgba = 0xff000000;
-		fgrgba = 0xffffff00;
+		fgrgba = FOLDED_FGRGBA;
+		bgrgba = FOLDED_BGRGBA;
 		display_put(display,
 			    window->row + row, window->column + column++,
 			    IS_FOLDED(ch) ? '<' : '^', fgrgba, bgrgba);
@@ -448,14 +468,14 @@ static int paintch(struct window *window, Unicode_t ch, int row, int column,
 		if (bgrgba == window->bgrgba &&
 		    lame_space(window->view, at + 1,
 			       tabstop-1 - column % tabstop))
-			bgrgba = 0xff00ff00;
+			bgrgba = LAMESPACE_BGRGBA;
 	} else if (!IS_UNICODE(ch))
-		ch = ' ', bgrgba = 0xff00ff00;
-	else if (brack)
+		ch = ' ', bgrgba = BADCHAR_BGRGBA;
+	else if (brackets && brack)
 		for (; *brack; brack += 2)
 			if (ch == brack[0] && (*brackets)++ & 1 ||
 			    ch == brack[1] && --*brackets & 1) {
-				fgrgba = 0x0000ff00;
+				fgrgba = BLUE_RGBA;
 				break;
 			}
 
@@ -470,8 +490,6 @@ static Boolean_t needs_repainting(struct window *window)
 	position_t cursor = locus_get(view, CURSOR);
 	position_t mark = locus_get(view, MARK);
 
-	if (mark == UNSET)
-		mark = cursor;
 	return	view->text->dirties != window->last_dirties ||
 		window->last_fgrgba != window->fgrgba ||
 		window->last_bgrgba != window->bgrgba ||
@@ -492,37 +510,69 @@ static void repainted(struct window *window, position_t cursor, position_t mark)
 
 static void paint(struct window *window)
 {
-	position_t at, next;
+	sposition_t at;
 	int row, column;
 	struct view *view = window->view;
 	position_t cursor = locus_get(view, CURSOR);
 	position_t mark = locus_get(view, MARK);
+	sposition_t comment_end = -1;
+	sposition_t string_end = -1;
 	unsigned brackets = 1;
+	Boolean_t keywords = !no_keywords &&
+			     window == active_window &&
+			     view->text->keywords;
 
 	title(window);
 
 	at = focus(window);
+	if (keywords && view->text->comment_start) {
+		sposition_t start = view->text->comment_start(view, at);
+		if (start >= 0)
+			comment_end = view->text->comment_end(view, start);
+	}
+
 	for (row = 0; row < window->rows; row++) {
 
 		position_t limit = at + find_row_bytes(view, at, 0,
 						       window->columns);
 		rgba_t fgrgba = window->fgrgba;
-		Boolean_t keywords = view->text->keywords &&
-				     (fgrgba == DEFAULT_FGRGBA ||
-				      !fgrgba);
 		Boolean_t look_for_keyword = keywords;
+		position_t next;
+		unsigned *brackets_ptr = &brackets;
 
 		for (column = 0; at < limit; at = next) {
+
 			Unicode_t ch = view_char(view, at, &next);
-			if (!is_idch(ch) && ch != '#') {
+
+			if (ch == '/' &&
+			    at > comment_end &&
+			    at > string_end &&
+			    keywords &&
+			    view->text->comment_end)
+				comment_end = view->text->comment_end(view, at);
+			if ((ch == '"' || ch == '\'') &&
+			    at > comment_end &&
+			    at > string_end &&
+			    keywords &&
+			    view->text->string_end)
+				string_end = view->text->string_end(view, at);
+
+			if (at <= comment_end) {
+				fgrgba = COMMENT_FGRGBA;
+				brackets_ptr = NULL;
+			} else if (at <= string_end) {
+				fgrgba = STRING_FGRGBA;
+				brackets_ptr = NULL;
+			} else if (!is_idch(ch) && ch != '#') {
 				fgrgba = window->fgrgba;
 				look_for_keyword = keywords;
 			} else if (look_for_keyword && is_keyword(view, at))
-				fgrgba = 0x0000ff00;
+				fgrgba = KEYWORD_FGRGBA;
 			else
 				look_for_keyword = FALSE;
+
 			column = paintch(window, ch, row, column, at,
-					 cursor, mark, &brackets,
+					 cursor, mark, brackets_ptr,
 					 fgrgba);
 		}
 
@@ -658,7 +708,30 @@ struct window *window_recenter(struct view *view)
 	return window;
 }
 
-#define OVERLAP 1
+static int page_overlap(struct window *window)
+{
+	static int overlap_percent;
+	int o;
+
+	if (!overlap_percent) {
+		const char *p = getenv("AOEUI_OVERLAP");
+		overlap_percent = 1;
+		if (p) {
+			overlap_percent = atoi(p);
+			if (overlap_percent < 0)
+				overlap_percent = 1;
+			else if (overlap_percent > 100)
+				overlap_percent = 100;
+		}
+	}
+	o = overlap_percent * window->rows / 100;
+	if (o >= window->rows)
+		o = window->rows - 1;
+	if (o < 1)
+		o = 1;
+	return o;
+}
+
 void window_page_up(struct view *view)
 {
 	struct window *window = view->window;
@@ -668,11 +741,12 @@ void window_page_up(struct view *view)
 	size_t bytes;
 
 	if (start) {
+		int overlap = page_overlap(window);
 		for (row = 0;
-		     (end = start) && row + OVERLAP < window->rows;
+		     (end = start) && row + overlap < window->rows;
 		     row += count_rows(window, start, end))
 			start = find_line_start(view, start-1);
-		while (row-- + OVERLAP > window->rows)
+		while (row-- + overlap > window->rows)
 			start += find_row_bytes(view, start,
 						0, window->columns);
 		new_start(view, start);
@@ -681,7 +755,7 @@ void window_page_up(struct view *view)
 						     window->columns)))
 				break;
 		display_insert_lines(display, window->row, window->column,
-				     window->rows - OVERLAP,
+				     window->rows - overlap,
 				     window->rows, window->columns);
 	}
 	locus_set(view, CURSOR, start);
@@ -693,12 +767,13 @@ void window_page_down(struct view *view)
 	position_t start = screen_start(view);
 	int row;
 	size_t bytes;
+	int overlap = page_overlap(window);
 
-	for (row = 0; row + OVERLAP < window->rows; row++, start += bytes)
+	for (row = 0; row + overlap < window->rows; row++, start += bytes)
 		if (!(bytes = find_row_bytes(view, start, 0, window->columns)))
 			break;
 	display_delete_lines(display, window->row, window->column,
-			     window->rows - OVERLAP,
+			     window->rows - overlap,
 			     window->rows, window->columns);
 	new_start(view, start);
 	locus_set(view, CURSOR, start);
@@ -718,19 +793,18 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-		{ 0x00000000, 0xffffff00 },
-		{ 0x0000ff00, 0xffff0000 },
-		{ 0x0000ff00, 0x7f7f0000 },
-		{ 0x00ff0000, 0xff00ff00 },
-		{ 0x00ff0000, 0x7f007f00 },
-		{ 0xff000000, 0x007f7f00 },
-		{ 0xff000000, 0x00ffff00 },
+		{ BLACK_RGBA, WHITE_RGBA },
+		{ BLUE_RGBA, YELLOW_RGBA },
+		{ BLUE_RGBA, PALE_RGBA(YELLOW_RGBA) },
+		{ GREEN_RGBA, MAGENTA_RGBA },
+		{ GREEN_RGBA, PALE_RGBA(MAGENTA_RGBA) },
+		{ RED_RGBA, PALE_RGBA(CYAN_RGBA) },
+		{ RED_RGBA, CYAN_RGBA },
 		{ }
 	};
 
 	for (window = window_list; window; window = window->next)
 		window->bgrgba = 0;
-	j = active_window != window_list || active_window->next;
 	active_window->fgrgba = DEFAULT_FGRGBA;
 	active_window->bgrgba = DEFAULT_BGRGBA;
 	for (window = window_list; window; window = window->next) {

@@ -287,7 +287,7 @@ void mode_search(struct view *view, Boolean_t regex)
 	struct mode_search *mode = allocate0(sizeof *mode);
 	mode->previous = view->mode;
 	mode->command = command_handler;
-	mode->selection_bgrgba = 0xffff0000;
+	mode->selection_bgrgba = SEARCH_BGRGBA;
 	mode->start = locus_get(view, CURSOR);
 	mode->mark = locus_get(view, MARK);
 	if (regex)

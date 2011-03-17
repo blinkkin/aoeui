@@ -322,6 +322,18 @@ position_t find_line_number(struct view *view, unsigned line)
 	return offset;
 }
 
+unsigned current_line_number(struct view *view, position_t offset)
+{
+	int line = 1;
+	position_t at;
+
+	for (at = 0; at < offset; at = find_line_end(view, at) + 1)
+		line++;
+	if (line && at == view->bytes)
+		line--;
+	return line;
+}
+
 position_t find_row_bytes(struct view *view, position_t offset0,
 			  unsigned column, unsigned columns)
 {

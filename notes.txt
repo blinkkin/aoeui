@@ -76,9 +76,10 @@ Non-control characters -- commands must be [variants]
   '	[go to tag]
   ,	[fold view on indentation] / [fold selection]
   .	[unfold; unfold entire view] / [unfold selection once]
+  #	[get current position]
   0-9	decimal argument
   x 0-9 a-f A-F		hexadecimal argument
-  unused: ` ~ ! @ # $ % & ( ) { } " <  >  | :
+  unused: ` ~ ! @ $ % & ( ) { } " <  >  | :
 
 Missing features:
 	multiple column characters (using wcwidth)
@@ -143,3 +144,47 @@ Compose key sequences for Latin-1:
 (€) C=
 
 0x203b ※  0x2230 ∰  0x237e ⍾  0x2615 ☕  0x2620 ☠  0x2767 ❧
+
+
+	---- no mark ----		------ mark ------
+	raw	^Space	arg		raw	^Space	arg
+ Q	suspend	quit
+ U Z	undo	redo
+ K W	save	save 1
+ \	AVAIL	abort
+ X E	(get path)			visit	(set path)
+
+ H G	<-ch	up	<-chs
+ T H	ch->	down	chs->
+ N K	<-wd	<-sent	<-wds
+ S L	wd->	sent->	wds->
+ G T	<-ln	<-pp	<-lns
+ C Y	ln->	pp->	lns->
+ R O	<-pg	home
+ L P	pg->	end
+ ]	[]
+ Z N	center	reset	->line#
+ _	search	regexp
+
+ J	(auto-align new line)
+ Tab	(tab complete)			Tab
+ ^	(literal/ctl)	unicode
+
+ V U	mark	selline	unmark		unmark	swap	unmark
+ F C	AVAIL				copy	append	repl
+ D X	cutch	selwhite		cut	append	repl
+ B V	paste				exch		register
+
+ W F	view	close
+ Y D	split	vsplit			narrow
+ P S	window	close	->window#
+
+ O B	macro	macstart macros
+ E R	shell	endchildren		pipe
+ =		bookmk	bookmk#
+ -		gotomk	gotomk#
+ ;		(new anon text)
+ '		(go to tag)
+ ,		(fold view)			(fold selection)
+ .		unfold	unfoldall		(unfold selection)
+ `		where

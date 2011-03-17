@@ -25,6 +25,7 @@ position_t find_sentence_start(struct view *, position_t);
 position_t find_sentence_end(struct view *, position_t);
 sposition_t find_corresponding_bracket(struct view *, position_t);
 position_t find_line_number(struct view *, unsigned line);
+unsigned current_line_number(struct view *, position_t);
 position_t find_row_bytes(struct view *, position_t,
 			unsigned column, unsigned columns);
 unsigned find_column(unsigned *row, struct view *, position_t linestart,

@@ -184,6 +184,8 @@ static void command_handler(struct view *view, Unicode_t ch0)
 	struct view *new_view;
 	char *select;
 
+	status_hide();
+
 	/* Backspace always deletes the character before cursor. */
 	if (ch == 0x7f /*BCK*/) {
 delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
@@ -309,6 +311,10 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 					else
 						locus_set(view, MARK, mark);
 				}
+				goto done;
+			case '#':
+				status("%s line %d", view->text->path,
+				       current_line_number(view, cursor));
 				goto done;
 			}
 		}
@@ -598,6 +604,6 @@ struct mode *mode_default(void)
 {
 	struct mode_default *dft = allocate0(sizeof *dft);
 	dft->command = command_handler;
-	dft->selection_bgrgba = 0x00ffff00; /*cyan*/
+	dft->selection_bgrgba = SELECTION_BGRGBA;
 	return (struct mode *) dft;
 }
