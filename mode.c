@@ -316,6 +316,9 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 				status("%s line %d", view->text->path,
 				       current_line_number(view, cursor));
 				goto done;
+			case '?':
+				window_after(view, view_help(), -1 /*auto*/);
+				goto done;
 			}
 		}
 
@@ -462,13 +465,14 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			window_destroy(view->window);
 		break;
 	case 'Q': /* suspend [quit] */
-		windows_end();
 		if (mode->variant) {
+			windows_end();
 			texts_preserve();
 			while (text_list)
 				view_close(text_list->views);
 			exit(EXIT_SUCCESS);
 		}
+		windows_end_display();
 		fprintf(stderr, "The editor is suspended.  "
 			"Type 'fg' to resume.\n");
 		kill(getpid(), SIGSTOP);

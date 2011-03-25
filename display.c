@@ -700,23 +700,24 @@ void display_end(struct display *display)
 	RELEASE(display);
 }
 
-void display_title(struct display *display, const char *title)
+Boolean_t display_title(struct display *display, const char *title)
 {
-	if (display->is_xterm) {
-		if (title && !*title)
-			title = NULL;
-		if (!title && !display->title)
-			return;
-		if (!title)
-			RELEASE(display->title);
-		else if (display->title && !strcmp(title, display->title))
-			return;
-		if (title)
-			display->title = strdup(title);
-		else
-			title = "";
-		outf(display, XTERM_TITLE, title ? title : "");
-	}
+	if (!display->is_xterm)
+		return FALSE;
+	if (title && !*title)
+		title = NULL;
+	if (!title && !display->title)
+		return TRUE;
+	if (!title)
+		RELEASE(display->title);
+	else if (display->title && !strcmp(title, display->title))
+		return TRUE;
+	if (title)
+		display->title = strdup(title);
+	else
+		title = "";
+	outf(display, XTERM_TITLE, title ? title : "");
+	return TRUE;
 }
 
 void display_cursor(struct display *display, int row, int column)

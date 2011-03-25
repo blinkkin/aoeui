@@ -1,5 +1,5 @@
 ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui')define(`cmd',`$1')')dnl
-Welcome to AOEUI 1.5d!  Here are some clues to help you use the editor.
+Welcome to AOEUI 1.5e!  Here are some clues to help you use the editor.
 
 - The up/down/left/right "arrow" keys, page up/down keys, and Delete key
   all work fine.  You can use AOEUI as a simple notepad if you like.
@@ -12,6 +12,7 @@ Welcome to AOEUI 1.5d!  Here are some clues to help you use the editor.
 
 Command summary:
 
+^Sp?   display this help again
    ^Q  pause the editor and return to the shell; return with "fg"
 ^Sp^Q  save all files and quit
 ^Sp^\  quit immediately without saving

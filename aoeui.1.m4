@@ -642,6 +642,13 @@ creates a new anonymous text.
 .B `
 is not a contral character)
 displays the current position's path name and line number.
+.TP
+.B ^Space ?
+(note that the question mark
+.B ?
+is not a control character)
+displays a new window with the built-in help summary of
+commands.
 .SH MACROS
 .TP
 .B ^Space^cmd(O,B)
@@ -845,6 +852,7 @@ cause
 use the title bar of the terminal emulator as a status indicator
 that displays the path name of the active view and whether or not it has
 been saved since last modified.
+Unless the file is large, it also displays the line number of the cursor.
 .TP
 .B TERM_PROGRAM
 will, if set to Apple_Terminal, make

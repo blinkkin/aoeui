@@ -22,5 +22,6 @@ Unicode_t window_getch(void);
 struct view *window_current_view(void);
 unsigned window_columns(struct window *);
 void windows_end(void);
+void windows_end_display(void);
 
 #endif

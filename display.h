@@ -12,7 +12,7 @@ struct display *display_init(void);
 void display_reset(struct display *);
 void display_end(struct display *);
 void display_get_geometry(struct display *, int *rows, int *columns);
-void display_title(struct display *, const char *);
+Boolean_t display_title(struct display *, const char *);
 void display_cursor(struct display *, int row, int column);
 void display_put(struct display *, int row, int column,
 		 Unicode_t unicode, rgba_t fgRGBA, rgba_t bgRGBA);

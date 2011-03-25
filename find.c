@@ -312,24 +312,45 @@ sposition_t find_corresponding_bracket(struct view *view, position_t offset)
 
 position_t find_line_number(struct view *view, unsigned line)
 {
-	position_t offset;
+	position_t offset, next, next2;
+	sposition_t fold_start = -1, fold_end = -1;
 
-	for (offset = 0;
-	     offset < view->bytes;
-	     offset = find_line_end(view, offset) + 1)
-		if (!--line)
+	if (line-- <= 1)
+		return 0;
+	for (offset = 0; offset < view->bytes; offset = next) {
+		Unicode_t ch = view_unicode(view, offset, &next);
+		if (offset >= fold_end)
+			fold_end = -1;
+		if (ch == '\n' && !--line)
 			break;
-	return offset;
+		if (fold_end < 0 && IS_FOLDED(ch)) {
+			size_t fbytes = FOLDED_BYTES(ch);
+			if (view_unicode(view, next + fbytes, &next2) ==
+			    FOLD_END + fbytes) {
+				fold_start = offset;
+				fold_end = next2;
+			}
+		}
+	}
+	if (fold_end >= 0)
+		return fold_start;
+	return offset + 1;
 }
 
 unsigned current_line_number(struct view *view, position_t offset)
 {
 	int line = 1;
 	position_t at;
+	unsigned last = '\n';
 
-	for (at = 0; at < offset; at = find_line_end(view, at) + 1)
-		line++;
-	if (line && at == view->bytes)
+	if (offset >= view->bytes)
+		offset = view->bytes;
+	for (at = 0; at < offset; at++) {
+		last = view_byte(view, at);
+		if (last == '\n')
+			line++;
+	}
+	if (at == view->bytes && last == '\n')
 		line--;
 	return line;
 }

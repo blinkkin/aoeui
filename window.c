@@ -15,6 +15,7 @@ struct window {
 	int cursor_row, cursor_column;
 	rgba_t fgrgba, bgrgba;
 	unsigned last_dirties;
+	Boolean_t repaint;
 	position_t last_cursor, last_mark;
 	rgba_t last_fgrgba, last_bgrgba;
 	struct mode *last_mode;
@@ -25,23 +26,36 @@ static struct window *window_list;
 static struct window *active_window;
 static struct display *display;
 static int display_rows, display_columns;
+static Boolean_t titles = TRUE;
 
 static void title(struct window *window)
 {
 	char buff[128];
+	struct view *view;
+	position_t cursor;
+
+	if (!titles)
+		return;
 	if (window != active_window)
 		return;
 	if (!window) {
-		display_title(display, NULL);
+		titles = display_title(display, NULL);
 		return;
 	}
-	snprintf(buff, sizeof buff, "%s%s",
-		 window->view->name,
-		 window->view->text->flags & TEXT_CREATED ? "(new)" :
-		 window->view->text->flags & TEXT_RDONLY ? "(read-only)" :
-		 window->view->text->preserved !=
-		    window->view->text->dirties ? "(unsaved)" : "");
-	display_title(display, buff);
+	view = window->view;
+	snprintf(buff, sizeof buff, "%s%s", view->name,
+		 view->text->flags & TEXT_CREATED ? " (new)" :
+		 view->text->flags & TEXT_RDONLY ? " (read-only)" :
+		 view->text->preserved !=
+		    view->text->dirties ? " (unsaved)" : "");
+	cursor = locus_get(view, CURSOR);
+	if (cursor < 65536) {
+		int line = current_line_number(view, cursor);
+		int len = strlen(buff);
+		snprintf(buff + len, sizeof buff - len - 1,
+			 " [%d]", line);
+	}
+	titles = display_title(display, buff);
 }
 
 static struct window *activate(struct window *window)
@@ -263,14 +277,22 @@ struct view *window_current_view(void)
 	return active_window->view;
 }
 
-void windows_end(void)
+void windows_end_display(void)
 {
-	while (window_list)
-		window_destroy(window_list);
+	struct window *window;
 	if (display) {
 		display_end(display);
 		display = NULL;
 	}
+	for (window = window_list; window; window = window->next)
+		window->repaint = TRUE;
+}
+
+void windows_end(void)
+{
+	while (window_list)
+		window_destroy(window_list);
+	windows_end_display();
 }
 
 static unsigned count_rows(struct window *window, position_t start,
@@ -490,7 +512,8 @@ static Boolean_t needs_repainting(struct window *window)
 	position_t cursor = locus_get(view, CURSOR);
 	position_t mark = locus_get(view, MARK);
 
-	return	view->text->dirties != window->last_dirties ||
+	return	window->repaint ||
+		view->text->dirties != window->last_dirties ||
 		window->last_fgrgba != window->fgrgba ||
 		window->last_bgrgba != window->bgrgba ||
 		window->last_cursor != cursor ||
@@ -500,6 +523,7 @@ static Boolean_t needs_repainting(struct window *window)
 
 static void repainted(struct window *window, position_t cursor, position_t mark)
 {
+	window->repaint = FALSE;
 	window->last_dirties = window->view->text->dirties;
 	window->last_fgrgba = window->fgrgba;
 	window->last_bgrgba = window->bgrgba;
@@ -544,7 +568,7 @@ static void paint(struct window *window)
 
 			Unicode_t ch = view_char(view, at, &next);
 
-			if (ch == '/' &&
+			if ((ch == '/' || ch == '-') &&
 			    at > comment_end &&
 			    at > string_end &&
 			    keywords &&
@@ -693,10 +717,16 @@ struct window *window_recenter(struct view *view)
 	struct window *window = view->window;
 	position_t cursor = locus_get(view, CURSOR);
 	position_t start, end;
-	int row;
+	int row, rows, columns;
 
-	if (!window)
+	if (!display)
+		display = display_init();
+	display_get_geometry(display, &rows, &columns);
+	if (rows != display_rows ||
+	    columns != display_columns ||
+	    !(window = view->window))
 		window = window_raise(view);
+
 	start = find_row_start(window, cursor, find_line_start(view, cursor));
 	for (row = 0;
 	     (end = start) && row < window->rows >> 1;

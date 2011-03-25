@@ -28,6 +28,13 @@ static const char *Cpp_keyword_list[] = {
 	"wchar_t", "while"
 };
 
+static const char *Haskell_keyword_list[] = {
+	"case", "class", "data", "default", "deriving", "do", "else",
+	"foreign", "if", "import", "in", "infix", "infixl", "infixr",
+	"instance", "let", "module", "newtype", "of", "then", "type",
+	"where", "_"
+};
+
 static sposition_t C_comment_start(struct view *view, position_t offset)
 {
 	Unicode_t ch, nch = 0;
@@ -62,7 +69,50 @@ static sposition_t C_comment_end(struct view *view, position_t offset)
 	if (ch != '*')
 		return -1;
 	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
-		if (ch == '/' && lch == '*')
+		if (lch == '*' && ch == '/')
+			return offset;
+		lch = ch;
+		offset = next;
+	}
+	return -1;
+}
+
+static sposition_t Haskell_comment_start(struct view *view, position_t offset)
+{
+	Unicode_t ch, nch = 0;
+	int newlines = 0;
+
+	while (IS_UNICODE((ch = view_char_prior(view, offset, &offset)))) {
+		if (ch == '\n') {
+			if (newlines++ == 100)
+				break;
+		} else if (ch == '{' && nch == '-')
+			return offset;
+		else if (ch == '-') {
+			if (!newlines && nch == '-')
+				return offset;
+			if (nch == '}')
+				break;
+		}
+		nch = ch;
+	}
+	return -1;
+}
+
+static sposition_t Haskell_comment_end(struct view *view, position_t offset)
+{
+	Unicode_t ch, lch = 0;
+	position_t next;
+
+	ch = view_char(view, offset, &offset);
+	if (ch != '-' && ch != '{')
+		return -1;
+	if (view_char(view, offset, &offset) != '-')
+		return -1;
+	if (ch == '-')
+		return find_line_end(view, offset);
+	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
+		if (lch == '-' && ch == '}')
 			return offset;
 		lch = ch;
 		offset = next;
@@ -108,6 +158,7 @@ static struct file_keywords {
 	{ ".cpp", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".cxx", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".h", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".hs", KW(Haskell), "()[]{}", Haskell_comment_start, Haskell_comment_end, C_string_end },
 	{ ".html", { 0, NULL }, "<>" },
 	{ }
 };

@@ -10,8 +10,8 @@ static const char *help[2] = {
 struct view *view_help(void)
 {
 	struct view *view = text_create("* Help *", TEXT_EDITOR);
-	view->text->flags &= ~TEXT_RDONLY;
 	view_insert(view, help[is_asdfg], 0, strlen(help[is_asdfg]));
 	locus_set(view, CURSOR, 0);
+	view->text->flags |= TEXT_RDONLY;
 	return view;
 }
