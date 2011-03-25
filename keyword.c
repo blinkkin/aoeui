@@ -77,6 +77,27 @@ static sposition_t C_comment_end(struct view *view, position_t offset)
 	return -1;
 }
 
+static sposition_t C_string_end(struct view *view, position_t offset)
+{
+	Unicode_t ch, lch = 0, ch0 = view_char(view, offset, &offset);
+	position_t next;
+
+	if (ch0 != '\'' && ch0 != '"')
+		return -1;
+	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
+		if (ch == ch0 && lch != '\\')
+			return offset;
+		if (ch == '\n')
+			break;
+		if (ch == '\\' && lch == '\\')
+			lch = 0;
+		else
+			lch = ch;
+		offset = next;
+	}
+	return -1;
+}
+
 static sposition_t Haskell_comment_start(struct view *view, position_t offset)
 {
 	Unicode_t ch, nch = 0;
@@ -120,14 +141,18 @@ static sposition_t Haskell_comment_end(struct view *view, position_t offset)
 	return -1;
 }
 
-static sposition_t C_string_end(struct view *view, position_t offset)
+static sposition_t Haskell_string_end(struct view *view, position_t offset)
 {
-	Unicode_t ch, lch = 0, ch0 = view_char(view, offset, &offset);
 	position_t next;
+	Unicode_t ch, lch = 0, ch0 = view_char(view, offset, &next);
 
-	if (ch0 != '\'' && ch0 != '"')
+	if (ch0 == '\'') {
+		ch = view_char_prior(view, offset, NULL);
+		if (isalnum(ch) || ch == '_' || ch == '\'')
+			return -1;
+	} else if (ch0 != '"')
 		return -1;
-	while (IS_UNICODE((ch = view_char(view, offset, &next)))) {
+	while (IS_UNICODE((ch = view_char(view, offset = next, &next)))) {
 		if (ch == ch0 && lch != '\\')
 			return offset;
 		if (ch == '\n')
@@ -136,7 +161,6 @@ static sposition_t C_string_end(struct view *view, position_t offset)
 			lch = 0;
 		else
 			lch = ch;
-		offset = next;
 	}
 	return -1;
 }
@@ -158,7 +182,8 @@ static struct file_keywords {
 	{ ".cpp", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".cxx", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".h", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
-	{ ".hs", KW(Haskell), "()[]{}", Haskell_comment_start, Haskell_comment_end, C_string_end },
+	{ ".hs", KW(Haskell), "()[]{}", Haskell_comment_start, Haskell_comment_end,
+					Haskell_string_end },
 	{ ".html", { 0, NULL }, "<>" },
 	{ }
 };

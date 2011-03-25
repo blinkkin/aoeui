@@ -568,7 +568,7 @@ static void paint(struct window *window)
 
 			Unicode_t ch = view_char(view, at, &next);
 
-			if ((ch == '/' || ch == '-') &&
+			if ((ch == '/' || ch == '-' || ch == '{') &&
 			    at > comment_end &&
 			    at > string_end &&
 			    keywords &&
@@ -598,6 +598,12 @@ static void paint(struct window *window)
 			column = paintch(window, ch, row, column, at,
 					 cursor, mark, brackets_ptr,
 					 fgrgba);
+
+			if (at == comment_end || at == string_end) {
+				fgrgba = window->fgrgba;
+				brackets_ptr = &brackets;
+				look_for_keyword = keywords;
+			}
 		}
 
 		display_erase(display, window->row + row,
