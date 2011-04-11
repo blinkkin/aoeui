@@ -658,7 +658,7 @@ void window_hint_deleting(struct window *window, position_t offset,
 		end_column = 0;
 	}
 	display_delete_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns);
+			     lines, window->rows - row, window->columns);
 }
 
 void window_hint_inserted(struct window *window, position_t offset,
@@ -701,7 +701,7 @@ void window_hint_inserted(struct window *window, position_t offset,
 		end_column = 0;
 	}
 	display_insert_lines(display, window->row + row, window->column,
-			     lines, window->rows, window->columns);
+			     lines, window->rows - row, window->columns);
 }
 
 void window_next(struct view *view)

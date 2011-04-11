@@ -29,10 +29,10 @@ static const char *Cpp_keyword_list[] = {
 };
 
 static const char *Haskell_keyword_list[] = {
-	"case", "class", "data", "default", "deriving", "do", "else",
+	"_", "case", "class", "data", "default", "deriving", "do", "else",
 	"foreign", "if", "import", "in", "infix", "infixl", "infixr",
 	"instance", "let", "module", "newtype", "of", "then", "type",
-	"where", "_"
+	"where"
 };
 
 static sposition_t C_comment_start(struct view *view, position_t offset)
@@ -222,7 +222,7 @@ Boolean_t is_keyword(struct view *view, position_t offset)
 
 	if (!view->text->keywords)
 		return FALSE;
-	bytes = find_id_end(view, offset + 1) - offset;
+	bytes = find_id_end(view, offset) - offset;
 	if (view_raw(view, &word, offset, bytes) < bytes)
 		return FALSE;
 	for (n = view->text->keywords->count,

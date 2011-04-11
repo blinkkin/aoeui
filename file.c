@@ -401,7 +401,7 @@ void text_preserve(struct text *text)
 	    text->fd < 0 ||
 	    !text->buffer)
 		return;
-	text->preserved = text->dirties;
+	text->preserved = ++text->dirties;
 	if (read_only)
 		return;
 	text_unfold_all(text);
@@ -421,7 +421,7 @@ void text_preserve(struct text *text)
 		message("%s: modified since read into the "
 			"editor, changes may have been overwritten.",
 			path_format(text->path));
-	text->preserved = text->dirties;
+	text->preserved = ++text->dirties;
 	if (text->flags & TEXT_RDONLY && text->path && make_writable) {
 		char cmd[128];
 		int newfd;
