@@ -1,4 +1,4 @@
-VERSION = 1.5f
+VERSION = 1.5g
 PACKAGE = aoeui-$(VERSION)
 SRCS = main.c mem.c die.c display.c text.c file.c locus.c buffer.c \
 	undo.c utf8.c window.c util.c clip.c mode.c search.c \

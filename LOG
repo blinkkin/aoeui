@@ -1,4 +1,5 @@
 ??-?? 1.6 release
+05-04 pmk: fix window destruction display error
 04-11 pmk: fix line insert/delete bug
 03-25 pmk: Haskell support
 03-17 pmk: feature requests, line numbers

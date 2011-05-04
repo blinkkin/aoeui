@@ -17,7 +17,6 @@ struct window {
 	unsigned last_dirties;
 	Boolean_t repaint;
 	position_t last_cursor, last_mark;
-	rgba_t last_fgrgba, last_bgrgba;
 	struct mode *last_mode;
 	struct window *next;
 };
@@ -60,8 +59,11 @@ static void title(struct window *window)
 
 static struct window *activate(struct window *window)
 {
+	if (active_window)
+		active_window->repaint = TRUE;
 	active_window = window;
 	title(window);
+	window->repaint = TRUE;
 	return window;
 }
 
@@ -127,11 +129,13 @@ static Boolean_t window_expand_next(struct window *window)
 	if (stacked(window, next)) {
 		next->row = window->row;
 		next->rows += window->rows;
+		next->repaint = TRUE;
 		return TRUE;
 	}
 	if (beside(window, next)) {
 		next->column = window->column;
 		next->columns += window->columns;
+		next->repaint = TRUE;
 		return TRUE;
 	}
 	return FALSE;
@@ -152,13 +156,15 @@ void window_destroy(struct window *window)
 		struct window *next = previous->next = window->next;
 		if (stacked(previous, window) &&
 		    (!stacked(window, next) ||
-		     previous->rows <= next->rows))
+		     previous->rows <= next->rows)) {
 			previous->rows += window->rows;
-		else if (beside(previous, window) &&
+			previous->repaint = TRUE;
+		} else if (beside(previous, window) &&
 			 (!beside(window, next) ||
-			  previous->columns <= next->columns))
+			  previous->columns <= next->columns)) {
 			previous->columns += window->columns;
-		else if (!window_expand_next(window))
+			previous->repaint = TRUE;
+		} else if (!window_expand_next(window))
 			window_raise(previous->view);
 	} else if ((window_list = window->next) &&
 		   !window_expand_next(window))
@@ -169,13 +175,15 @@ void window_destroy(struct window *window)
 		window->view->window = NULL;
 	}
 	if (window == active_window) {
+		active_window = NULL;
 		wp = window_list;
 		if (previous) {
 			wp = previous;
 			if (wp->next)
 				wp = wp->next;
 		}
-		activate(wp);
+		if (wp)
+			activate(wp);
 	}
 	RELEASE(window);
 }
@@ -219,17 +227,14 @@ struct window *window_after(struct view *before, struct view *view,
 		window->row = old->row;
 		window->rows = old->rows;
 		window->column = old->column +
-			(old->columns -=
-			 (window->columns =
-			  old->columns >> 1));
+			(old->columns -= (window->columns = old->columns >> 1));
 	} else {
 		window->column = old->column;
 		window->columns = old->columns;
 		window->row = old->row +
-			(old->rows -=
-			 (window->rows =
-			  old->rows >> 1));
+			(old->rows -= (window->rows = old->rows >> 1));
 	}
+	old->repaint = TRUE;
 	return activate(window);
 }
 
@@ -514,8 +519,6 @@ static Boolean_t needs_repainting(struct window *window)
 
 	return	window->repaint ||
 		view->text->dirties != window->last_dirties ||
-		window->last_fgrgba != window->fgrgba ||
-		window->last_bgrgba != window->bgrgba ||
 		window->last_cursor != cursor ||
 		window->last_mark != mark ||
 		window->last_mode != view->mode;
@@ -525,8 +528,6 @@ static void repainted(struct window *window, position_t cursor, position_t mark)
 {
 	window->repaint = FALSE;
 	window->last_dirties = window->view->text->dirties;
-	window->last_fgrgba = window->fgrgba;
-	window->last_bgrgba = window->bgrgba;
 	window->last_cursor = cursor;
 	window->last_mark = mark;
 	window->last_mode = window->view->mode;
@@ -839,12 +840,14 @@ static void window_colors(void)
 		{ }
 	};
 
-	for (window = window_list; window; window = window->next)
-		window->bgrgba = 0;
-	active_window->fgrgba = DEFAULT_FGRGBA;
-	active_window->bgrgba = DEFAULT_BGRGBA;
+	if (active_window) {
+		if (active_window->fgrgba != DEFAULT_FGRGBA)
+			active_window->repaint = TRUE;
+		active_window->fgrgba = DEFAULT_FGRGBA;
+		active_window->bgrgba = DEFAULT_BGRGBA;
+	}
 	for (window = window_list; window; window = window->next) {
-		if (window->bgrgba)
+		if (window == active_window)
 			continue;
 		for (j = 0; colors[j][1]; j++) {
 			for (w = window_list; w; w = w->next)
@@ -855,8 +858,11 @@ static void window_colors(void)
 			if (!w)
 				break;
 		}
-		window->fgrgba = colors[j][0];
-		window->bgrgba = colors[j][1];
+		if (window->bgrgba != colors[j][1]) {
+			window->repaint = TRUE;
+			window->fgrgba = colors[j][0];
+			window->bgrgba = colors[j][1];
+		}
 	}
 }
 
