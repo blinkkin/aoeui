@@ -1,4 +1,5 @@
 ??-?? 1.6 release
+08-17 pmk: fix cursor position after xterm REGSCREEN
 05-04 pmk: fix window destruction display error
 04-11 pmk: fix line insert/delete bug
 03-25 pmk: Haskell support

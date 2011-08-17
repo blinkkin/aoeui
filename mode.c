@@ -473,8 +473,6 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 			exit(EXIT_SUCCESS);
 		}
 		windows_end_display();
-		fprintf(stderr, "The editor is suspended.  "
-			"Type 'fg' to resume.\n");
 		kill(getpid(), SIGSTOP);
 		window_recenter(view);
 		break;

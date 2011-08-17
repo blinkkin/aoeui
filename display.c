@@ -60,6 +60,8 @@ struct display {
 	Boolean_t size_changed;
 	rgba_t fgrgba, bgrgba;
 	int at_row, at_column;
+	int get_initial_cursor_position;
+	int initial_row, initial_column;
 	struct cell *image;
 	struct display *next;
 	Byte_t inbuf[INBUF_SIZE];
@@ -590,16 +592,20 @@ void display_get_geometry(struct display *display, int *rows, int *columns)
 void display_reset(struct display *display)
 {
 	RELEASE(display->image);
-	if (display->is_xterm)
+	if (display->is_xterm) {
+		if (!display->get_initial_cursor_position) {
+			display->get_initial_cursor_position = 1;
+			outs(display, CTL_CURSORPOS);
+		}
 		outs(display, XTERM_ALTSCREEN);
-	else
+	} else
 		outs(display, CTL_RESET);
 	outs(display, CTL_UTF8
 		      CTL_RESETMODES
 		      CTL_RESETCOLORS);
 	if (display->is_xterm)
 		outs(display, XTERM_BCKISDEL);
-	else
+	if (display->is_linux)
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
 	display->fgrgba = BAD_RGBA;
@@ -659,7 +665,10 @@ struct display *display_init(void)
 	display->inbuf_bytes = display->outbuf_bytes = 0;
 	if (!(term = getenv("TERM"))) {
 	} else if ((display->is_xterm = !strncmp(term, "xterm", 5))) {
-		if ((term = getenv("TERM_PROGRAM")))
+		if ((term = getenv("COLORTERM")) &&
+		    !strncmp(term, "gnome-", 6)) {
+			/* Gnome terminal? Ignore $TERM_PROGRAM */
+		} else if ((term = getenv("TERM_PROGRAM")))
 			display->is_apple = !strcmp(term, "Apple_Terminal");
 	} else {
 		display->is_linux = !strcmp(term, "linux");
@@ -678,9 +687,14 @@ void display_end(struct display *display)
 	display_title(display, NULL);
 	set_color(display, DEFAULT_FGRGBA, FG_COLOR);
 	set_color(display, DEFAULT_BGRGBA, BG_COLOR);
-	if (display->is_xterm)
+	if (display->is_xterm) {
 		outs(display, XTERM_REGSCREEN);
-	else
+		if (display->get_initial_cursor_position == 2)
+			force_moveto(display, display->initial_row,
+				     display->initial_column);
+		else
+			force_moveto(display, display->rows-1, 0);
+	} else
 		outs(display, CTL_RESET CTL_RESETMODES);
 	flush(display);
 
@@ -746,7 +760,7 @@ Unicode_t display_getch(struct display *display, Boolean_t block)
 	Unicode_t key;
 	unsigned used, vals, val[16];
 
-#define SET_GEOMETRY FUNCTION_F(99)
+#define GOT_CURSORPOS FUNCTION_F(99)
 
 	if (!display)
 		return ERROR_EOF;
@@ -815,7 +829,7 @@ again:	if (display->size_changed)
 		switch (*p) {
 		case 'R': /* cursor position report from southeast corner */
 			if (vals >= 2)
-				key = SET_GEOMETRY;
+				key = GOT_CURSORPOS;
 			break;
 		case '~':
 			if (!val[0])
@@ -899,8 +913,14 @@ done:	if (!key)
 		key = *(p = display->inbuf);
 	used = ++p - display->inbuf;
 	memmove(display->inbuf, p, display->inbuf_bytes -= used);
-	if (key == SET_GEOMETRY) {
-		set_geometry(display, val[0], val[1]);
+	if (key == GOT_CURSORPOS) {
+		if (display->get_initial_cursor_position == 1 &&
+		    val[0] > 0 && val[1] > 0) {
+			display->get_initial_cursor_position = 2;
+			display->initial_row = val[0] - 1;
+			display->initial_column = val[1] - 1;
+		} else
+			set_geometry(display, val[0], val[1]);
 		goto again;
 	}
 	return key;
