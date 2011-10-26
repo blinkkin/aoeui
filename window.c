@@ -357,8 +357,7 @@ static position_t focus(struct window *window)
 	unsigned above = 0, below;
 	size_t bytes;
 
-	start = find_row_start(window, start,
-			       find_line_start(view, start));
+	start = find_row_start(window, start, find_line_start(view, start));
 
 	/* Scroll by single lines when cursor is just one row out of view. */
 	if (cursorrow < start &&
@@ -370,6 +369,7 @@ static position_t focus(struct window *window)
 	if (cursorrow >= start &&
 	    (above = count_rows(window, start, cursorrow)) == window->rows) {
 		start += find_row_bytes(view, start, 0, window->columns);
+		above = 0;
 		goto done;
 	}
 
@@ -377,7 +377,8 @@ static position_t focus(struct window *window)
 		for (below = 1, at = cursorrow;
 		     above + below < window->rows;
 		     below++, at += bytes)
-			if (!(bytes = find_row_bytes(view, at, 0, window->columns)))
+			if (!(bytes = find_row_bytes(view, at, 0,
+						     window->columns)))
 				break;
 		if (above + below == window->rows || !start)
 			goto done;
@@ -460,12 +461,15 @@ static int paintch(struct window *window, Unicode_t ch, int row, int column,
 		bgrgba = window->view->mode->selection_bgrgba;
 		fgrgba = SELECTION_FGRGBA;
 	} else if (at == cursor) {
-		if (at == mark)
-			fgrgba = EMPTYSEL_FGRGBA;
+		rgba_t rgba = DEFAULT_CURSORRGBA;
+		if (mark != UNSET)
+			rgba = SELECTING_RGBA;
 		else if (window->view->text->flags & TEXT_RDONLY)
-			fgrgba = RDONLY_FGRGBA;
+			rgba = RDONLY_RGBA;
 		else if (text_is_dirty(window->view->text))
-			fgrgba = DIRTY_FGRGBA;
+			rgba = DIRTY_RGBA;
+		if (!display_cursor_color(display, rgba))
+			fgrgba = rgba;
 	}
 
 	if (ch == '\t') {
@@ -830,7 +834,7 @@ static void window_colors(void)
 	struct window *window, *w;
 
 	static rgba_t colors[][2] = {
-		{ BLACK_RGBA, WHITE_RGBA },
+		{ BLACK_RGBA, PALE_RGBA(WHITE_RGBA) },
 		{ BLUE_RGBA, YELLOW_RGBA },
 		{ BLUE_RGBA, PALE_RGBA(YELLOW_RGBA) },
 		{ GREEN_RGBA, MAGENTA_RGBA },

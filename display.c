@@ -37,11 +37,11 @@
 #define CTL_INSCOLS	CSI "%u@"
 #define CTL_INSLINES	CSI "%uL"
 #define CTL_RGB		OSC "4;%d;rgb:%02x/%02x/%02x" ST
+#define CTL_CURSORRGB	OSC "12;rgb:%02x/%02x/%02x" ST
 #define CTL_CURSORPOS	CSI "6n"
 #define FG_COLOR	30
 #define BG_COLOR	40
 #define XTERM_TITLE	OSC "0;%s" ST
-/* was: #define XTERM_TITLE	OSC "2;%s" ESC "\\" */
 #define XTERM_ALTSCREEN	CSI "?47h"
 #define XTERM_REGSCREEN	CSI "?47l"
 #define XTERM_BCKISDEL	CSI "?67l"
@@ -54,13 +54,18 @@ struct cell {
 	rgba_t fgrgba, bgrgba;
 };
 
+enum cursor_position_knowledge {
+	NEEDED, SOUGHT, KNOWN, INVALID
+};
+
 struct display {
 	int rows, columns;
 	int cursor_row, cursor_column;
+	rgba_t cursor_rgba;
 	Boolean_t size_changed;
 	rgba_t fgrgba, bgrgba;
 	int at_row, at_column;
-	int get_initial_cursor_position;
+	enum cursor_position_knowledge get_initial_cursor_position;
 	int initial_row, initial_column;
 	struct cell *image;
 	struct display *next;
@@ -546,6 +551,8 @@ static void set_geometry(struct display *display, int rows, int columns)
 	display->size_changed = TRUE;
 	display_erase(display, 0, rows, 0, columns);
 	display_cursor(display, display->cursor_row, display->cursor_column);
+	if (display->get_initial_cursor_position == KNOWN)
+		display->get_initial_cursor_position = INVALID;
 }
 
 static void geometry(struct display *display)
@@ -593,8 +600,8 @@ void display_reset(struct display *display)
 {
 	RELEASE(display->image);
 	if (display->is_xterm) {
-		if (!display->get_initial_cursor_position) {
-			display->get_initial_cursor_position = 1;
+		if (display->get_initial_cursor_position == NEEDED) {
+			display->get_initial_cursor_position = SOUGHT;
 			outs(display, CTL_CURSORPOS);
 		}
 		outs(display, XTERM_ALTSCREEN);
@@ -613,6 +620,7 @@ void display_reset(struct display *display)
 	geometry(display);
 	force_moveto(display, 0, 0);
 	display->cursor_row = display->cursor_column = 0;
+	display->cursor_rgba = BAD_RGBA;
 	flush(display);
 }
 
@@ -689,7 +697,7 @@ void display_end(struct display *display)
 	set_color(display, DEFAULT_BGRGBA, BG_COLOR);
 	if (display->is_xterm) {
 		outs(display, XTERM_REGSCREEN);
-		if (display->get_initial_cursor_position == 2)
+		if (display->get_initial_cursor_position == KNOWN)
 			force_moveto(display, display->initial_row,
 				     display->initial_column);
 		else
@@ -746,6 +754,20 @@ void display_cursor(struct display *display, int row, int column)
 		column = 0;
 	display->cursor_row = row;
 	display->cursor_column = column;
+}
+
+Boolean_t display_cursor_color(struct display *display, rgba_t rgba)
+{
+	if (!display->is_xterm ||
+	    display->is_apple ||
+	    rgba & 0xff /* no alpha */)
+		return FALSE;
+	if (rgba != display->cursor_rgba) {
+		outf(display, CTL_CURSORRGB,
+		     rgba >> 24, rgba >> 16 & 0xff, rgba >> 8 & 0xff);
+		display->cursor_rgba = rgba;
+	}
+	return TRUE;
 }
 
 void display_beep(struct display *display)
@@ -914,9 +936,9 @@ done:	if (!key)
 	used = ++p - display->inbuf;
 	memmove(display->inbuf, p, display->inbuf_bytes -= used);
 	if (key == GOT_CURSORPOS) {
-		if (display->get_initial_cursor_position == 1 &&
+		if (display->get_initial_cursor_position == SOUGHT &&
 		    val[0] > 0 && val[1] > 0) {
-			display->get_initial_cursor_position = 2;
+			display->get_initial_cursor_position = KNOWN;
 			display->initial_row = val[0] - 1;
 			display->initial_column = val[1] - 1;
 		} else

@@ -102,7 +102,7 @@ Unicode_t macro_getch(void)
 				      playing->bytes - playing->at);
 		ch = utf8_unicode(p, n = utf8_length(p, n));
 		if ((playing->at += n) == playing->bytes)
-			if (playing->repeat-- > 0)
+			if (playing->repeat-- > 1)
 				playing->at = 0;
 			else
 				playing = playing->suspended;

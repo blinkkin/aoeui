@@ -14,6 +14,7 @@ void display_end(struct display *);
 void display_get_geometry(struct display *, int *rows, int *columns);
 Boolean_t display_title(struct display *, const char *);
 void display_cursor(struct display *, int row, int column);
+Boolean_t display_cursor_color(struct display *, rgba_t rgba);
 void display_put(struct display *, int row, int column,
 		 Unicode_t unicode, rgba_t fgRGBA, rgba_t bgRGBA);
 void display_beep(struct display *);
