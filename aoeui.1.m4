@@ -45,9 +45,9 @@ When run with no file name arguments,
 displays a short command introduction and summary.
 .P
 .B AOEUI
-can browse very large read-only files with quick start-up,
-since original texts are memory-mapped from files and not
-duplicated in memory until they are about to be modified.
+can browse very large read-only files with quick start-up time,
+since the original texts are memory-mapped from files and not
+duplicated in memory unless they are about to be modified.
 .SH OPTIONS
 .TP
 .B -k

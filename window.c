@@ -369,7 +369,7 @@ static position_t focus(struct window *window)
 	if (cursorrow >= start &&
 	    (above = count_rows(window, start, cursorrow)) == window->rows) {
 		start += find_row_bytes(view, start, 0, window->columns);
-		above = 0;
+		above--;
 		goto done;
 	}
 

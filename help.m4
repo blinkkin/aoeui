@@ -1,5 +1,5 @@
 ifdef(`ASDFG',`define(`AOEUI',`asdfg')define(`cmd',`$2')',`define(`AOEUI',`aoeui')define(`cmd',`$1')')dnl
-Welcome to AOEUI 1.5i!  Here are some clues to help you use the editor.
+Welcome to AOEUI 1.6!  Here are some clues to help you use the editor.
 
 - The up/down/left/right "arrow" keys, page up/down keys, and Delete key
   all work fine.  You can use AOEUI as a simple notepad if you like.
@@ -50,7 +50,7 @@ Command summary:
 ^Sp^_  incremental regular expression search mode with POSIX regexps.
          In search mode, use ^cmd(H,G) and ^cmd(T,H) to move from one
          instance of the search target to another and any other command,
-	 or Return, to resume editing.
+         or Return, to resume editing.
 
    ^cmd(X,E)  open file named by selection in new window
          insert current path as selection if none

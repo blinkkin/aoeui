@@ -5,6 +5,8 @@ enum utf8_mode utf8_mode = UTF8_AUTO;
 const char *make_writable;
 Boolean_t no_save_originals;
 Boolean_t read_only;
+unsigned default_tab_stop = 8; /* the only correct value :-) */
+Boolean_t default_no_tabs;
 
 const char *path_format(const char *path)
 {
@@ -131,6 +133,12 @@ static void scan(struct view *view)
 	size_t chlen, check;
 	Unicode_t ch, lastch = 0;
 	int crnl = 0, nl = 0;
+	Boolean_t any_tab = FALSE;
+	int tabstop = default_tab_stop;
+
+	/* Reset state */
+	view->text->flags &= ~(TEXT_NO_UTF8 | TEXT_CRNL | TEXT_NO_TABS);
+	view->text->tabstop = default_tab_stop;
 
 	if (utf8_mode == UTF8_NO)
 		view->text->flags |= TEXT_NO_UTF8;
@@ -152,6 +160,20 @@ static void scan(struct view *view)
 		}
 	if (nl && crnl == nl)
 		view->text->flags |= TEXT_CRNL;
+
+	for (at = 0; at + chop < bytes; at = find_line_end(view, at) + 1) {
+		int spaces = 0;
+		while ((ch = view_unicode(view, at, &at)) == ' ')
+			spaces++;
+		if (ch == '\t')
+			any_tab = TRUE;
+		if (spaces > 1 && spaces < tabstop)
+			tabstop = spaces;
+	}
+	if (default_no_tabs || !any_tab) {
+		view->text->flags |= TEXT_NO_TABS;
+		view->text->tabstop = tabstop;
+	}
 }
 
 struct view *view_open(const char *path0)
@@ -195,8 +217,6 @@ struct view *view_open(const char *path0)
 			goto fail;
 		}
 		text->flags |= TEXT_CREATED;
-		if (utf8_mode == UTF8_NO)
-			text->flags |= TEXT_NO_UTF8;
 	} else {
 		if (!S_ISREG(statbuf.st_mode)) {
 			message("%s: not a regular file", path_format(path));
