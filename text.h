@@ -59,8 +59,9 @@ struct keywords {
 };
 
 extern struct text *text_list;
-extern unsigned default_tab_stop;
-extern Boolean_t default_no_tabs;
+extern unsigned default_tab_stop; /* -t 8 */
+extern Boolean_t default_no_tabs; /* -s */
+extern Boolean_t default_tabs; /* -S */
 extern Boolean_t no_keywords;  /* -k */
 extern Boolean_t no_save_originals;  /* -o */
 extern Boolean_t read_only;  /* -r */

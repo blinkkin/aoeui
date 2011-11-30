@@ -1,3 +1,4 @@
+11-30 pmk: set colors to default before erase/insert/delete
 11-10 1.6 release
 10-27 pmk: automatic detection of tabbing and tab stop
 10-26 pmk: fix off-by-one error in macro repetition

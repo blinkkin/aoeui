@@ -7,6 +7,7 @@ Boolean_t no_save_originals;
 Boolean_t read_only;
 unsigned default_tab_stop = 8; /* the only correct value :-) */
 Boolean_t default_no_tabs;
+Boolean_t default_tabs;
 
 const char *path_format(const char *path)
 {
@@ -133,7 +134,7 @@ static void scan(struct view *view)
 	size_t chlen, check;
 	Unicode_t ch, lastch = 0;
 	int crnl = 0, nl = 0;
-	Boolean_t any_tab = FALSE;
+	Boolean_t any_tab = default_tabs;
 	int tabstop = default_tab_stop;
 
 	/* Reset state */

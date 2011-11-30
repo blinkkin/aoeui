@@ -20,6 +20,8 @@ AOEUI \- a lightweight visual editor optimized for the cmd(Dvorak,QWERTY) keyboa
 ]
 [
 .B -s
+|
+.B -S
 ]
 [
 .B -t
@@ -61,7 +63,12 @@ Do not save the original contents of a modified file in
 Read-only mode: do not modify the file on disk.
 .TP
 .B -s
-Use spaces, not tabs, for automatic indentation.
+Use spaces, not tabs, for automatic indentation, even if the file
+seems to currently use tabs.
+.TP
+.B -S
+Use tabs, not spaces, for automatic indentation, even if the file
+seems to currently use spaces.
 .TP
 .BI -t " 8"
 Set the tab stop to 8 or to some unreasonable value.

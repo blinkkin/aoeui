@@ -282,6 +282,11 @@ static void foreground_color(struct display *display, rgba_t rgba)
 	}
 }
 
+static void default_colors(struct display *display) {
+	foreground_color(display, DEFAULT_FGRGBA);
+	background_color(display, DEFAULT_BGRGBA);
+}
+
 void display_put(struct display *display, int row, int column,
 		 Unicode_t unicode, rgba_t fgrgba, rgba_t bgrgba)
 {
@@ -330,6 +335,9 @@ static void color_fill(struct display *display,
  * terminal emulators with respect to the background colors;
  * Apple fills with the default background, while a regular Xterm
  * and the Linux console fill with the most recent color selections.
+ * We avoid the discrepancy by setting the colors to the default values
+ * prior to executing erase, insert, and delete commands in the functions
+ * that complete their work by calling this routine.
  */
 static void space_fill(struct display *display, int row, int rows,
 		       int column, int columns)
@@ -364,7 +372,7 @@ void display_erase(struct display *display, int row, int column,
 		columns = display->columns - column;
 	if (rows <= 0 || columns <= 0)
 		return;
-
+	default_colors(display);
 	if (!column &&
 	    columns == display->columns &&
 	    row + rows == display->rows) {
@@ -402,6 +410,7 @@ void display_insert_spaces(struct display *display, int row, int column,
 		spaces = columns;
 	if (spaces <= 0)
 		return;
+	default_colors(display);
 	if (column + columns != display->columns) {
 		moveto(display, row, column + columns - spaces);
 		outf(display, CTL_DELCOLS, spaces);
@@ -427,7 +436,7 @@ void display_delete_chars(struct display *display, int row, int column,
 		chars = columns;
 	if (chars <= 0)
 		return;
-
+	default_colors(display);
 	moveto(display, row, column);
 	outf(display, CTL_DELCOLS, chars);
 	moveto(display, row, column + columns - chars);
@@ -459,7 +468,7 @@ void display_insert_lines(struct display *display, int row, int column,
 	    columns != display->columns ||
 	    !validate(display, row, column, &rows, &columns, &lines))
 		return;
-
+	default_colors(display);
 	if (row + rows != display->rows) {
 		moveto(display, row + rows - lines, 0);
 		outf(display, CTL_DELLINES, lines);
@@ -481,7 +490,7 @@ void display_delete_lines(struct display *display, int row, int column,
 	    columns != display->columns ||
 	    !validate(display, row, column, &rows, &columns, &lines))
 		return;
-
+	default_colors(display);
 	moveto(display, row, 0);
 	outf(display, CTL_DELLINES, lines);
 	if (row + rows != display->rows) {
@@ -610,8 +619,11 @@ void display_reset(struct display *display)
 	outs(display, CTL_UTF8
 		      CTL_RESETMODES
 		      CTL_RESETCOLORS);
-	if (display->is_xterm)
+	if (display->is_xterm) {
 		outs(display, XTERM_BCKISDEL);
+		/* reset character attributes (blink, etc.) */
+		outs(display, CSI "0;24;25;27;28;39;49m");
+	}
 	if (display->is_linux)
 		outs(display, CTL_NUMLOCK CTL_CLEARLEDS CTL_NUMLOCKLED);
 	display->colors = 0;
@@ -693,8 +705,7 @@ void display_end(struct display *display)
 		return;
 
 	display_title(display, NULL);
-	set_color(display, DEFAULT_FGRGBA, FG_COLOR);
-	set_color(display, DEFAULT_BGRGBA, BG_COLOR);
+	default_colors(display);
 	if (display->is_xterm) {
 		outs(display, XTERM_REGSCREEN);
 		if (display->get_initial_cursor_position == KNOWN)

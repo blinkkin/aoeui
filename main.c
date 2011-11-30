@@ -85,7 +85,7 @@ int main(int argc, char *const *argv)
 	if (!make_writable)
 		make_writable = getenv("AOEUI_WRITABLE");
 
-	while ((ch = getopt(argc, argv, "dkoqrst:uUw:")) >= 0)
+	while ((ch = getopt(argc, argv, "dkoqrsSt:uUw:")) >= 0)
 		switch (ch) {
 		case 'd':
 			is_asdfg = FALSE;
@@ -104,6 +104,9 @@ int main(int argc, char *const *argv)
 			break;
 		case 's':
 			default_no_tabs = TRUE;
+			break;
+		case 'S':
+			default_tabs = TRUE;
 			break;
 		case 't':
 			value = atoi(optarg);
