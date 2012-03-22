@@ -53,7 +53,7 @@ static void save_all(void)
 			continue;
 		text_unfold_all(text);
 		if (text->clean &&
-		    buffer_raw(text->buffer, &raw, 0, ~0) ==
+		    buffer_raw(text->buffer, &raw, 0, ~(size_t)0) ==
 			text->clean_bytes &&
 		    !memcmp(text->clean, raw, text->clean_bytes)) {
 			unlink(text->buffer->path);

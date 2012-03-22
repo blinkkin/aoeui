@@ -1,3 +1,5 @@
+01-31 pmk: s/~0/~(size_t)0/ in several sites
+2012
 11-30 pmk: set colors to default before erase/insert/delete
 11-10 1.6 release
 10-27 pmk: automatic detection of tabbing and tab stop

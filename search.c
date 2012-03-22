@@ -44,7 +44,7 @@ static int match_regex(struct view *view, position_t *offset, Boolean_t advance)
 {
 	int j, err;
 	char *raw;
-	size_t bytes = view_raw(view, &raw, *offset, ~0);
+	size_t bytes = view_raw(view, &raw, *offset, ~(size_t)0);
 	unsigned flags = 0;
 	regmatch_t match[10];
 	struct mode_search *mode = (struct mode_search *) view->mode;

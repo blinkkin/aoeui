@@ -428,7 +428,7 @@ void text_preserve(struct text *text)
 	text_unfold_all(text);
 	if (text->clean) {
 		save_original(text);
-		bytes = buffer_raw(text->buffer, &raw, 0, ~0);
+		bytes = buffer_raw(text->buffer, &raw, 0, ~(size_t)0);
 		if (bytes == text->clean_bytes &&
 		    !memcmp(text->clean, raw, bytes))
 			return;
@@ -476,7 +476,7 @@ void text_preserve(struct text *text)
 		text->path = new_path;
 	}
 	text->flags &= ~TEXT_CREATED;
-	bytes = buffer_raw(text->buffer, &raw, 0, ~0);
+	bytes = buffer_raw(text->buffer, &raw, 0, ~(size_t)0);
 	if (ftruncate(text->fd, bytes))
 		message("%s: truncation failed", path_format(text->path));
 	clean_mmap(text, bytes, PROT_READ|PROT_WRITE);

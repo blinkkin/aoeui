@@ -7,7 +7,7 @@ static unsigned clip_buffers;
 void clip_init(unsigned reg)
 {
 	if (reg < clip_buffers)
-		buffer_delete(clip_buffer[reg], 0, ~0);
+		buffer_delete(clip_buffer[reg], 0, ~(size_t)0);
 }
 
 size_t clip(unsigned reg, struct view *view, position_t offset,
