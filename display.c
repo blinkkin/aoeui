@@ -146,9 +146,23 @@ static void force_moveto(struct display *display, int row, int column)
 
 static void moveto(struct display *display, int row, int column)
 {
-	if (row == display->at_row && column == display->at_column)
-		return;
-	if (row == display->at_row + 1) {
+	if (row == display->at_row &&
+	    column >= display->at_column &&
+	    column < display->at_column + 8) {
+		int j, cols = column - display->at_column;
+		struct cell *cell = &display->image[row*display->columns +
+						    display->at_column];
+		for (j = 0; j < cols; j++)
+			if (cell[j].unicode != ' ' ||
+			    cell[j].bgrgba != display->bgrgba)
+				break;
+		if (j == cols) {
+			while (j-- > 0)
+				outs(display, " ");
+			display->at_column = column;
+			return;
+		}
+	} else if (row == display->at_row + 1) {
 		if (column == display->at_column) {
 			outs(display, "\n");
 			display->at_row++;
@@ -315,19 +329,24 @@ void display_put(struct display *display, int row, int column,
 	cell->fgrgba = fgrgba;
 }
 
-static void color_fill(struct display *display,
-		       int row, int rows, int column, int columns,
-		       rgba_t fgrgba, rgba_t bgrgba)
+static Boolean_t color_fill(struct display *display,
+			    int row, int rows, int column, int columns,
+			    rgba_t fgrgba, rgba_t bgrgba)
 {
 	int r, c;
+	Boolean_t any = FALSE;
 	for (r = 0; r < rows; r++) {
 		struct cell *cell = &display->image[(row+r) * display->columns +
 						    column];
-		for (c = 0; c < columns; c++, cell++) {
-			cell->fgrgba = fgrgba;
-			cell->bgrgba = bgrgba;
-		}
+		for (c = 0; c < columns; c++, cell++)
+			if (cell->fgrgba != fgrgba ||
+			    cell->bgrgba != bgrgba) {
+				cell->fgrgba = fgrgba;
+				cell->bgrgba = bgrgba;
+				any = TRUE;
+			}
 	}
+	return any;
 }
 
 /* After an erase, insert, or delete command, update the state.
@@ -338,24 +357,33 @@ static void color_fill(struct display *display,
  * We avoid the discrepancy by setting the colors to the default values
  * prior to executing erase, insert, and delete commands in the functions
  * that complete their work by calling this routine.
+ * Returns TRUE if any state was modified.
  */
-static void space_fill(struct display *display, int row, int rows,
-		       int column, int columns)
+static Boolean_t space_fill(struct display *display, int row, int rows,
+			    int column, int columns)
 {
 	int r, c;
+	Boolean_t any = FALSE;
+	rgba_t fg = display->fgrgba, bg = display->bgrgba;
+
+	if (display->is_apple) {
+		fg = DEFAULT_FGRGBA;
+		bg = DEFAULT_BGRGBA;
+	}
+
 	for (r = 0; r < rows; r++) {
 		struct cell *cell = &display->image[(row+r) * display->columns +
 						    column];
 		for (c = 0; c < columns; c++, cell++)
-			cell->unicode = ' ';
+			if (cell->unicode != ' ') {
+				cell->unicode = ' ';
+				any = TRUE;
+			}
 	}
 
-	if (display->is_apple)
-		color_fill(display, row, rows, column, columns,
-			   DEFAULT_FGRGBA, DEFAULT_BGRGBA);
-	else
-		color_fill(display, row, rows, column, columns,
-			   display->fgrgba, display->bgrgba);
+	if (color_fill(display, row, rows, column, columns, fg, bg))
+		any = TRUE;
+	return any;
 }
 
 void display_erase(struct display *display, int row, int column,
@@ -373,6 +401,8 @@ void display_erase(struct display *display, int row, int column,
 	if (rows <= 0 || columns <= 0)
 		return;
 	default_colors(display);
+	if (!space_fill(display, row, rows, column, columns))
+		return;
 	if (!column &&
 	    columns == display->columns &&
 	    row + rows == display->rows) {
@@ -393,7 +423,6 @@ void display_erase(struct display *display, int row, int column,
 			outf(display, CTL_ERASECOLS, columns);
 		}
 	}
-	space_fill(display, row, rows, column, columns);
 }
 
 void display_insert_spaces(struct display *display, int row, int column,
@@ -558,7 +587,7 @@ static void set_geometry(struct display *display, int rows, int columns)
 	display->rows = rows;
 	display->columns = columns;
 	display->size_changed = TRUE;
-	display_erase(display, 0, rows, 0, columns);
+	display_erase(display, 0, 0, rows, columns);
 	display_cursor(display, display->cursor_row, display->cursor_column);
 	if (display->get_initial_cursor_position == KNOWN)
 		display->get_initial_cursor_position = INVALID;
@@ -691,7 +720,8 @@ struct display *display_init(void)
 		} else if ((term = getenv("TERM_PROGRAM")))
 			display->is_apple = !strcmp(term, "Apple_Terminal");
 	} else {
-		display->is_linux = !strcmp(term, "linux");
+		display->is_linux = !strcmp(term, "linux") ||
+				    !strcmp(term, "network");
 	}
 	display_reset(display);
 	return display;
@@ -707,7 +737,10 @@ void display_end(struct display *display)
 	display_title(display, NULL);
 	default_colors(display);
 	if (display->is_xterm) {
-		outs(display, XTERM_REGSCREEN);
+		outs(display, CTL_ERASEALL
+			      CTL_RESETMODES
+			      CTL_RESETCOLORS
+			      XTERM_REGSCREEN);
 		if (display->get_initial_cursor_position == KNOWN)
 			force_moveto(display, display->initial_row,
 				     display->initial_column);

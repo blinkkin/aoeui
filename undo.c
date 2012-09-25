@@ -11,6 +11,15 @@ struct undo {
 	position_t redo, saved;
 };
 
+static struct edit *get_raw_edit(void *raw)
+{
+	/* The intermediate cast to void* suppresses an
+	 * alignment warning otherwise emitted by some
+	 * compilers.
+	 */
+	return raw;
+}
+
 static struct edit *last_edit(struct text *text)
 {
 	char *raw = NULL;
@@ -21,7 +30,7 @@ static struct edit *last_edit(struct text *text)
 		buffer_raw(text->undo->edits, &raw,
 			   text->undo->redo - sizeof(struct edit),
 			   sizeof(struct edit));
-	return (struct edit *) raw;
+	return get_raw_edit(raw);
 }
 
 static void resume_editing(struct text *text)
@@ -138,7 +147,7 @@ sposition_t text_undo(struct text *text)
 	text_dirty(text);
 	buffer_raw(text->undo->edits, &raw, text->undo->redo -= sizeof *edit,
 		   sizeof *edit);
-	edit = (struct edit *) raw;
+	edit = get_raw_edit(raw);
 	if (edit->bytes >= 0)
 		buffer_move(text->buffer, edit->offset, text->undo->deleted,
 			    text->undo->saved -= edit->bytes, edit->bytes);
@@ -159,7 +168,7 @@ sposition_t text_redo(struct text *text)
 		return -1;
 	text_dirty(text);
 	buffer_raw(text->undo->edits, &raw, text->undo->redo, sizeof *edit);
-	edit = (struct edit *) raw;
+	edit = get_raw_edit(raw);
 	text->undo->redo += sizeof *edit;
 	if (edit->bytes >= 0) {
 		buffer_move(text->undo->deleted, text->undo->saved,

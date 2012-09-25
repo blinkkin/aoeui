@@ -28,6 +28,13 @@ static const char *Cpp_keyword_list[] = {
 	"wchar_t", "while"
 };
 
+static const char *go_keyword_list[] = {
+	"break", "case", "chan", "const", "continue", "default", "defer",
+	"else", "fallthrough", "for", "func", "go", "goto", "if", "import",
+	"interface", "map", "package", "range", "return", "select", "struct",
+	"switch", "type", "var"
+};
+
 static const char *Haskell_keyword_list[] = {
 	"_", "case", "class", "data", "default", "deriving", "do", "else",
 	"foreign", "if", "import", "in", "infix", "infixl", "infixr",
@@ -181,6 +188,7 @@ static struct file_keywords {
 	{ ".cc", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".cpp", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".cxx", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
+	{ ".go", KW(go), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".h", KW(Cpp), "()[]{}", C_comment_start, C_comment_end, C_string_end },
 	{ ".hs", KW(Haskell), "()[]{}", Haskell_comment_start, Haskell_comment_end,
 					Haskell_string_end },

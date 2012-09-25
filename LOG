@@ -1,3 +1,7 @@
+09-25 pmk: erase and reset Xterm alt screen when done
+09-25 pmk: suppress pointer alignment warning in undo.c
+06-26 pmk: Go language syntax
+05-22 pmk: fix needless column erasures in window repaints
 01-31 pmk: s/~0/~(size_t)0/ in several sites
 2012
 11-30 pmk: set colors to default before erase/insert/delete

@@ -364,12 +364,16 @@ static position_t focus(struct window *window)
 	    start == cursorrow + find_row_bytes(view, cursorrow,
 						0, window->columns)) {
 		start = cursorrow;
+		display_insert_lines(display, window->row, window->column,
+				     1, window->rows, window->columns);
 		goto done;
 	}
 	if (cursorrow >= start &&
 	    (above = count_rows(window, start, cursorrow)) == window->rows) {
 		start += find_row_bytes(view, start, 0, window->columns);
 		above--;
+		display_delete_lines(display, window->row, window->column,
+				     1, window->rows, window->columns);
 		goto done;
 	}
 
