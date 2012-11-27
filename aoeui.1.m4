@@ -644,13 +644,13 @@ moves to another window, closing the old one.
 is not a control character)
 creates a new anonymous text.
 .TP
-.B ^Space #
+.B ^Space#
 (note that the number sign
 .B `
-is not a contral character)
+is not a control character)
 displays the current position's path name and line number.
 .TP
-.B ^Space ?
+.B ^Space?
 (note that the question mark
 .B ?
 is not a control character)

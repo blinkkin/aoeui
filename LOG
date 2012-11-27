@@ -1,3 +1,5 @@
+11-25 pmk: fix ESC-'@' (ALT+'@') and ESC-RET
+11-25 pmk: fix typos in man page
 09-25 pmk: erase and reset Xterm alt screen when done
 09-25 pmk: suppress pointer alignment warning in undo.c
 06-26 pmk: Go language syntax

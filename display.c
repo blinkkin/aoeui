@@ -862,7 +862,8 @@ again:	if (display->size_changed)
 	}
 
 	p = display->inbuf;
-	if (*p != ESCCHAR) {
+	key = *p;
+	if (key != ESCCHAR) {
 		if (utf8_bytes[*p] > display->inbuf_bytes) {
 			if (block)
 				goto again;
@@ -876,7 +877,8 @@ again:	if (display->size_changed)
 
 	/* Translate Escape characters */
 
-	key = vals = 0;
+	key = 0;
+	vals = 0;
 	switch (p[1]) {
 
 	case '[':
@@ -944,7 +946,7 @@ again:	if (display->size_changed)
 	case ' ':
 		key = CONTROL('@');
 		p++;
-		break;
+		goto done; /* because ^@ == 0 */
 	case '\\':
 	case ']':
 	case '^':
@@ -957,6 +959,10 @@ again:	if (display->size_changed)
 		break;
 	case '?':
 		key = '\x7f';
+		p++;
+		break;
+	case '\r':
+		key = '\n';
 		p++;
 		break;
 	case ESCCHAR:
@@ -975,9 +981,11 @@ again:	if (display->size_changed)
 			key = CONTROL(*++p);
 	}
 
-done:	if (!key)
+	/* If we couldn't translate an Escape sequence, return raw chars. */
+	if (!key)
 		key = *(p = display->inbuf);
-	used = ++p - display->inbuf;
+
+done:	used = ++p - display->inbuf;
 	memmove(display->inbuf, p, display->inbuf_bytes -= used);
 	if (key == GOT_CURSORPOS) {
 		if (display->get_initial_cursor_position == SOUGHT &&
