@@ -26,10 +26,10 @@ aoeui: $(RELS)
 	$(CC) $(CFLAGS) -o $@ $(RELS) $(LIBS)
 $(RELS): $(HDRS)
 help.o: aoeui.help asdfg.help
-aoeui.help: help.m4
-	m4 help.m4 | $(STRINGIFY) >$@
-asdfg.help: help.m4
-	m4 -D ASDFG help.m4 | $(STRINGIFY) >$@
+aoeui.help: reference.m4
+	m4 reference.m4 | $(STRINGIFY) >$@
+asdfg.help: reference.m4
+	m4 -D ASDFG reference.m4 | $(STRINGIFY) >$@
 
 display-test: display-test.o display.o mem.o utf8.o
 	$(CC) $(CFLAGS) -o $@ display-test.o display.o mem.o utf8.o
