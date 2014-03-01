@@ -72,7 +72,7 @@ struct display {
 	Byte_t inbuf[INBUF_SIZE];
 	char outbuf[OUTBUF_SIZE];
 	size_t inbuf_bytes, outbuf_bytes;
-	Boolean_t is_xterm, is_linux, is_apple;
+	Boolean_t is_xterm, is_linux, is_apple, is_screen;
 	rgba_t color[MAX_COLORS];
 	unsigned colors;
 	char *title;
@@ -722,6 +722,7 @@ struct display *display_init(void)
 	} else {
 		display->is_linux = !strcmp(term, "linux") ||
 				    !strcmp(term, "network");
+		display->is_screen = !strncmp(term, "screen", 6);
 	}
 	display_reset(display);
 	return display;
@@ -768,7 +769,7 @@ void display_end(struct display *display)
 
 Boolean_t display_title(struct display *display, const char *title)
 {
-	if (!display->is_xterm)
+	if (!display->is_xterm && !display->is_screen)
 		return FALSE;
 	if (title && !*title)
 		title = NULL;
