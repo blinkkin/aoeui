@@ -94,7 +94,7 @@ int main(int argc, char *const *argv)
 			no_keywords = TRUE;
 			break;
 		case 'o':
-			no_save_originals = TRUE;
+			save_originals = TRUE;
 			break;
 		case 'q':
 			is_asdfg = TRUE;

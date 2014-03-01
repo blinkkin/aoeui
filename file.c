@@ -3,7 +3,7 @@
 
 enum utf8_mode utf8_mode = UTF8_AUTO;
 const char *make_writable;
-Boolean_t no_save_originals;
+Boolean_t save_originals;
 Boolean_t read_only;
 unsigned default_tab_stop = 8; /* the only correct value :-) */
 Boolean_t default_no_tabs;
@@ -381,7 +381,7 @@ static void save_original(struct text *text)
 	fd_t fd;
 	ssize_t wrote = -1;
 
-	if (no_save_originals ||
+	if (!save_originals ||
 	    !text->clean ||
 	    !text->path ||
 	    text->flags & (TEXT_SAVED_ORIGINAL |
