@@ -81,7 +81,7 @@ int main(int argc, char *const *argv)
 	signals();
 	atexit(save_all);
 
-	is_asdfg = argc && argv[0] && strstr(argv[0], "asdfg");
+	is_asdfg = argc && argv[0] && !strstr(argv[0], "aoeui");
 	if (!make_writable)
 		make_writable = getenv("AOEUI_WRITABLE");
 
