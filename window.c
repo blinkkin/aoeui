@@ -42,17 +42,18 @@ static void title(struct window *window)
 		return;
 	}
 	view = window->view;
-	snprintf(buff, sizeof buff, "%s%s", view->name,
-		 view->text->flags & TEXT_CREATED ? " (new)" :
-		 view->text->flags & TEXT_RDONLY ? " (read-only)" :
+	snprintf(buff, sizeof buff, "%s%s",
+		 view->text->flags & TEXT_CREATED ? "++ " :
+		 view->text->flags & TEXT_RDONLY ? "%% " :
 		 view->text->preserved !=
-		    view->text->dirties ? " (unsaved)" : "");
+		    view->text->dirties ? "** " : "-- ",
+		 view->name);
 	cursor = locus_get(view, CURSOR);
 	if (cursor < 65536) {
 		int line = current_line_number(view, cursor);
 		int len = strlen(buff);
 		snprintf(buff + len, sizeof buff - len - 1,
-			 " [%d]", line);
+			 " %d", line);
 	}
 	titles = display_title(display, buff);
 }
