@@ -30,6 +30,7 @@ position_t find_row_bytes(struct view *, position_t,
 			unsigned column, unsigned columns);
 unsigned find_column(unsigned *row, struct view *, position_t linestart,
 		     position_t offset, unsigned start_column);
+unsigned current_column(struct view *, position_t);
 sposition_t find_string(struct view *, const char *, position_t);
 
 const char *path_format(const char *);	/* file.c */

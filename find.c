@@ -411,6 +411,22 @@ unsigned find_column(unsigned *row, struct view *view, position_t at,
 	return column;
 }
 
+unsigned current_column(struct view *view, position_t offset)
+{
+	int column = 1;
+	unsigned tabstop = view->text->tabstop;
+	position_t prev;
+	position_t at = offset;
+
+	for (; at > 0; at = prev) {
+		Unicode_t ch = view_char_prior(view, at, &prev);
+		if (!IS_UNICODE(ch) || ch == '\n')
+			break;
+		column += char_columns(ch, 0, tabstop);
+	}
+	return column;
+}
+
 sposition_t find_string(struct view *view, const char *string,
 			position_t offset)
 {

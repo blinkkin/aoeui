@@ -51,9 +51,10 @@ static void title(struct window *window)
 	cursor = locus_get(view, CURSOR);
 	if (cursor < 65536) {
 		int line = current_line_number(view, cursor);
+		int cur_column = current_column(view, cursor);
 		int len = strlen(buff);
 		snprintf(buff + len, sizeof buff - len - 1,
-			 " %d", line);
+			 " %d,%d", line, cur_column);
 	}
 	titles = display_title(display, buff);
 }
