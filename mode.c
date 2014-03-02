@@ -313,8 +313,10 @@ delete:		if (IS_UNICODE(view_char_prior(view, cursor, &mark)))
 				}
 				goto done;
 			case '#':
-				status("%s line %d", view->text->path,
-				       current_line_number(view, cursor));
+				status("%s line %d column %d",
+				       view->text->path,
+				       current_line_number(view, cursor),
+				       current_column(view, cursor));
 				goto done;
 			case '?':
 				window_after(view, view_help(), -1 /*auto*/);
